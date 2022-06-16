@@ -7,7 +7,7 @@ from consav.grids import nonlinspace
 from consav import linear_interp, linear_interp_1d
 from consav import quadrature
 
-# set gender indicatios as globals
+# set gender indication as globals
 woman = 1
 man = 2
 
