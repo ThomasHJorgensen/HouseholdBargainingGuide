@@ -51,8 +51,8 @@ class HouseholdModelClass(EconModelClass):
         par.alpha2_w = 1.0
         par.alpha2_m = 1.0
         
-        par.phi_w = 0.01 #0.2
-        par.phi_m = 0.01 #0.2
+        par.phi_w = 0.2
+        par.phi_m = 0.2
         
         # state variables
         par.T = 10
