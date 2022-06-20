@@ -16,6 +16,7 @@ namespace sim {
                 for (int t=0; t < par->simT; t++){
                     int it = index::index2(i,t,par->simN,par->simT);
                     int it_1 = index::index2(i,t-1,par->simN,par->simT);
+                    int it1 = index::index2(i,t+1,par->simN,par->simT);
 
                     // state variables
                     double A_lag = sim->init_A[i];
@@ -23,7 +24,7 @@ namespace sim {
                     double Am_lag = sim->init_Am[i];
                     bool couple_lag = sim->init_couple[i];
                     int power_idx_lag = sim->init_power_idx[i];
-                    double love_lag = sim->init_love[i];
+                    double love = sim->init_love[i];
 
                     if (t>0){
                         A_lag = sim->A[it_1];
@@ -31,18 +32,18 @@ namespace sim {
                         Am_lag = sim->Am[it_1];
                         couple_lag = sim->couple[it_1];
                         power_idx_lag = sim->power_idx[it_1];
-                        love_lag = sim->love[it_1];
+                        love = sim->love[it];
+                    } else {
+                        sim->love[it] = love;
                     }
 
                     // first check if they want to remain together and what the bargaining power will be if they do.
                     int power_idx;
                     int idx_sol = index::index4(t,power_idx_lag,0,0,par->T,par->num_power,par->num_love,par->num_A); 
                     if (couple_lag) {
-                        // love-shock
-                        sim->love[it] = love_lag + par->sigma_love*sim->draw_love[it];
-
+                        
                         // use the power index:
-                        power_idx = (int) round(tools::interp_2d_int(par->grid_love,par->grid_A,par->num_love,par->num_A, &sol->power_idx[idx_sol] ,sim->love[it],A_lag));
+                        power_idx = (int) round(tools::interp_2d_int(par->grid_love,par->grid_A,par->num_love,par->num_A, &sol->power_idx[idx_sol] ,love,A_lag));
 
                         if (power_idx < 0.0) { // divorce is coded as -1
                             sim->couple[it] = false;
@@ -59,7 +60,7 @@ namespace sim {
                     if (sim->couple[it]){
                         
                         // optimal consumption allocation if couple
-                        double C_tot = tools::interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A ,&sol->C_tot_couple[idx_sol],sim->love[it],A_lag);
+                        double C_tot = tools::interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A ,&sol->C_tot_couple[idx_sol],love,A_lag);
 
                         double C_pub = 0.0;
                         couple::intraperiod_allocation(&sim->Cw_priv[it], &sim->Cm_priv[it], &C_pub,  C_tot,power_idx_lag,sol,par);
@@ -69,6 +70,9 @@ namespace sim {
                         // update end-of-period states
                         double M_resources = par->R*A_lag + par->inc_w + par->inc_m;
                         sim->A[it] = M_resources - sim->Cw_priv[it] - sim->Cm_priv[it] - C_pub;
+                        if(t<par->simT-1){
+                            sim->love[it1] = love + par->sigma_love*sim->draw_love[it1];
+                        }
 
                         // in case of divorce
                         sim->Aw[it] = par->div_A_share * sim->A[it];

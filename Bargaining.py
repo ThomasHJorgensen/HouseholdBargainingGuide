@@ -127,6 +127,9 @@ class HouseholdModelClass(EconModelClass):
         sim.Cm_priv = np.nan + np.ones(shape_sim)
         sim.Cw_pub = np.nan + np.ones(shape_sim)
         sim.Cm_pub = np.nan + np.ones(shape_sim)
+        sim.Cw_tot = np.nan + np.ones(shape_sim)
+        sim.Cm_tot = np.nan + np.ones(shape_sim)
+        sim.C_tot = np.nan + np.ones(shape_sim)
         
         sim.A = np.nan + np.ones(shape_sim)
         sim.Aw = np.nan + np.ones(shape_sim)
@@ -216,96 +219,12 @@ class HouseholdModelClass(EconModelClass):
             self.cpp.simulate(sim,sol,par)
 
         else:
+            self.simulate(sim,sol,par)
 
-            for i in range(par.simN):
-                for t in range(par.simT):
-
-                    # state variables
-                    if t==0:
-                        A_lag = sim.init_A[i]
-                        Aw_lag = sim.init_Aw[i]
-                        Am_lag = sim.init_Am[i]
-                        couple_lag = sim.init_couple[i]
-                        power_idx_lag = sim.init_power_idx[i]
-                        love_lag = sim.init_love[i]
-
-                    else:
-                        A_lag = sim.A[i,t-1]
-                        Aw_lag = sim.Aw[i,t-1]
-                        Am_lag = sim.Am[i,t-1]
-                        couple_lag = sim.couple[i,t-1]
-                        power_idx_lag = sim.power_idx[i,t-1]
-                        love_lag = sim.love[i,t-1]
-                    
-                    power_lag = par.grid_power[power_idx_lag]
-
-                    # first check if they want to remain together and what the bargaining power will be if they do.
-                    if couple_lag:                   
-                        # love-shock
-                        sim.love[i,t] = love = love_lag + par.sigma_love*sim.draw_love[i,t]
-
-                        # use the power index:
-                        power_idx = np.round(linear_interp.interp_2d(par.grid_love,par.grid_A,np.float_(sol.power_idx[t,power_idx_lag]),love,A_lag))
-
-                        if power_idx < 0.0: # divorce is coded as -1
-                            sim.couple[i,t] = False
-
-                        else:
-                            sim.couple[i,t] = True
-
-                    else: # remain single
-
-                        sim.couple[i,t] = False
-
-
-                    # update behavior
-                    if sim.couple[i,t]:
-                        
-                        # optimal consumption allocation if couple
-                        sol_C_tot = sol.C_tot_couple[t,power_idx_lag] 
-                        C_tot = linear_interp.interp_2d(par.grid_love,par.grid_A,sol_C_tot,love,A_lag)
-
-                        sim.Cw_priv[i,t], sim.Cm_priv[i,t], C_pub = intraperiod_allocation(C_tot,power_idx_lag,sol,par)
-                        sim.Cw_pub[i,t] = C_pub
-                        sim.Cm_pub[i,t] = C_pub
-
-                        # update end-of-period states
-                        M_resources = par.R*A_lag + par.inc_w + par.inc_m
-                        sim.A[i,t] = M_resources - sim.Cw_priv[i,t] - sim.Cm_priv[i,t] - sim.Cw_pub[i,t]
-
-                        # in case of divorce
-                        sim.Aw[i,t] = par.div_A_share * sim.A[i,t]
-                        sim.Am[i,t] = (1.0-par.div_A_share) * sim.A[i,t]
-
-                        sim.power_idx[i,t] = power_idx
-                        sim.power[i,t] = par.grid_power[sim.power_idx[i,t]]
-
-                    else: # single
-
-                        # optimal consumption allocations
-                        sol_Cw_tot = sol.Cw_tot_single[t] 
-                        sol_Cm_tot = sol.Cm_tot_single[t] 
-
-                        Cw_tot = linear_interp.interp_1d(par.grid_A_single[woman-1],sol_Cw_tot,Aw_lag)
-                        Cm_tot = linear_interp.interp_1d(par.grid_A_single[man-1],sol_Cm_tot,Am_lag)
-
-                        sim.Cw_priv[i,t] = cons_priv_single(Cw_tot,woman,par)
-                        sim.Cw_pub[i,t] = Cw_tot - sim.Cw_priv[i,t]
-                        
-                        sim.Cm_priv[i,t] = cons_priv_single(Cm_tot,man,par)
-                        sim.Cm_pub[i,t] = Cm_tot - sim.Cm_priv[i,t]
-
-                        # update end-of-period states
-                        Mw = par.R*Aw_lag + par.inc_w
-                        Mm = par.R*Am_lag + par.inc_m
-                        sim.Aw[i,t] = Mw - sim.Cw_priv[i,t] - sim.Cw_pub[i,t]
-                        sim.Am[i,t] = Mm - sim.Cm_priv[i,t] - sim.Cm_pub[i,t]
-
-                        sim.power_idx[i,t] = -1
-                        sim.power[i,t] = np.nan
-
-                        sim.love[i,t] = np.nan
-                        sim.A[i,t] = np.nan
+        # total consumption
+        sim.Cw_tot = sim.Cw_priv + sim.Cw_pub
+        sim.Cm_tot = sim.Cm_priv + sim.Cm_pub
+        sim.C_tot = sim.Cw_priv + sim.Cm_priv + sim.Cw_pub
 
                
     def solve_single(self,t):
@@ -473,6 +392,98 @@ class HouseholdModelClass(EconModelClass):
         # return discounted sum
         return Util + par.beta*Vnext
    
+
+def simulate(sim,sol,par):
+    for i in range(par.simN):
+        for t in range(par.simT):
+
+            # state variables
+            if t==0:
+                A_lag = sim.init_A[i]
+                Aw_lag = sim.init_Aw[i]
+                Am_lag = sim.init_Am[i]
+                couple_lag = sim.init_couple[i]
+                power_idx_lag = sim.init_power_idx[i]
+                love = sim.love[i,t] = sim.init_love[i]
+
+            else:
+                A_lag = sim.A[i,t-1]
+                Aw_lag = sim.Aw[i,t-1]
+                Am_lag = sim.Am[i,t-1]
+                couple_lag = sim.couple[i,t-1]
+                power_idx_lag = sim.power_idx[i,t-1]
+                love = sim.love[i,t]
+            
+            power_lag = par.grid_power[power_idx_lag]
+
+            # first check if they want to remain together and what the bargaining power will be if they do.
+            if couple_lag:                   
+
+                # use the power index:
+                power_idx = np.round(linear_interp.interp_2d(par.grid_love,par.grid_A,np.float_(sol.power_idx[t,power_idx_lag]),love,A_lag))
+
+                if power_idx < 0.0: # divorce is coded as -1
+                    sim.couple[i,t] = False
+
+                else:
+                    sim.couple[i,t] = True
+
+            else: # remain single
+
+                sim.couple[i,t] = False
+
+
+            # update behavior
+            if sim.couple[i,t]:
+                
+                # optimal consumption allocation if couple
+                sol_C_tot = sol.C_tot_couple[t,power_idx_lag] 
+                C_tot = linear_interp.interp_2d(par.grid_love,par.grid_A,sol_C_tot,love,A_lag)
+
+                sim.Cw_priv[i,t], sim.Cm_priv[i,t], C_pub = intraperiod_allocation(C_tot,power_idx_lag,sol,par)
+                sim.Cw_pub[i,t] = C_pub
+                sim.Cm_pub[i,t] = C_pub
+
+                # update end-of-period states
+                M_resources = par.R*A_lag + par.inc_w + par.inc_m
+                sim.A[i,t] = M_resources - sim.Cw_priv[i,t] - sim.Cm_priv[i,t] - sim.Cw_pub[i,t]
+                if t<(par.simT-1):
+                    sim.love[i,t+1] = love + par.sigma_love*sim.draw_love[i,t+1]
+
+                # in case of divorce
+                sim.Aw[i,t] = par.div_A_share * sim.A[i,t]
+                sim.Am[i,t] = (1.0-par.div_A_share) * sim.A[i,t]
+
+                sim.power_idx[i,t] = power_idx
+                sim.power[i,t] = par.grid_power[sim.power_idx[i,t]]
+
+            else: # single
+
+                # optimal consumption allocations
+                sol_Cw_tot = sol.Cw_tot_single[t] 
+                sol_Cm_tot = sol.Cm_tot_single[t] 
+
+                Cw_tot = linear_interp.interp_1d(par.grid_A_single[woman-1],sol_Cw_tot,Aw_lag)
+                Cm_tot = linear_interp.interp_1d(par.grid_A_single[man-1],sol_Cm_tot,Am_lag)
+
+                sim.Cw_priv[i,t] = cons_priv_single(Cw_tot,woman,par)
+                sim.Cw_pub[i,t] = Cw_tot - sim.Cw_priv[i,t]
+                
+                sim.Cm_priv[i,t] = cons_priv_single(Cm_tot,man,par)
+                sim.Cm_pub[i,t] = Cm_tot - sim.Cm_priv[i,t]
+
+                # update end-of-period states
+                Mw = par.R*Aw_lag + par.inc_w
+                Mm = par.R*Am_lag + par.inc_m
+                sim.Aw[i,t] = Mw - sim.Cw_priv[i,t] - sim.Cw_pub[i,t]
+                sim.Am[i,t] = Mm - sim.Cm_priv[i,t] - sim.Cm_pub[i,t]
+
+                sim.power_idx[i,t] = -1
+                sim.power[i,t] = np.nan
+
+                sim.love[i,t] = np.nan
+                sim.A[i,t] = np.nan
+
 
 def util(c_priv,c_pub,gender,par,love=0.0):
     if gender == 1:

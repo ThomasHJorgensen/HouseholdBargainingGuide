@@ -4,6 +4,9 @@ typedef struct sim_struct
  double* Cm_priv;
  double* Cw_pub;
  double* Cm_pub;
+ double* Cw_tot;
+ double* Cm_tot;
+ double* C_tot;
  double* A;
  double* Aw;
  double* Am;
@@ -26,6 +29,9 @@ double* get_double_p_sim_struct(sim_struct* x, char* name){
  else if( strcmp(name,"Cm_priv") == 0 ){ return x->Cm_priv; }
  else if( strcmp(name,"Cw_pub") == 0 ){ return x->Cw_pub; }
  else if( strcmp(name,"Cm_pub") == 0 ){ return x->Cm_pub; }
+ else if( strcmp(name,"Cw_tot") == 0 ){ return x->Cw_tot; }
+ else if( strcmp(name,"Cm_tot") == 0 ){ return x->Cm_tot; }
+ else if( strcmp(name,"C_tot") == 0 ){ return x->C_tot; }
  else if( strcmp(name,"A") == 0 ){ return x->A; }
  else if( strcmp(name,"Aw") == 0 ){ return x->Aw; }
  else if( strcmp(name,"Am") == 0 ){ return x->Am; }
