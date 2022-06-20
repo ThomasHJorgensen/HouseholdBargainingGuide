@@ -47,3 +47,6 @@
 #ifndef COUPLE
 #include "couple.cpp"
 #endif
+#ifndef SIMULATE
+#include "simulate.cpp"
+#endif

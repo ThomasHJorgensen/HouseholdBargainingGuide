@@ -29,6 +29,7 @@ namespace couple {
     int idx(int iP){
             return index::index4(t,iP,iL,iA , par->T,par->num_power,par->num_love,par->num_A); 
     }
+    
     } index_couple_struct; 
 
     void intraperiod_allocation(double* Cw_priv, double* Cm_priv, double* C_pub , double C_tot,int iP,sol_struct *sol,par_struct *par){
