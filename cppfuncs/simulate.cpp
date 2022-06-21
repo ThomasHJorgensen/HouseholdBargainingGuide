@@ -104,8 +104,8 @@ namespace sim {
                     
                     // first check if they want to remain together and what the bargaining power will be if they do.
                     int power_idx;
-                    int idx_sol = index::index4(t,power_idx_lag,0,0,par->T,par->num_power,par->num_love,par->num_A); 
                     if (couple_lag) {
+
                         power_idx = update_power_index(t,power_idx_lag,love,A_lag,Aw_lag,Am_lag,sim,sol,par);
 
                         if (power_idx < 0) { // divorce is coded as -1
@@ -120,13 +120,14 @@ namespace sim {
                     }
 
                     // update behavior
+                    int idx_sol = index::index4(t,power_idx,0,0,par->T,par->num_power,par->num_love,par->num_A); 
                     if (sim->couple[it]){
                         
                         // optimal consumption allocation if couple
                         double C_tot = tools::interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A ,&sol->C_tot_couple[idx_sol],love,A_lag);
 
                         double C_pub = 0.0;
-                        couple::intraperiod_allocation(&sim->Cw_priv[it], &sim->Cm_priv[it], &C_pub,  C_tot,power_idx_lag,sol,par);
+                        couple::intraperiod_allocation(&sim->Cw_priv[it], &sim->Cm_priv[it], &C_pub,  C_tot,power_idx,sol,par); 
                         sim->Cw_pub[it] = C_pub;
                         sim->Cm_pub[it] = C_pub;
 

@@ -65,7 +65,7 @@ class HouseholdModelClass(EconModelClass):
         par.num_power = 21
 
         # love/match quality
-        par.num_love = 31
+        par.num_love = 41
         par.max_love = 1.0
 
         par.sigma_love = 0.1
@@ -206,7 +206,14 @@ class HouseholdModelClass(EconModelClass):
 
         # setup grids
         self.setup_grids()
+
+        ###################
+        # precompute the optimal intra-temporal consumption allocation for couples given total consumpotion
+        for iP,power in enumerate(par.grid_power):
+            for i,C_tot in enumerate(par.grid_Ctot):
+                sol.pre_Ctot_Cw_priv[iP,i], sol.pre_Ctot_Cm_priv[iP,i], sol.pre_Ctot_C_pub[iP,i] = solve_intraperiod_couple(C_tot,power,par)
         
+        #######################
         if par.do_cpp:
             self.cpp.solve(sol,par)
 
@@ -498,10 +505,10 @@ def simulate(sim,sol,par):
             if sim.couple[i,t]:
                 
                 # optimal consumption allocation if couple
-                sol_C_tot = sol.C_tot_couple[t,power_idx_lag] 
+                sol_C_tot = sol.C_tot_couple[t,power_idx] 
                 C_tot = linear_interp.interp_2d(par.grid_love,par.grid_A,sol_C_tot,love,A_lag)
 
-                sim.Cw_priv[i,t], sim.Cm_priv[i,t], C_pub = intraperiod_allocation(C_tot,power_idx_lag,sol,par)
+                sim.Cw_priv[i,t], sim.Cm_priv[i,t], C_pub = intraperiod_allocation(C_tot,power_idx,sol,par)
                 sim.Cw_pub[i,t] = C_pub
                 sim.Cm_pub[i,t] = C_pub
 

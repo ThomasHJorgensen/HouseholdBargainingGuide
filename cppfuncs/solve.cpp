@@ -22,7 +22,7 @@ double objfunc_precompute(unsigned n, const double *x, double *grad, void *solve
     double Cm_priv = x[1];
     double C_pub = C_tot - Cw_priv - Cm_priv;
 
-    // Weighted utility ofchoice
+    // weighted utility of choice
     double love = 0.0; // does not matter for optimal allication
     double val = power*utils::util(Cw_priv,C_pub,woman,par,love) + (1.0-power)*utils::util(Cm_priv,C_pub,man,par,love);
 
@@ -47,7 +47,8 @@ void solve_intraperiod_couple(double* Cw_priv,double* Cm_priv,double* C_pub , do
     solver_data->power = power;
     solver_data->par = par;
     nlopt_set_min_objective(opt, objfunc_precompute, solver_data);
-        
+    nlopt_set_maxeval(opt, 2000);
+
     // bounds
     lb[0] = 0.0;
     lb[1] = 0.0;

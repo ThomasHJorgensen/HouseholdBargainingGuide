@@ -8,6 +8,14 @@ typedef struct sol_struct
  double* Cm_pub_single;
  double* Cw_tot_single;
  double* Cm_tot_single;
+ double* Vw_trans_single;
+ double* Vm_trans_single;
+ double* Cw_priv_trans_single;
+ double* Cm_priv_trans_single;
+ double* Cw_pub_trans_single;
+ double* Cm_pub_trans_single;
+ double* Cw_tot_trans_single;
+ double* Cm_tot_trans_single;
  double* Vw_couple;
  double* Vm_couple;
  double* Cw_priv_couple;
@@ -36,6 +44,14 @@ double* get_double_p_sol_struct(sol_struct* x, char* name){
  else if( strcmp(name,"Cm_pub_single") == 0 ){ return x->Cm_pub_single; }
  else if( strcmp(name,"Cw_tot_single") == 0 ){ return x->Cw_tot_single; }
  else if( strcmp(name,"Cm_tot_single") == 0 ){ return x->Cm_tot_single; }
+ else if( strcmp(name,"Vw_trans_single") == 0 ){ return x->Vw_trans_single; }
+ else if( strcmp(name,"Vm_trans_single") == 0 ){ return x->Vm_trans_single; }
+ else if( strcmp(name,"Cw_priv_trans_single") == 0 ){ return x->Cw_priv_trans_single; }
+ else if( strcmp(name,"Cm_priv_trans_single") == 0 ){ return x->Cm_priv_trans_single; }
+ else if( strcmp(name,"Cw_pub_trans_single") == 0 ){ return x->Cw_pub_trans_single; }
+ else if( strcmp(name,"Cm_pub_trans_single") == 0 ){ return x->Cm_pub_trans_single; }
+ else if( strcmp(name,"Cw_tot_trans_single") == 0 ){ return x->Cw_tot_trans_single; }
+ else if( strcmp(name,"Cm_tot_trans_single") == 0 ){ return x->Cm_tot_trans_single; }
  else if( strcmp(name,"Vw_couple") == 0 ){ return x->Vw_couple; }
  else if( strcmp(name,"Vm_couple") == 0 ){ return x->Vm_couple; }
  else if( strcmp(name,"Cw_priv_couple") == 0 ){ return x->Cw_priv_couple; }
