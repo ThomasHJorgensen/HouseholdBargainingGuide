@@ -175,11 +175,11 @@ void interp_2d_2out_index(double* grid1,double* grid2,int num2, double* value1,d
 
 }
 
-void interp_2d_2out(double* grid1,double* grid2,int num1, int num2,double* value1,double* value2,double xi1,double xi2,int j1,int j2, double* out1,double* out2){
+void interp_2d_2out(double* grid1,double* grid2,int num1, int num2,double* value1,double* value2,double xi1,double xi2, double* out1,double* out2){    
   
     // a. search in each dimension
-    j1 = binary_search(0,num1,grid1,xi1);
-    j2 = binary_search(0,num2,grid2,xi2);
+    int j1 = binary_search(0,num1,grid1,xi1);
+    int j2 = binary_search(0,num2,grid2,xi2);
 
     interp_2d_2out_index(grid1,grid2,num2,value1,value2,xi1,xi2,j1,j2,out1,out2);
 }
