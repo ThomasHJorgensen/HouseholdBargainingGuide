@@ -23,12 +23,15 @@ typedef struct par_struct
  int num_shock_love;
  int num_Ctot;
  double max_Ctot;
+ int seed;
  int simT;
  int simN;
  bool do_cpp;
  int threads;
  double* grid_A;
  double* grid_A_single;
+ double* grid_Aw;
+ double* grid_Am;
  double* grid_power;
  double* grid_love;
  double* grid_shock_love;
@@ -68,6 +71,7 @@ int get_int_par_struct(par_struct* x, char* name){
  else if( strcmp(name,"num_love") == 0 ){ return x->num_love; }
  else if( strcmp(name,"num_shock_love") == 0 ){ return x->num_shock_love; }
  else if( strcmp(name,"num_Ctot") == 0 ){ return x->num_Ctot; }
+ else if( strcmp(name,"seed") == 0 ){ return x->seed; }
  else if( strcmp(name,"simT") == 0 ){ return x->simT; }
  else if( strcmp(name,"simN") == 0 ){ return x->simN; }
  else if( strcmp(name,"threads") == 0 ){ return x->threads; }
@@ -88,6 +92,8 @@ double* get_double_p_par_struct(par_struct* x, char* name){
 
  if( strcmp(name,"grid_A") == 0 ){ return x->grid_A; }
  else if( strcmp(name,"grid_A_single") == 0 ){ return x->grid_A_single; }
+ else if( strcmp(name,"grid_Aw") == 0 ){ return x->grid_Aw; }
+ else if( strcmp(name,"grid_Am") == 0 ){ return x->grid_Am; }
  else if( strcmp(name,"grid_power") == 0 ){ return x->grid_power; }
  else if( strcmp(name,"grid_love") == 0 ){ return x->grid_love; }
  else if( strcmp(name,"grid_shock_love") == 0 ){ return x->grid_shock_love; }

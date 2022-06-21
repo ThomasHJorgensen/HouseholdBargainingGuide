@@ -62,11 +62,11 @@ class HouseholdModelClass(EconModelClass):
         par.max_A = 10.0
         
         # bargaining power
-        par.num_power = 21
+        par.num_power = 41
 
         # love/match quality
         par.num_love = 11
-        par.max_love = 2.0
+        par.max_love = 1.0
 
         par.sigma_love = 0.1
         par.num_shock_love = 5
@@ -76,8 +76,9 @@ class HouseholdModelClass(EconModelClass):
         par.max_Ctot = par.max_A*5
 
         # simulation
+        par.seed = 9210
         par.simT = par.T
-        par.simN = 1000
+        par.simN = 50_000 #50_000
 
         # cpp
         par.do_cpp = False
@@ -140,11 +141,11 @@ class HouseholdModelClass(EconModelClass):
         sim.love = np.nan + np.ones(shape_sim)
 
         # shocks
-        np.random.seed(9210)
+        np.random.seed(par.seed)
         sim.draw_love = np.random.normal(size=shape_sim)
 
         # initial distribution
-        sim.init_A = np.zeros(par.simN)
+        sim.init_A = par.grid_A[0] + np.zeros(par.simN)
         sim.init_Aw = np.zeros(par.simN)
         sim.init_Am = np.zeros(par.simN)
         sim.init_couple = np.ones(par.simN,dtype=np.bool)
@@ -155,11 +156,11 @@ class HouseholdModelClass(EconModelClass):
         par = self.par
         
         # wealth. Single grids are such to avoid interpolation
-        par.grid_A = nonlinspace(1.0e-6,par.max_A,par.num_A,1.1)
+        par.grid_A = nonlinspace(0.0,par.max_A,par.num_A,1.1)
 
         par.grid_A_single = np.ones((2,par.num_A))
-        par.grid_A_single[0] = par.div_A_share * par.grid_A
-        par.grid_A_single[1] = (1.0 - par.div_A_share) * par.grid_A
+        par.grid_Aw = par.div_A_share * par.grid_A
+        par.grid_Am = (1.0 - par.div_A_share) * par.grid_A
 
         # power. non-linear grid with more mass in both tails.
         odd_num = np.mod(par.num_power,2)
@@ -176,6 +177,7 @@ class HouseholdModelClass(EconModelClass):
         if par.sigma_love<=1.0e-6:
             par.num_shock_love = 1
             par.grid_shock_love,par.grid_weight_love = np.array([0.0]),np.array([1.0])
+
         else:
             par.grid_shock_love,par.grid_weight_love = quadrature.normal_gauss_hermite(par.sigma_love,par.num_shock_love)
 
@@ -219,7 +221,7 @@ class HouseholdModelClass(EconModelClass):
             self.cpp.simulate(sim,sol,par)
 
         else:
-            self.simulate(sim,sol,par)
+            simulate(sim,sol,par)
 
         # total consumption
         sim.Cw_tot = sim.Cw_priv + sim.Cw_pub
@@ -236,8 +238,8 @@ class HouseholdModelClass(EconModelClass):
             for iA in range(par.num_A):
                 idx = (t,iA)
 
-                Aw = par.grid_A_single[0,iA]
-                Am = par.grid_A_single[1,iA]
+                Aw = par.grid_Aw[iA]
+                Am = par.grid_Am[iA]
 
                 Cw = par.R*Aw + par.inc_w
                 Cm = par.R*Am + par.inc_m
@@ -255,8 +257,8 @@ class HouseholdModelClass(EconModelClass):
             for iA in range(par.num_A):
                 idx = (t,iA)
 
-                Aw = par.grid_A_single[0,iA]
-                Am = par.grid_A_single[1,iA]
+                Aw = par.grid_Aw[iA]
+                Am = par.grid_Am[iA]
                 
                 # resources
                 Mw = par.R*Aw + par.inc_w
@@ -384,7 +386,7 @@ class HouseholdModelClass(EconModelClass):
         Util = util(C_priv,C_pub,gender,par)
         
         # continuation value
-        grid_A = par.grid_A_single[gender-1]
+        grid_A = par.grid_Aw if gender==woman else par.grid_Am
         A = M - C_tot
 
         Vnext = linear_interp.interp_1d(grid_A,V_next,A)
@@ -463,8 +465,8 @@ def simulate(sim,sol,par):
                 sol_Cw_tot = sol.Cw_tot_single[t] 
                 sol_Cm_tot = sol.Cm_tot_single[t] 
 
-                Cw_tot = linear_interp.interp_1d(par.grid_A_single[woman-1],sol_Cw_tot,Aw_lag)
-                Cm_tot = linear_interp.interp_1d(par.grid_A_single[man-1],sol_Cm_tot,Am_lag)
+                Cw_tot = linear_interp.interp_1d(par.grid_Aw,sol_Cw_tot,Aw_lag)
+                Cm_tot = linear_interp.interp_1d(par.grid_Am,sol_Cm_tot,Am_lag)
 
                 sim.Cw_priv[i,t] = cons_priv_single(Cw_tot,woman,par)
                 sim.Cw_pub[i,t] = Cw_tot - sim.Cw_priv[i,t]

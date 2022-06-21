@@ -37,6 +37,7 @@ namespace sim {
                         sim->love[it] = love;
                     }
 
+                    // TODO: update this to the full bargaining process. Also in Python!
                     // first check if they want to remain together and what the bargaining power will be if they do.
                     int power_idx;
                     int idx_sol = index::index4(t,power_idx_lag,0,0,par->T,par->num_power,par->num_love,par->num_A); 
@@ -44,6 +45,8 @@ namespace sim {
                         
                         // use the power index:
                         power_idx = (int) round(tools::interp_2d_int(par->grid_love,par->grid_A,par->num_love,par->num_A, &sol->power_idx[idx_sol] ,love,A_lag));
+                        // TODO: tester: giver meget mere ens resultater..
+                        // power_idx = power_idx_lag;
 
                         if (power_idx < 0.0) { // divorce is coded as -1
                             sim->couple[it] = false;
@@ -79,15 +82,14 @@ namespace sim {
                         sim->Am[it] = (1.0-par->div_A_share) * sim->A[it];
 
                         sim->power_idx[it] = power_idx;
-                        sim->power[it] = par->grid_power[sim->power_idx[it]];
+                        sim->power[it] = par->grid_power[power_idx];
 
                     } else { // single
 
                         // optimal consumption allocations
-                        double *grid_Aw = &par->grid_A_single[index::index2(woman-1,0,2,par->num_A)];
-                        double *grid_Am = &par->grid_A_single[index::index2(man-1,0,2,par->num_A)];
-                        double Cw_tot = tools::interp_1d(grid_Aw,par->num_A,&sol->Cw_tot_single[t],Aw_lag);
-                        double Cm_tot = tools::interp_1d(grid_Am,par->num_A,&sol->Cm_tot_single[t],Am_lag);
+                        int idx_sol_single = index::index2(t,0,par->T,par->num_A);
+                        double Cw_tot = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Cw_tot_single[idx_sol_single],Aw_lag);
+                        double Cm_tot = tools::interp_1d(par->grid_Am,par->num_A,&sol->Cm_tot_single[idx_sol_single],Am_lag);
 
                         sim->Cw_priv[it] = single::cons_priv_single(Cw_tot,woman,par);
                         sim->Cw_pub[it] = Cw_tot - sim->Cw_priv[it];

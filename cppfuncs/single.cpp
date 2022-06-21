@@ -48,7 +48,10 @@ namespace single {
         double Util = utils::util(C_priv,C_pub,gender,par,love);
         
         // continuation value
-        double *grid_A = &par->grid_A_single[index::index2(gender-1,0,2,par->num_A)];
+        double *grid_A = par->grid_Aw;
+        if (gender==man){
+            grid_A = par->grid_Am;
+        }
         double A = M - C_tot;
 
         double Vnext = tools::interp_1d(grid_A,par->num_A,solver_data->V_next,A);
@@ -65,8 +68,8 @@ namespace single {
             for (int iA=0; iA<par->num_A;iA++){
                 int idx = index::index2(t,iA,par->T,par->num_A);
 
-                double Aw = par->grid_A_single[index::index2(woman-1,iA,2,par->num_A)];
-                double Am = par->grid_A_single[index::index2(man-1,iA,2,par->num_A)];
+                double Aw = par->grid_Aw[iA];
+                double Am = par->grid_Am[iA];
 
                 double Cw = par->R*Aw + par->inc_w;
                 double Cm = par->R*Am + par->inc_m;
@@ -98,8 +101,8 @@ namespace single {
                 for (int iA=0; iA<par->num_A;iA++){
                     int idx = index::index2(t,iA,par->T,par->num_A);
 
-                    double Aw = par->grid_A_single[index::index2(woman-1,iA,2,par->num_A)];
-                    double Am = par->grid_A_single[index::index2(man-1,iA,2,par->num_A)];
+                    double Aw = par->grid_Aw[iA];
+                    double Am = par->grid_Am[iA];
                     
                     // resources
                     double Mw = par->R*Aw + par->inc_w;
