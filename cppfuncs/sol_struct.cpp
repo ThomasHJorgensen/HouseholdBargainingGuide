@@ -14,6 +14,12 @@ typedef struct sol_struct
  double* Cm_priv_couple;
  double* C_pub_couple;
  double* C_tot_couple;
+ double* Vw_remain_couple;
+ double* Vm_remain_couple;
+ double* Cw_priv_remain_couple;
+ double* Cm_priv_remain_couple;
+ double* C_pub_remain_couple;
+ double* C_tot_remain_couple;
  int* power_idx;
  double* pre_Ctot_Cw_priv;
  double* pre_Ctot_Cm_priv;
@@ -36,6 +42,12 @@ double* get_double_p_sol_struct(sol_struct* x, char* name){
  else if( strcmp(name,"Cm_priv_couple") == 0 ){ return x->Cm_priv_couple; }
  else if( strcmp(name,"C_pub_couple") == 0 ){ return x->C_pub_couple; }
  else if( strcmp(name,"C_tot_couple") == 0 ){ return x->C_tot_couple; }
+ else if( strcmp(name,"Vw_remain_couple") == 0 ){ return x->Vw_remain_couple; }
+ else if( strcmp(name,"Vm_remain_couple") == 0 ){ return x->Vm_remain_couple; }
+ else if( strcmp(name,"Cw_priv_remain_couple") == 0 ){ return x->Cw_priv_remain_couple; }
+ else if( strcmp(name,"Cm_priv_remain_couple") == 0 ){ return x->Cm_priv_remain_couple; }
+ else if( strcmp(name,"C_pub_remain_couple") == 0 ){ return x->C_pub_remain_couple; }
+ else if( strcmp(name,"C_tot_remain_couple") == 0 ){ return x->C_tot_remain_couple; }
  else if( strcmp(name,"pre_Ctot_Cw_priv") == 0 ){ return x->pre_Ctot_Cw_priv; }
  else if( strcmp(name,"pre_Ctot_Cm_priv") == 0 ){ return x->pre_Ctot_Cm_priv; }
  else if( strcmp(name,"pre_Ctot_C_pub") == 0 ){ return x->pre_Ctot_C_pub; }

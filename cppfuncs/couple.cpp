@@ -32,6 +32,10 @@ namespace couple {
     
     } index_couple_struct; 
 
+    double calc_marital_surplus(double V_remain_couple,double V_trans_single,par_struct* par){
+        return V_remain_couple - V_trans_single;
+    }
+
     void intraperiod_allocation(double* Cw_priv, double* Cm_priv, double* C_pub , double C_tot,int iP,sol_struct *sol,par_struct *par){
         // interpolate pre-computed solution 
         int idx = index::index2(iP,0,par->num_power,par->num_Ctot);
@@ -133,6 +137,64 @@ namespace couple {
 
         // implied consumption allocation (re-calculation)
         value_of_choice_couple(Cw_priv,Cm_priv,C_pub,Vw,Vm, C_tot,t,M_resources,iL,iP,Vw_next,Vm_next,sol,par);
+
+    }
+
+    int update_bargaining_index(double* Sw,double* Sm,int iP,par_struct* par){
+        // check the participation constraints. Array
+        double min_Sw =tools::minf(Sw,par->num_power);
+        double min_Sm =tools::minf(Sm,par->num_power);
+        double max_Sw =tools::maxf(Sw,par->num_power);
+        double max_Sm =tools::maxf(Sm,par->num_power);
+
+        if ((min_Sw >= 0.0) & (min_Sm >= 0.0)) { // all values are consistent with marriage
+            return iP;
+
+        } else if ((max_Sw < 0.0) | (max_Sm < 0.0)){ // no value is consistent with marriage
+            return -1;
+
+        } else { 
+
+            // a. find lowest (highest) value with positive surplus for women (men)
+            int Low_w = 0;      // in case there is no crossing, this will be the correct value
+            int Low_m = par->num_power-1; // in case there is no crossing, this will be the correct value
+            for (int _iP=0; _iP<par->num_power; _iP++){
+                if ((Sw[_iP]<0) & (Sw[_iP+1]>=0)){
+                    Low_w = _iP+1;
+                }
+                    
+                if ((Sm[_iP]>=0) & (Sm[_iP+1]<0)){
+                    Low_m = iP;
+                }
+            }
+
+            
+            // i. woman wants to leave
+            if (iP<Low_w){ 
+                if (Sm[Low_w] > 0){ // man happy to shift some bargaining power
+                    return Low_w;
+
+                } else { // divorce
+                    return -1;
+                }
+            } 
+
+            // ii. man wants to leave
+            else if (iP>Low_m){  
+                if (Sw[Low_m] > 0){ // woman happy to shift some bargaining power
+                    return Low_m;
+                    
+                } else { // divorce
+                    return -1;
+                }
+            } 
+            
+            // iii. no-one wants to leave
+            else { 
+                return iP;
+            }
+
+        } // outer check
 
     }
 
@@ -324,12 +386,22 @@ namespace couple {
                     
                     // marital surplus
                     for (int iP=0; iP<par->num_power; iP++){
-                        Sw[iP] = tmp_Vw[iP] - sol->Vw_single[idx_single];
-                        Sm[iP] = tmp_Vm[iP] - sol->Vm_single[idx_single];
+                        Sw[iP] = calc_marital_surplus(tmp_Vw[iP],sol->Vw_single[idx_single],par);
+                        Sm[iP] = calc_marital_surplus(tmp_Vm[iP],sol->Vm_single[idx_single],par);
                     }
 
                     // update solution
                     check_participation_constraints(sol->power_idx,Sw,Sm,idx_single,idx_couple,list_couple,list_raw,list_single,num, par);
+
+                    // save values of remaining a couple
+                    for (int iP=0; iP<par->num_power; iP++){
+                        int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                        sol->Vw_remain_couple[idx] = tmp_Vw[iP];
+                        sol->Vm_remain_couple[idx] = tmp_Vm[iP];
+                        sol->Cw_priv_remain_couple[idx] = tmp_Cw_priv[iP];
+                        sol->Cm_priv_remain_couple[idx] = tmp_Cm_priv[iP];
+                        sol->C_pub_remain_couple[idx] = tmp_C_pub[iP];
+                    }
                     
                 }
             }

@@ -78,7 +78,7 @@ class HouseholdModelClass(EconModelClass):
         # simulation
         par.seed = 9210
         par.simT = par.T
-        par.simN = 50_000 #50_000
+        par.simN = 5_000 #50_000
 
         # cpp
         par.do_cpp = False
@@ -113,6 +113,14 @@ class HouseholdModelClass(EconModelClass):
         sol.Cm_priv_couple = np.nan + np.ones(shape_couple)
         sol.C_pub_couple = np.nan + np.ones(shape_couple)
         sol.C_tot_couple = np.nan + np.ones(shape_couple)
+
+        sol.Vw_remain_couple = np.nan + np.ones(shape_couple)
+        sol.Vm_remain_couple = np.nan + np.ones(shape_couple)
+        
+        sol.Cw_priv_remain_couple = np.nan + np.ones(shape_couple)
+        sol.Cm_priv_remain_couple = np.nan + np.ones(shape_couple)
+        sol.C_pub_remain_couple = np.nan + np.ones(shape_couple)
+        sol.C_tot_remain_couple = np.nan + np.ones(shape_couple)
 
         sol.power_idx = np.zeros(shape_couple,dtype=np.int_)
 
@@ -208,6 +216,7 @@ class HouseholdModelClass(EconModelClass):
 
         # total consumption
         sol.C_tot_couple = sol.Cw_priv_couple + sol.Cm_priv_couple + sol.C_pub_couple
+        sol.C_tot_remain_couple = sol.Cw_priv_remain_couple + sol.Cm_priv_remain_couple + sol.C_pub_remain_couple
         sol.Cw_tot_single = sol.Cw_priv_single + sol.Cw_pub_single
         sol.Cm_tot_single = sol.Cm_priv_single + sol.Cm_pub_single
         
@@ -323,6 +332,15 @@ class HouseholdModelClass(EconModelClass):
                 
                 check_participation_constraints(sol.power_idx,Sw,Sm,idx_single,idx_couple,list_couple,list_raw,list_single, par)
 
+                # save transition values
+                for iP,power in enumerate(par.grid_power):
+                    idx = (t,iP,iL,iA)
+                    sol.Cw_priv_remain_couple[idx] = tmp_Cw_priv[iP] 
+                    sol.Cm_priv_remain_couple[idx] = tmp_Cm_priv[iP]
+                    sol.C_pub_remain_couple[idx] = tmp_C_pub[iP]
+                    sol.Vw_remain_couple[idx] = tmp_Vw[iP]
+                    sol.Vm_remain_couple[idx] = tmp_Vm[iP]
+
     def solve_uncon_couple(self,t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val = None):
         par = self.par
 
@@ -422,8 +440,34 @@ def simulate(sim,sol,par):
             if couple_lag:                   
 
                 # use the power index:
-                power_idx = np.round(linear_interp.interp_2d(par.grid_love,par.grid_A,np.float_(sol.power_idx[t,power_idx_lag]),love,A_lag))
+                # power_idx = np.round(linear_interp.interp_2d(par.grid_love,par.grid_A,np.float_(sol.power_idx[t,power_idx_lag]),love,A_lag))
 
+                # value of singlehood
+                Vw_single = linear_interp.interp_1d(par.grid_Aw,sol.Vw_single[t],Aw_lag)
+                Vm_single = linear_interp.interp_1d(par.grid_Am,sol.Vm_single[t],Am_lag)
+
+                idx = (t,power_idx_lag)
+                Vw_couple_i = linear_interp.interp_2d(par.grid_love,par.grid_A,sol.Vw_remain_couple[idx],love,A_lag)
+                Vm_couple_i = linear_interp.interp_2d(par.grid_love,par.grid_A,sol.Vm_remain_couple[idx],love,A_lag)
+
+                if ((Vw_couple_i>=Vw_single) & (Vm_couple_i>=Vm_single)):
+                    power_idx = power_idx_lag
+
+                else:
+                    # value of partnerhip for all levels of power
+                    Vw_couple = np.zeros(par.num_power)
+                    Vm_couple = np.zeros(par.num_power)
+                    for iP in range(par.num_power):
+                        idx = (t,iP)
+                        Vw_couple[iP] = linear_interp.interp_2d(par.grid_love,par.grid_A,sol.Vw_remain_couple[idx],love,A_lag)
+                        Vm_couple[iP] = linear_interp.interp_2d(par.grid_love,par.grid_A,sol.Vm_remain_couple[idx],love,A_lag)
+
+                    # check participation constraint TODO: should it be the value of REMAINING MARRIED? now it is the value of entering the period as married...
+                    Sw = Vw_couple - Vw_single
+                    Sm = Vm_couple - Vm_single
+                    power_idx = update_bargaining_index(Sw,Sm,power_idx_lag, par)
+
+                # infer partnership status
                 if power_idx < 0.0: # divorce is coded as -1
                     sim.couple[i,t] = False
 
@@ -635,6 +679,53 @@ def check_participation_constraints(power,Sw,Sm,idx_single,idx_couple,list_coupl
                     list_couple[i][idx] = list_raw[i][iP]
 
                 power[idx] = iP
+
+
+def update_bargaining_index(Sw,Sm,iP, par):
+    
+    # check the participation constraints. Array
+    min_Sw = np.min(Sw)
+    min_Sm = np.min(Sm)
+    max_Sw = np.max(Sw)
+    max_Sm = np.max(Sm)
+
+    if (min_Sw >= 0.0) & (min_Sm >= 0.0): # all values are consistent with marriage
+        return iP
+
+    elif (max_Sw < 0.0) | (max_Sm < 0.0): # no value is consistent with marriage
+        return -1
+
+    else: 
+    
+        # find lowest (highest) value with positive surplus for women (men)
+        Low_w = 0 # in case there is no crossing, this will be the correct value
+        Low_m = par.num_power-1 # in case there is no crossing, this will be the correct value
+        for _iP in range(par.num_power-1):
+            if (Sw[_iP]<0) & (Sw[_iP+1]>=0):
+                Low_w = _iP+1
+                
+            if (Sm[_iP]>=0) & (Sm[_iP+1]<0):
+                Low_m = iP
+
+        # update the outcomes
+        # woman wants to leave
+        if iP<Low_w: 
+            if Sm[Low_w] > 0: # man happy to shift some bargaining power
+                return Low_w
+                
+            else: # divorce
+                return -1
+            
+        # man wants to leave
+        elif iP>Low_m: 
+            if Sw[Low_m] > 0: # woman happy to shift some bargaining power
+                return Low_m
+                
+            else: # divorce
+                return -1
+
+        else: # no-one wants to leave
+            return iP
 
 
 

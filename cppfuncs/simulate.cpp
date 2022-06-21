@@ -6,6 +6,70 @@
 #endif
 
 namespace sim {
+
+    int update_power_index(int t, int power_idx_lag, double love,double A_lag,double Aw_lag,double Am_lag,sim_struct* sim, sol_struct* sol, par_struct* par){
+        
+        // setup
+        int power_idx = -1; // initialize as divorce
+        int idx_sol = index::index4(t,power_idx_lag,0,0,par->T,par->num_power,par->num_love,par->num_A); 
+        double Vw_couple, Vm_couple;
+
+        // value of singlehood
+        int idx_single = index::index2(t,0,par->T,par->num_A);
+        double Vw_single = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Vw_single[idx_single],Aw_lag);
+        double Vm_single = tools::interp_1d(par->grid_Am,par->num_A,&sol->Vm_single[idx_single],Am_lag);
+
+        tools::interp_2d_2out(par->grid_love,par->grid_A,par->num_love,par->num_A,&sol->Vw_remain_couple[idx_sol],&sol->Vm_remain_couple[idx_sol],love,A_lag, &Vw_couple, &Vm_couple);
+        
+        // check participation constraints
+        if ((Vw_couple>=Vw_single) & (Vm_couple>=Vm_single)){
+            power_idx = power_idx_lag;
+
+        } else {
+
+            if ((Vm_couple>=Vm_single)){ // woman want to leave
+
+                for (int iP=power_idx_lag+1; iP<(par->num_power-power_idx_lag); iP++){ // increase power of women
+                    int idx = index::index4(t,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); 
+                    tools::interp_2d_2out(par->grid_love,par->grid_A,par->num_love,par->num_A,&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],love,A_lag, &Vw_couple, &Vm_couple);
+                    
+                    // check participation constraint
+                    double Sw = couple::calc_marital_surplus(Vw_couple,Vw_single,par);
+                    double Sm = couple::calc_marital_surplus(Vm_couple,Vm_single,par);
+
+                    // update index if a solution is found
+                    if((Sw>=0.0)&(Sm>=0.0)){
+                        power_idx = iP; 
+                        break;
+                    }
+                    
+                }
+
+            } else { // man want to leave
+
+                for (int iP=power_idx_lag-1; iP>=0; iP--){ // increase power of men
+                    int idx = index::index4(t,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); 
+                    tools::interp_2d_2out(par->grid_love,par->grid_A,par->num_love,par->num_A,&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],love,A_lag, &Vw_couple, &Vm_couple);
+
+                    // check participation constraint
+                    double Sw = couple::calc_marital_surplus(Vw_couple,Vw_single,par);
+                    double Sm = couple::calc_marital_surplus(Vm_couple,Vm_single,par);
+
+                    // update index if a solution is found
+                    if((Sw>=0.0)&(Sm>=0.0)){
+                        power_idx = iP; 
+                        break;
+                    }
+                    
+                }
+
+            }
+        }
+
+        return power_idx;
+    } // update_power_index
+
+
     void model(sim_struct *sim, sol_struct *sol, par_struct *par){
     
         // pre-compute intra-temporal optimalallocation
@@ -37,18 +101,14 @@ namespace sim {
                         sim->love[it] = love;
                     }
 
-                    // TODO: update this to the full bargaining process. Also in Python!
+                    
                     // first check if they want to remain together and what the bargaining power will be if they do.
                     int power_idx;
                     int idx_sol = index::index4(t,power_idx_lag,0,0,par->T,par->num_power,par->num_love,par->num_A); 
                     if (couple_lag) {
-                        
-                        // use the power index:
-                        power_idx = (int) round(tools::interp_2d_int(par->grid_love,par->grid_A,par->num_love,par->num_A, &sol->power_idx[idx_sol] ,love,A_lag));
-                        // TODO: tester: giver meget mere ens resultater..
-                        // power_idx = power_idx_lag;
+                        power_idx = update_power_index(t,power_idx_lag,love,A_lag,Aw_lag,Am_lag,sim,sol,par);
 
-                        if (power_idx < 0.0) { // divorce is coded as -1
+                        if (power_idx < 0) { // divorce is coded as -1
                             sim->couple[it] = false;
 
                         } else {
