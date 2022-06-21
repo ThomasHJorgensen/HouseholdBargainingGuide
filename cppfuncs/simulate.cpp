@@ -14,10 +14,10 @@ namespace sim {
         int idx_sol = index::index4(t,power_idx_lag,0,0,par->T,par->num_power,par->num_love,par->num_A); 
         double Vw_couple, Vm_couple;
 
-        // value of singlehood
+        // value of transitioning into singlehood
         int idx_single = index::index2(t,0,par->T,par->num_A);
-        double Vw_single = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Vw_single[idx_single],Aw_lag);
-        double Vm_single = tools::interp_1d(par->grid_Am,par->num_A,&sol->Vm_single[idx_single],Am_lag);
+        double Vw_single = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Vw_trans_single[idx_single],Aw_lag);
+        double Vm_single = tools::interp_1d(par->grid_Am,par->num_A,&sol->Vm_trans_single[idx_single],Am_lag);
 
         tools::interp_2d_2out(par->grid_love,par->grid_A,par->num_love,par->num_A,&sol->Vw_remain_couple[idx_sol],&sol->Vm_remain_couple[idx_sol],love,A_lag, &Vw_couple, &Vm_couple);
         
@@ -146,10 +146,18 @@ namespace sim {
 
                     } else { // single
 
-                        // optimal consumption allocations
+                        // pick relevant solution for single, depending on whether just became single
                         int idx_sol_single = index::index2(t,0,par->T,par->num_A);
-                        double Cw_tot = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Cw_tot_single[idx_sol_single],Aw_lag);
-                        double Cm_tot = tools::interp_1d(par->grid_Am,par->num_A,&sol->Cm_tot_single[idx_sol_single],Am_lag);
+                        double *sol_single_w = &sol->Cw_tot_trans_single[idx_sol_single];
+                        double *sol_single_m = &sol->Cm_tot_trans_single[idx_sol_single];
+                        if (power_idx_lag<0){
+                            sol_single_w = &sol->Cw_tot_single[idx_sol_single];
+                            sol_single_m = &sol->Cm_tot_single[idx_sol_single];
+                        } 
+
+                        // optimal consumption allocations
+                        double Cw_tot = tools::interp_1d(par->grid_Aw,par->num_A,sol_single_w,Aw_lag);
+                        double Cm_tot = tools::interp_1d(par->grid_Am,par->num_A,sol_single_m,Am_lag);
 
                         sim->Cw_priv[it] = single::cons_priv_single(Cw_tot,woman,par);
                         sim->Cw_pub[it] = Cw_tot - sim->Cw_priv[it];

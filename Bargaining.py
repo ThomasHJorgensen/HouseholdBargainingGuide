@@ -62,23 +62,23 @@ class HouseholdModelClass(EconModelClass):
         par.max_A = 10.0
         
         # bargaining power
-        par.num_power = 41
+        par.num_power = 21
 
         # love/match quality
-        par.num_love = 11
+        par.num_love = 31
         par.max_love = 1.0
 
         par.sigma_love = 0.1
         par.num_shock_love = 5
 
         # pre-computation
-        par.num_Ctot = 50
+        par.num_Ctot = 100
         par.max_Ctot = par.max_A*5
 
         # simulation
         par.seed = 9210
         par.simT = par.T
-        par.simN = 5_000 #50_000
+        par.simN = 50_000 #50_000
 
         # cpp
         par.do_cpp = False
@@ -96,13 +96,21 @@ class HouseholdModelClass(EconModelClass):
         shape_single = (par.T,par.num_A)
         sol.Vw_single = np.nan + np.ones(shape_single)
         sol.Vm_single = np.nan + np.ones(shape_single)
-        
         sol.Cw_priv_single = np.nan + np.ones(shape_single)
         sol.Cm_priv_single = np.nan + np.ones(shape_single)
         sol.Cw_pub_single = np.nan + np.ones(shape_single)
         sol.Cm_pub_single = np.nan + np.ones(shape_single)
         sol.Cw_tot_single = np.nan + np.ones(shape_single)
         sol.Cm_tot_single = np.nan + np.ones(shape_single)
+
+        sol.Vw_trans_single = np.nan + np.ones(shape_single)
+        sol.Vm_trans_single = np.nan + np.ones(shape_single)
+        sol.Cw_priv_trans_single = np.nan + np.ones(shape_single)
+        sol.Cm_priv_trans_single = np.nan + np.ones(shape_single)
+        sol.Cw_pub_trans_single = np.nan + np.ones(shape_single)
+        sol.Cm_pub_trans_single = np.nan + np.ones(shape_single)
+        sol.Cw_tot_trans_single = np.nan + np.ones(shape_single)
+        sol.Cm_tot_trans_single = np.nan + np.ones(shape_single)
 
         # couples
         shape_couple = (par.T,par.num_power,par.num_love,par.num_A)
@@ -219,6 +227,16 @@ class HouseholdModelClass(EconModelClass):
         sol.C_tot_remain_couple = sol.Cw_priv_remain_couple + sol.Cm_priv_remain_couple + sol.C_pub_remain_couple
         sol.Cw_tot_single = sol.Cw_priv_single + sol.Cw_pub_single
         sol.Cm_tot_single = sol.Cm_priv_single + sol.Cm_pub_single
+
+        # value of transitioning to singlehood. Done here because absorbing -> it is the same as entering period as single.
+        sol.Vw_trans_single = sol.Vw_single.copy()
+        sol.Vm_trans_single = sol.Vm_single.copy()
+        sol.Cw_priv_trans_single = sol.Cw_priv_single.copy()
+        sol.Cm_priv_trans_single = sol.Cm_priv_single.copy()
+        sol.Cw_pub_trans_single = sol.Cw_pub_single.copy()
+        sol.Cm_pub_trans_single = sol.Cm_pub_single.copy()
+        sol.Cw_tot_trans_single = sol.Cw_tot_single.copy()
+        sol.Cm_tot_trans_single = sol.Cm_tot_single.copy()
         
 
     def simulate(self):
@@ -439,12 +457,9 @@ def simulate(sim,sol,par):
             # first check if they want to remain together and what the bargaining power will be if they do.
             if couple_lag:                   
 
-                # use the power index:
-                # power_idx = np.round(linear_interp.interp_2d(par.grid_love,par.grid_A,np.float_(sol.power_idx[t,power_idx_lag]),love,A_lag))
-
-                # value of singlehood
-                Vw_single = linear_interp.interp_1d(par.grid_Aw,sol.Vw_single[t],Aw_lag)
-                Vm_single = linear_interp.interp_1d(par.grid_Am,sol.Vm_single[t],Am_lag)
+                # value of transitioning into singlehood
+                Vw_single = linear_interp.interp_1d(par.grid_Aw,sol.Vw_trans_single[t],Aw_lag)
+                Vm_single = linear_interp.interp_1d(par.grid_Am,sol.Vm_trans_single[t],Am_lag)
 
                 idx = (t,power_idx_lag)
                 Vw_couple_i = linear_interp.interp_2d(par.grid_love,par.grid_A,sol.Vw_remain_couple[idx],love,A_lag)
@@ -505,12 +520,17 @@ def simulate(sim,sol,par):
 
             else: # single
 
-                # optimal consumption allocations
-                sol_Cw_tot = sol.Cw_tot_single[t] 
-                sol_Cm_tot = sol.Cm_tot_single[t] 
+                # pick relevant solution for single, depending on whether just became single
+                idx_sol_single = (t,0)
+                sol_single_w = sol.Cw_tot_trans_single[idx_sol_single]
+                sol_single_m = sol.Cm_tot_trans_single[idx_sol_single]
+                if (power_idx_lag<0):
+                    sol_single_w = sol.Cw_tot_single[idx_sol_single]
+                    sol_single_m = sol.Cm_tot_single[idx_sol_single]
 
-                Cw_tot = linear_interp.interp_1d(par.grid_Aw,sol_Cw_tot,Aw_lag)
-                Cm_tot = linear_interp.interp_1d(par.grid_Am,sol_Cm_tot,Am_lag)
+                # optimal consumption allocations
+                Cw_tot = linear_interp.interp_1d(par.grid_Aw,sol_single_w,Aw_lag)
+                Cm_tot = linear_interp.interp_1d(par.grid_Am,sol_single_m,Am_lag)
 
                 sim.Cw_priv[i,t] = cons_priv_single(Cw_tot,woman,par)
                 sim.Cw_pub[i,t] = Cw_tot - sim.Cw_priv[i,t]
@@ -726,6 +746,3 @@ def update_bargaining_index(Sw,Sm,iP, par):
 
         else: # no-one wants to leave
             return iP
-
-
-
