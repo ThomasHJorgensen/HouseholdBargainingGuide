@@ -200,7 +200,7 @@ namespace couple {
 
 
     void check_participation_constraints(int *power,double* Sw,double* Sm,int idx_single,index_couple_struct *idx_couple,double** list_couple,double** list_raw,double** list_single,int num,par_struct* par){
-        
+        // TODO: make more simple and intuitive
         // check the participation constraints. Array
         double min_Sw =tools::minf(Sw,par->num_power);
         double min_Sm =tools::minf(Sm,par->num_power);
@@ -232,8 +232,8 @@ namespace couple {
         } else { 
 
             // a. find lowest (highest) value with positive surplus for women (men)
-            int Low_w = 0;      // in case there is no crossing, this will be the correct value
-            int Low_m = par->num_power-1; // in case there is no crossing, this will be the correct value
+            int Low_w = 1;      // in case there is no crossing, this will be the correct value
+            int Low_m = par->num_power-1-1; // in case there is no crossing, this will be the correct value
             for (int iP=0; iP<par->num_power; iP++){
                 if ((Sw[iP]<0) & (Sw[iP+1]>=0)){
                     Low_w = iP+1;
@@ -244,7 +244,24 @@ namespace couple {
                 }
             }
 
-            // b. update the outcomes
+            // b. interpolate the surplus of each member at indifference points
+            // women indifference
+            int id = Low_w-1;
+            double denom = (par->grid_power[id+1] - par->grid_power[id]);
+            double ratio_w = (Sw[id+1] - Sw[id])/denom;
+            double ratio_m = (Sm[id+1] - Sm[id])/denom;
+            double power_at_zero_w = par->grid_power[id] - Sw[id]/ratio_w;
+            double Sm_at_zero_w = Sm[id] + ratio_m*( power_at_zero_w - par->grid_power[id] );
+
+            // men indifference
+            id = Low_m;
+            denom = (par->grid_power[id+1] - par->grid_power[id]);
+            ratio_w = (Sw[id+1] - Sw[id])/denom;
+            ratio_m = (Sm[id+1] - Sm[id])/denom;
+            double power_at_zero_m = par->grid_power[id] - Sm[id]/ratio_m;
+            double Sw_at_zero_m = Sw[id] + ratio_w*( power_at_zero_m - par->grid_power[id] );
+
+            // c. update the outcomes
             for (int iP=0; iP<par->num_power; iP++){
 
                 // index to store solution for couple 
@@ -252,11 +269,17 @@ namespace couple {
 
                 // i. woman wants to leave
                 if (iP<Low_w){ 
-                    if (Sm[Low_w] > 0){ // man happy to shift some bargaining power
 
+                    // interpolate men's surplus
+                    if (Sm_at_zero_w > 0){ // man happy to shift some bargaining power
                         for (int i=0; i< num; i++){
-                            list_couple[i][idx] = list_raw[i][Low_w];
+                            if (iP==0){
+                                list_couple[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_raw[i],power_at_zero_w,Low_w-1); //list_raw[i][Low_w]; 
+                            } else {
+                                list_couple[i][idx] = list_couple[i][idx_couple->idx(0)]; // re-use that the interpolated values are identical
+                            }
                         }
+                        
                         power[idx] = Low_w;
                     } else { // divorce
 
@@ -270,10 +293,15 @@ namespace couple {
 
                 // ii. man wants to leave
                 else if (iP>Low_m){  
-                    if (Sw[Low_m] > 0){ // woman happy to shift some bargaining power
+
+                    if (Sw_at_zero_m > 0){ // woman happy to shift some bargaining power
                         
                         for (int i=0; i< num; i++){
-                            list_couple[i][idx] = list_raw[i][Low_m];
+                            if (iP==(Low_m+1)){
+                                list_couple[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_raw[i],power_at_zero_m,Low_m); //list_raw[i][Low_m]; //
+                            } else {
+                                list_couple[i][idx] = list_couple[i][idx_couple->idx(Low_m+1)]; // re-use that the interpolated values are identical
+                            }
                         }
                         power[idx] = Low_m;
                         
