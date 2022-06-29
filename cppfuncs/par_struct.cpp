@@ -29,7 +29,6 @@ typedef struct par_struct
  bool do_cpp;
  int threads;
  double* grid_A;
- double* grid_A_single;
  double* grid_Aw;
  double* grid_Am;
  double* grid_power;
@@ -91,7 +90,6 @@ bool get_bool_par_struct(par_struct* x, char* name){
 double* get_double_p_par_struct(par_struct* x, char* name){
 
  if( strcmp(name,"grid_A") == 0 ){ return x->grid_A; }
- else if( strcmp(name,"grid_A_single") == 0 ){ return x->grid_A_single; }
  else if( strcmp(name,"grid_Aw") == 0 ){ return x->grid_Aw; }
  else if( strcmp(name,"grid_Am") == 0 ){ return x->grid_Am; }
  else if( strcmp(name,"grid_power") == 0 ){ return x->grid_power; }

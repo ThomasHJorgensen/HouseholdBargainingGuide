@@ -23,7 +23,7 @@ double objfunc_precompute(unsigned n, const double *x, double *grad, void *solve
     double C_pub = C_tot - Cw_priv - Cm_priv;
 
     // weighted utility of choice
-    double love = 0.0; // does not matter for optimal allication
+    double love = 0.0; // does not matter for optimal allocation
     double val = power*utils::util(Cw_priv,C_pub,woman,par,love) + (1.0-power)*utils::util(Cm_priv,C_pub,man,par,love);
 
     // return negative of value
@@ -76,7 +76,7 @@ void solve_intraperiod_couple(double* Cw_priv,double* Cm_priv,double* C_pub , do
 
 EXPORT void solve(sol_struct *sol, par_struct *par){
     
-    // pre-compute intra-temporal optimalallocation
+    // pre-compute intra-temporal optimal allocation
     #pragma omp parallel num_threads(par->threads)
     {
         #pragma omp for

@@ -29,6 +29,7 @@ typedef struct sol_struct
  double* C_pub_remain_couple;
  double* C_tot_remain_couple;
  int* power_idx;
+ double* power;
  double* pre_Ctot_Cw_priv;
  double* pre_Ctot_Cm_priv;
  double* pre_Ctot_C_pub;
@@ -64,6 +65,7 @@ double* get_double_p_sol_struct(sol_struct* x, char* name){
  else if( strcmp(name,"Cm_priv_remain_couple") == 0 ){ return x->Cm_priv_remain_couple; }
  else if( strcmp(name,"C_pub_remain_couple") == 0 ){ return x->C_pub_remain_couple; }
  else if( strcmp(name,"C_tot_remain_couple") == 0 ){ return x->C_tot_remain_couple; }
+ else if( strcmp(name,"power") == 0 ){ return x->power; }
  else if( strcmp(name,"pre_Ctot_Cw_priv") == 0 ){ return x->pre_Ctot_Cw_priv; }
  else if( strcmp(name,"pre_Ctot_Cm_priv") == 0 ){ return x->pre_Ctot_Cm_priv; }
  else if( strcmp(name,"pre_Ctot_C_pub") == 0 ){ return x->pre_Ctot_C_pub; }

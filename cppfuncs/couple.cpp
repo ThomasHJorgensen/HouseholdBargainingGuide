@@ -199,7 +199,7 @@ namespace couple {
     }
 
 
-    void check_participation_constraints(int *power,double* Sw,double* Sm,int idx_single,index_couple_struct *idx_couple,double** list_couple,double** list_raw,double** list_single,int num,par_struct* par){
+    void check_participation_constraints(int *power_idx,double* power,double* Sw,double* Sm,int idx_single,index_couple_struct *idx_couple,double** list_couple,double** list_raw,double** list_single,int num,par_struct* par){
         // TODO: make more simple and intuitive
         // check the participation constraints. Array
         double min_Sw =tools::minf(Sw,par->num_power);
@@ -215,7 +215,8 @@ namespace couple {
                 for (int i=0; i< num; i++){
                     list_couple[i][idx] = list_raw[i][iP];
                 }
-                power[idx] = iP;
+                power_idx[idx] = iP;
+                power[idx] = par->grid_power[iP];
             }
 
         } else if ((max_Sw < 0.0) | (max_Sm < 0.0)){ // no value is consistent with marriage
@@ -226,6 +227,7 @@ namespace couple {
                 for (int i=0; i< num; i++){
                     list_couple[i][idx] = list_single[i][idx_single];
                 }
+                power_idx[idx] = -1;
                 power[idx] = -1;
             }
 
@@ -280,13 +282,16 @@ namespace couple {
                             }
                         }
                         
-                        power[idx] = Low_w;
+                        power_idx[idx] = Low_w;
+                        power[idx] = power_at_zero_w;
+
                     } else { // divorce
 
                         for (int i=0; i< num; i++){
                             list_couple[i][idx] = list_single[i][idx_single];
                         }
-                        power[idx] = -1;
+                        power_idx[idx] = -1;
+                        power[idx] = -1.0;
                     }
                 
                 } 
@@ -303,7 +308,8 @@ namespace couple {
                                 list_couple[i][idx] = list_couple[i][idx_couple->idx(Low_m+1)]; // re-use that the interpolated values are identical
                             }
                         }
-                        power[idx] = Low_m;
+                        power_idx[idx] = Low_m;
+                        power[idx] = power_at_zero_m;
                         
                     } else { // divorce
 
@@ -311,7 +317,8 @@ namespace couple {
                             list_couple[i][idx] = list_single[i][idx_single];
                         }
 
-                        power[idx] = -1;
+                        power_idx[idx] = -1;
+                        power[idx] = -1.0;
                     }
 
                 } 
@@ -323,7 +330,8 @@ namespace couple {
                         list_couple[i][idx] = list_raw[i][iP];
                     }
 
-                    power[idx] = iP;
+                    power_idx[idx] = iP;
+                    power[idx] = par->grid_power[iP];
                 }
             } // iP
 
@@ -419,7 +427,7 @@ namespace couple {
                     }
 
                     // update solution
-                    check_participation_constraints(sol->power_idx,Sw,Sm,idx_single,idx_couple,list_couple,list_raw,list_single,num, par);
+                    check_participation_constraints(sol->power_idx,sol->power,Sw,Sm,idx_single,idx_couple,list_couple,list_raw,list_single,num, par);
 
                     // save values of remaining a couple
                     for (int iP=0; iP<par->num_power; iP++){

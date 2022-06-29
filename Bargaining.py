@@ -78,7 +78,7 @@ class HouseholdModelClass(EconModelClass):
         # simulation
         par.seed = 9210
         par.simT = par.T
-        par.simN = 50_000 #50_000
+        par.simN = 50_000
 
         # cpp
         par.do_cpp = False
@@ -131,6 +131,7 @@ class HouseholdModelClass(EconModelClass):
         sol.C_tot_remain_couple = np.nan + np.ones(shape_couple)
 
         sol.power_idx = np.zeros(shape_couple,dtype=np.int_)
+        sol.power = np.zeros(shape_couple)
 
         # pre-compute optimal consumption allocation
         shape_pre = (par.num_power,par.num_Ctot)
@@ -174,7 +175,6 @@ class HouseholdModelClass(EconModelClass):
         # wealth. Single grids are such to avoid interpolation
         par.grid_A = nonlinspace(0.0,par.max_A,par.num_A,1.1)
 
-        par.grid_A_single = np.ones((2,par.num_A))
         par.grid_Aw = par.div_A_share * par.grid_A
         par.grid_Am = (1.0 - par.div_A_share) * par.grid_A
 
