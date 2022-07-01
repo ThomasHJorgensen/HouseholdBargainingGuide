@@ -59,7 +59,7 @@ class HouseholdModelClass(EconModelClass):
         
         # wealth
         par.num_A = 50
-        par.max_A = 10.0
+        par.max_A = 5.0
         
         # bargaining power
         par.num_power = 21
@@ -73,7 +73,7 @@ class HouseholdModelClass(EconModelClass):
 
         # pre-computation
         par.num_Ctot = 100
-        par.max_Ctot = par.max_A*5
+        par.max_Ctot = par.max_A*2
 
         # simulation
         par.seed = 9210
@@ -198,7 +198,7 @@ class HouseholdModelClass(EconModelClass):
             par.grid_shock_love,par.grid_weight_love = quadrature.normal_gauss_hermite(par.sigma_love,par.num_shock_love)
 
         # pre-computation
-        par.grid_Ctot = nonlinspace(1.0e-6,par.max_Ctot,par.num_Ctot,1.0)
+        par.grid_Ctot = nonlinspace(1.0e-6,par.max_Ctot,par.num_Ctot,1.1)
 
     def solve(self):
         sol = self.sol
@@ -207,12 +207,6 @@ class HouseholdModelClass(EconModelClass):
         # setup grids
         self.setup_grids()
 
-        ###################
-        # precompute the optimal intra-temporal consumption allocation for couples given total consumpotion
-        for iP,power in enumerate(par.grid_power):
-            for i,C_tot in enumerate(par.grid_Ctot):
-                sol.pre_Ctot_Cw_priv[iP,i], sol.pre_Ctot_Cm_priv[iP,i], sol.pre_Ctot_C_pub[iP,i] = solve_intraperiod_couple(C_tot,power,par)
-        
         #######################
         if par.do_cpp:
             self.cpp.solve(sol,par)
