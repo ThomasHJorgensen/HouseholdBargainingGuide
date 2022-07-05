@@ -30,6 +30,11 @@ typedef struct sol_struct
  double* C_tot_remain_couple;
  int* power_idx;
  double* power;
+ double* marg_V_couple;
+ double* marg_V_remain_couple;
+ double* EmargU_pd;
+ double* C_tot_pd;
+ double* M_pd;
  double* pre_Ctot_Cw_priv;
  double* pre_Ctot_Cm_priv;
  double* pre_Ctot_C_pub;
@@ -66,6 +71,11 @@ double* get_double_p_sol_struct(sol_struct* x, char* name){
  else if( strcmp(name,"C_pub_remain_couple") == 0 ){ return x->C_pub_remain_couple; }
  else if( strcmp(name,"C_tot_remain_couple") == 0 ){ return x->C_tot_remain_couple; }
  else if( strcmp(name,"power") == 0 ){ return x->power; }
+ else if( strcmp(name,"marg_V_couple") == 0 ){ return x->marg_V_couple; }
+ else if( strcmp(name,"marg_V_remain_couple") == 0 ){ return x->marg_V_remain_couple; }
+ else if( strcmp(name,"EmargU_pd") == 0 ){ return x->EmargU_pd; }
+ else if( strcmp(name,"C_tot_pd") == 0 ){ return x->C_tot_pd; }
+ else if( strcmp(name,"M_pd") == 0 ){ return x->M_pd; }
  else if( strcmp(name,"pre_Ctot_Cw_priv") == 0 ){ return x->pre_Ctot_Cw_priv; }
  else if( strcmp(name,"pre_Ctot_Cm_priv") == 0 ){ return x->pre_Ctot_Cm_priv; }
  else if( strcmp(name,"pre_Ctot_C_pub") == 0 ){ return x->pre_Ctot_C_pub; }

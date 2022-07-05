@@ -75,6 +75,9 @@ class HouseholdModelClass(EconModelClass):
         par.num_Ctot = 100
         par.max_Ctot = par.max_A*2
 
+        par.do_egm = False
+        par.num_A_pd = par.num_A * 2
+
         # simulation
         par.seed = 9210
         par.simT = par.T
@@ -132,6 +135,15 @@ class HouseholdModelClass(EconModelClass):
 
         sol.power_idx = np.zeros(shape_couple,dtype=np.int_)
         sol.power = np.zeros(shape_couple)
+
+        # EGM
+        sol.marg_V_couple = np.zeros(shape_couple)
+        sol.marg_V_remain_couple = np.zeros(shape_couple)
+
+        shape_egm = (par.num_power,par.num_love,par.num_A_pd)
+        sol.EmargU_pd = np.zeros(shape_egm)
+        sol.C_tot_pd = np.zeros(shape_egm)
+        sol.M_pd = np.zeros(shape_egm)
 
         # pre-compute optimal consumption allocation
         shape_pre = (par.num_power,par.num_Ctot)
@@ -199,6 +211,14 @@ class HouseholdModelClass(EconModelClass):
 
         # pre-computation
         par.grid_Ctot = nonlinspace(1.0e-6,par.max_Ctot,par.num_Ctot,1.1)
+
+        # EGM
+        par.grid_util = np.nan + np.ones((par.num_power,par.num_Ctot))
+        par.grid_marg_u = np.nan + np.ones(par.grid_util.shape)
+        par.grid_inv_marg_u = np.flip(par.grid_Ctot)
+        par.grid_marg_u_for_inv = np.nan + np.ones(par.grid_util.shape)
+
+        par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)
 
     def solve(self):
         sol = self.sol

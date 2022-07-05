@@ -70,6 +70,50 @@ void solve_intraperiod_couple(double* Cw_priv,double* Cm_priv,double* C_pub , do
 
 }
 
+void precompute(sol_struct* sol, par_struct* par){
+    #pragma omp parallel num_threads(par->threads)
+    {
+        #pragma omp for
+        for (int iP=0; iP<par->num_power; iP++){
+            for (int i=0; i < par->num_Ctot; i++){
+                double C_tot = par->grid_Ctot[i];
+                int idx = index::index2(iP,i,par->num_power,par->num_Ctot);
+                solve_intraperiod_couple(&sol->pre_Ctot_Cw_priv[idx], &sol->pre_Ctot_Cm_priv[idx], &sol->pre_Ctot_C_pub[idx] , C_tot,par->grid_power[iP],par);
+                
+                // calculate marginal utility and inverse marginal utility for EGM
+                if(par->do_egm){
+                    int iL = 0; // does not matter for the marginal utility
+                    int idx_lag = index::index2(iP,i-1,par->num_power,par->num_Ctot);
+
+                    // utility at current allocation
+                    par->grid_util[idx] = utils::util_couple(sol->pre_Ctot_Cw_priv[idx],sol->pre_Ctot_Cm_priv[idx],sol->pre_Ctot_C_pub[idx],iP,iL,par);
+                    
+                    if (i>0) {
+
+                        // marginal utility
+                        par->grid_marg_u[idx_lag] = (par->grid_util[idx] - par->grid_util[idx_lag])/(C_tot - par->grid_Ctot[i-1]);
+                     
+                        // inverse marginal utility: flip the grid of marginal util (such that ascending) and store as new "x-axis" grid
+                        int idx_flip_lag = index::index2(iP,par->num_Ctot-1 - (i-1),par->num_power,par->num_Ctot);
+                        par->grid_marg_u_for_inv[idx_flip_lag] = par->grid_marg_u[idx_lag];
+
+                        if (i==(par->num_Ctot-1)){
+                            par->grid_marg_u[idx] = par->grid_marg_u[idx_lag]; // impose constant slope at last grid-point
+
+                            int idx_flip = index::index2(iP,par->num_Ctot-1 - i,par->num_power,par->num_Ctot);
+                            par->grid_marg_u_for_inv[idx_flip] = par->grid_marg_u[idx_lag];
+
+                        }
+
+                    }
+
+                } // EGM
+
+            }
+        }
+    }
+}
+
 /////////////
 // 5. MAIN //
 /////////////
@@ -77,16 +121,7 @@ void solve_intraperiod_couple(double* Cw_priv,double* Cm_priv,double* C_pub , do
 EXPORT void solve(sol_struct *sol, par_struct *par){
     
     // pre-compute intra-temporal optimal allocation
-    #pragma omp parallel num_threads(par->threads)
-    {
-        #pragma omp for
-        for (int iP=0; iP<par->num_power; iP++){
-            for (int i=0; i < par->num_Ctot; i++){
-                int idx = index::index2(iP,i,par->num_power,par->num_Ctot);
-                solve_intraperiod_couple(&sol->pre_Ctot_Cw_priv[idx], &sol->pre_Ctot_Cm_priv[idx], &sol->pre_Ctot_C_pub[idx] , par->grid_Ctot[i],par->grid_power[iP],par);
-            }
-        }
-    }
+    precompute(sol,par);
 
     // loop backwards
     for (int t = par->T-1; t >= 0; t--){

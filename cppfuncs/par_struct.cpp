@@ -23,6 +23,8 @@ typedef struct par_struct
  int num_shock_love;
  int num_Ctot;
  double max_Ctot;
+ bool do_egm;
+ int num_A_pd;
  int seed;
  int simT;
  int simN;
@@ -36,6 +38,11 @@ typedef struct par_struct
  double* grid_shock_love;
  double* grid_weight_love;
  double* grid_Ctot;
+ double* grid_util;
+ double* grid_marg_u;
+ double* grid_inv_marg_u;
+ double* grid_marg_u_for_inv;
+ double* grid_A_pd;
 } par_struct;
 
 double get_double_par_struct(par_struct* x, char* name){
@@ -70,6 +77,7 @@ int get_int_par_struct(par_struct* x, char* name){
  else if( strcmp(name,"num_love") == 0 ){ return x->num_love; }
  else if( strcmp(name,"num_shock_love") == 0 ){ return x->num_shock_love; }
  else if( strcmp(name,"num_Ctot") == 0 ){ return x->num_Ctot; }
+ else if( strcmp(name,"num_A_pd") == 0 ){ return x->num_A_pd; }
  else if( strcmp(name,"seed") == 0 ){ return x->seed; }
  else if( strcmp(name,"simT") == 0 ){ return x->simT; }
  else if( strcmp(name,"simN") == 0 ){ return x->simN; }
@@ -81,7 +89,8 @@ int get_int_par_struct(par_struct* x, char* name){
 
 bool get_bool_par_struct(par_struct* x, char* name){
 
- if( strcmp(name,"do_cpp") == 0 ){ return x->do_cpp; }
+ if( strcmp(name,"do_egm") == 0 ){ return x->do_egm; }
+ else if( strcmp(name,"do_cpp") == 0 ){ return x->do_cpp; }
  else {return false;}
 
 }
@@ -97,6 +106,11 @@ double* get_double_p_par_struct(par_struct* x, char* name){
  else if( strcmp(name,"grid_shock_love") == 0 ){ return x->grid_shock_love; }
  else if( strcmp(name,"grid_weight_love") == 0 ){ return x->grid_weight_love; }
  else if( strcmp(name,"grid_Ctot") == 0 ){ return x->grid_Ctot; }
+ else if( strcmp(name,"grid_util") == 0 ){ return x->grid_util; }
+ else if( strcmp(name,"grid_marg_u") == 0 ){ return x->grid_marg_u; }
+ else if( strcmp(name,"grid_inv_marg_u") == 0 ){ return x->grid_inv_marg_u; }
+ else if( strcmp(name,"grid_marg_u_for_inv") == 0 ){ return x->grid_marg_u_for_inv; }
+ else if( strcmp(name,"grid_A_pd") == 0 ){ return x->grid_A_pd; }
  else {return NULL;}
 
 }
