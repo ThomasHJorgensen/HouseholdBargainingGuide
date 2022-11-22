@@ -234,66 +234,8 @@ namespace couple {
         
     }
 
-    int update_bargaining_index(double* Sw,double* Sm,int iP,par_struct* par){
-        // check the participation constraints. Array
-        double min_Sw =tools::minf(Sw,par->num_power);
-        double min_Sm =tools::minf(Sm,par->num_power);
-        double max_Sw =tools::maxf(Sw,par->num_power);
-        double max_Sm =tools::maxf(Sm,par->num_power);
 
-        if ((min_Sw >= 0.0) & (min_Sm >= 0.0)) { // all values are consistent with marriage
-            return iP;
-
-        } else if ((max_Sw < 0.0) | (max_Sm < 0.0)){ // no value is consistent with marriage
-            return -1;
-
-        } else { 
-
-            // a. find lowest (highest) value with positive surplus for women (men)
-            int Low_w = 0;      // in case there is no crossing, this will be the correct value
-            int Low_m = par->num_power-1; // in case there is no crossing, this will be the correct value
-            for (int _iP=0; _iP<par->num_power; _iP++){
-                if ((Sw[_iP]<0) & (Sw[_iP+1]>=0)){
-                    Low_w = _iP+1;
-                }
-                    
-                if ((Sm[_iP]>=0) & (Sm[_iP+1]<0)){
-                    Low_m = iP;
-                }
-            }
-
-            
-            // i. woman wants to leave
-            if (iP<Low_w){ 
-                if (Sm[Low_w] > 0){ // man happy to shift some bargaining power
-                    return Low_w;
-
-                } else { // divorce
-                    return -1;
-                }
-            } 
-
-            // ii. man wants to leave
-            else if (iP>Low_m){  
-                if (Sw[Low_m] > 0){ // woman happy to shift some bargaining power
-                    return Low_m;
-                    
-                } else { // divorce
-                    return -1;
-                }
-            } 
-            
-            // iii. no-one wants to leave
-            else { 
-                return iP;
-            }
-
-        } // outer check
-
-    }
-
-
-    void check_participation_constraints(int *power_idx,double* power,double* Sw,double* Sm,int idx_single,index_couple_struct *idx_couple,double** list_couple,double** list_raw,double** list_single,int num,par_struct* par){
+    void check_participation_constraints(int *power_idx,double* power,double* Sw,double* Sm,int idx_single_w,int idx_single_m,index_couple_struct *idx_couple,double** list_couple_w,double** list_couple_m,double** list_raw_w,double** list_raw_m,double** list_single_w,double** list_single_m,int num,par_struct* par){
         // TODO: make more simple and intuitive
         // check the participation constraints. Array
         double min_Sw =tools::minf(Sw,par->num_power);
@@ -307,7 +249,8 @@ namespace couple {
                 // overwrite output for couple
                 int idx = idx_couple->idx(iP);
                 for (int i=0; i< num; i++){
-                    list_couple[i][idx] = list_raw[i][iP];
+                    list_couple_w[i][idx] = list_raw_w[i][iP];
+                    list_couple_m[i][idx] = list_raw_m[i][iP];
                 }
                 power_idx[idx] = iP;
                 power[idx] = par->grid_power[iP];
@@ -319,9 +262,10 @@ namespace couple {
                 // overwrite output for couple
                 int idx = idx_couple->idx(iP);
                 for (int i=0; i< num; i++){
-                    list_couple[i][idx] = list_single[i][idx_single];
+                    list_couple_w[i][idx] = list_single_w[i][idx_single_w];
+                    list_couple_m[i][idx] = list_single_m[i][idx_single_m];
                 }
-                power_idx[idx] = -1;
+                power_idx[idx] = -1.0;
                 power[idx] = -1;
             }
 
@@ -330,7 +274,7 @@ namespace couple {
             // a. find lowest (highest) value with positive surplus for women (men)
             int Low_w = 1;      // in case there is no crossing, this will be the correct value
             int Low_m = par->num_power-1-1; // in case there is no crossing, this will be the correct value
-            for (int iP=0; iP<par->num_power; iP++){
+            for (int iP=0; iP<par->num_power-1; iP++){ 
                 if ((Sw[iP]<0) & (Sw[iP+1]>=0)){
                     Low_w = iP+1;
                 }
@@ -370,9 +314,11 @@ namespace couple {
                     if (Sm_at_zero_w > 0){ // man happy to shift some bargaining power
                         for (int i=0; i< num; i++){
                             if (iP==0){
-                                list_couple[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_raw[i],power_at_zero_w,Low_w-1); //list_raw[i][Low_w]; 
+                                list_couple_w[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_raw_w[i],power_at_zero_w,Low_w-1); 
+                                list_couple_m[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_raw_m[i],power_at_zero_w,Low_w-1); 
                             } else {
-                                list_couple[i][idx] = list_couple[i][idx_couple->idx(0)]; // re-use that the interpolated values are identical
+                                list_couple_w[i][idx] = list_couple_w[i][idx_couple->idx(0)]; // re-use that the interpolated values are identical
+                                list_couple_m[i][idx] = list_couple_m[i][idx_couple->idx(0)]; // re-use that the interpolated values are identical
                             }
                         }
                         
@@ -382,7 +328,8 @@ namespace couple {
                     } else { // divorce
 
                         for (int i=0; i< num; i++){
-                            list_couple[i][idx] = list_single[i][idx_single];
+                            list_couple_w[i][idx] = list_single_w[i][idx_single_w];
+                            list_couple_m[i][idx] = list_single_m[i][idx_single_m];
                         }
                         power_idx[idx] = -1;
                         power[idx] = -1.0;
@@ -397,9 +344,11 @@ namespace couple {
                         
                         for (int i=0; i< num; i++){
                             if (iP==(Low_m+1)){
-                                list_couple[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_raw[i],power_at_zero_m,Low_m); //list_raw[i][Low_m]; //
+                                list_couple_w[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_raw_w[i],power_at_zero_m,Low_m); 
+                                list_couple_m[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_raw_m[i],power_at_zero_m,Low_m); 
                             } else {
-                                list_couple[i][idx] = list_couple[i][idx_couple->idx(Low_m+1)]; // re-use that the interpolated values are identical
+                                list_couple_w[i][idx] = list_couple_w[i][idx_couple->idx(Low_m+1)]; // re-use that the interpolated values are identical
+                                list_couple_m[i][idx] = list_couple_m[i][idx_couple->idx(Low_m+1)]; // re-use that the interpolated values are identical
                             }
                         }
                         power_idx[idx] = Low_m;
@@ -408,7 +357,8 @@ namespace couple {
                     } else { // divorce
 
                         for (int i=0; i< num; i++){
-                            list_couple[i][idx] = list_single[i][idx_single];
+                            list_couple_w[i][idx] = list_single_w[i][idx_single_w];
+                            list_couple_m[i][idx] = list_single_m[i][idx_single_m];
                         }
 
                         power_idx[idx] = -1;
@@ -421,7 +371,8 @@ namespace couple {
                 else { 
 
                     for (int i=0; i< num; i++){
-                        list_couple[i][idx] = list_raw[i][iP];
+                        list_couple_w[i][idx] = list_raw_w[i][iP];
+                        list_couple_m[i][idx] = list_raw_m[i][iP];
                     }
 
                     power_idx[idx] = iP;
@@ -446,10 +397,13 @@ namespace couple {
             double* tmp_C_pub = new double[shape_tmp];
             double* tmp_marg_V = new double[shape_tmp];
 
-            int num = 6;
-            double** list_couple = new double*[num]; 
-            double** list_single = new double*[num]; 
-            double** list_raw = new double*[num]; 
+            int num = 4;
+            double** list_couple_w = new double*[num]; 
+            double** list_couple_m = new double*[num]; 
+            double** list_single_w = new double*[num]; 
+            double** list_single_m = new double*[num]; 
+            double** list_raw_w = new double*[num]; 
+            double** list_raw_m = new double*[num]; 
 
             double* Sw = new double[par->num_power];
             double* Sm = new double[par->num_power];
@@ -488,7 +442,8 @@ namespace couple {
             for (int iL=0; iL<par->num_love; iL++){    
                 for (int iA=0; iA<par->num_A;iA++){
                     // indices
-                    int idx_single = index::index2(t,iA,par->T,par->num_A);
+                    int idx_single_w = index::index2(t,iA,par->T,par->num_A);
+                    int idx_single_m = index::index2(t,iA,par->T,par->num_A);
                     idx_couple->t = t;
                     idx_couple->iL = iL;
                     idx_couple->iA = iA;
@@ -506,37 +461,46 @@ namespace couple {
                         tmp_marg_V[iP] = sol->marg_V_remain_couple[idx_tmp];
 
                         // marital surplus
-                        Sw[iP] = calc_marital_surplus(tmp_Vw[iP],sol->Vw_single[idx_single],par);
-                        Sm[iP] = calc_marital_surplus(tmp_Vm[iP],sol->Vm_single[idx_single],par);
+                        Sw[iP] = calc_marital_surplus(tmp_Vw[iP],sol->Vw_single[idx_single_w],par);
+                        Sm[iP] = calc_marital_surplus(tmp_Vm[iP],sol->Vm_single[idx_single_m],par);
                     }
 
                     // setup relevant lists
                     int i = 0;
-                    list_couple[i] = sol->Vw_couple; i++;
-                    list_couple[i] = sol->Vm_couple; i++;
-                    list_couple[i] = sol->Cw_priv_couple; i++;
-                    list_couple[i] = sol->Cm_priv_couple; i++;
-                    list_couple[i] = sol->C_pub_couple; i++;
-                    list_couple[i] = sol->marg_V_couple; i++;
+                    list_couple_w[i] = sol->Vw_couple; i++;
+                    list_couple_w[i] = sol->Cw_priv_couple; i++;
+                    list_couple_w[i] = sol->C_pub_couple; i++;
+                    list_couple_w[i] = sol->marg_V_couple; i++;
+                    i = 0;
+                    list_couple_m[i] = sol->Vm_couple; i++;
+                    list_couple_m[i] = sol->Cm_priv_couple; i++;
+                    list_couple_m[i] = sol->C_pub_couple; i++;
+                    list_couple_m[i] = sol->marg_V_couple; i++;
 
                     i = 0;
-                    list_raw[i] = tmp_Vw; i++;
-                    list_raw[i] = tmp_Vm; i++;
-                    list_raw[i] = tmp_Cw_priv; i++;
-                    list_raw[i] = tmp_Cm_priv; i++;
-                    list_raw[i] = tmp_C_pub; i++;
-                    list_raw[i] = tmp_marg_V; i++;
+                    list_raw_w[i] = tmp_Vw; i++;
+                    list_raw_w[i] = tmp_Cw_priv; i++;
+                    list_raw_w[i] = tmp_C_pub; i++;
+                    list_raw_w[i] = tmp_marg_V; i++;
+                    i = 0;
+                    list_raw_m[i] = tmp_Vm; i++;
+                    list_raw_m[i] = tmp_Cm_priv; i++;
+                    list_raw_m[i] = tmp_C_pub; i++;
+                    list_raw_m[i] = tmp_marg_V; i++;
 
                     i = 0;
-                    list_single[i] = sol->Vw_single; i++;
-                    list_single[i] = sol->Vm_single; i++;
-                    list_single[i] = sol->Cw_priv_single; i++;
-                    list_single[i] = sol->Cm_priv_single; i++;
-                    list_single[i] = sol->Cw_pub_single; i++; // does not matter
-                    list_single[i] = sol->Cw_pub_single; i++; // does not matter -> manually change this below. Need marg_V in the list to ensure the correct use if bargaining updated
+                    list_single_w[i] = sol->Vw_single; i++;
+                    list_single_w[i] = sol->Cw_priv_single; i++;
+                    list_single_w[i] = sol->Cw_pub_single; i++; 
+                    list_single_w[i] = sol->Cw_pub_single; i++; // does not matter here since marg_V calcualted below
+                    i = 0;
+                    list_single_m[i] = sol->Vm_single; i++;
+                    list_single_m[i] = sol->Cm_priv_single; i++;
+                    list_single_m[i] = sol->Cm_pub_single; i++; 
+                    list_single_m[i] = sol->Cm_pub_single; i++; // does not matter here since marg_V calcualted below
 
                     // update solution
-                    check_participation_constraints(sol->power_idx,sol->power,Sw,Sm,idx_single,idx_couple,list_couple,list_raw,list_single,num, par);
+                    check_participation_constraints(sol->power_idx,sol->power,Sw,Sm,idx_single_w,idx_single_m,idx_couple,list_couple_w,list_couple_m,list_raw_w,list_raw_m,list_single_w,list_single_m,num, par);
 
                     // calculate marginal utility in case of singlehood [update after check above] if EGM is implemented for singles, these numbers are stored elsewhere
                     if(par->do_egm){
@@ -546,12 +510,13 @@ namespace couple {
                                 double power = par->grid_power[iP];
                                 double share = par->div_A_share;
 
-                                double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
-                                double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
+                                double Cw = sol->Cw_priv_single[idx_single_w] + sol->Cw_pub_single[idx_single_w];
+                                double Cm = sol->Cm_priv_single[idx_single_m] + sol->Cm_pub_single[idx_single_m];
                                 double margUw = single::marg_util_C(Cw,woman,par);
                                 double margUm = single::marg_util_C(Cm,man,par);
                                 sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUw;
-                            }
+                            
+                            } 
                         }
                     }
                     
@@ -559,9 +524,12 @@ namespace couple {
             } // love
             
             // delete pointers
-            delete[] list_couple;
-            delete[] list_single;
-            delete[] list_raw;
+            delete[] list_couple_w;
+            delete[] list_couple_m;
+            delete[] list_single_w;
+            delete[] list_single_m;
+            delete[] list_raw_w;
+            delete[] list_raw_m;
 
             delete Sw;
             delete Sm;
@@ -575,126 +543,64 @@ namespace couple {
 
         } // pragma
     }
-
-    void solve_couple_old(int t,sol_struct *sol,par_struct *par){
-        
-        #pragma omp parallel num_threads(par->threads)
-        {
-            // allocate memory to store relevant objects
-            double* tmp_Vw = new double[par->num_power];
-            double* tmp_Vm = new double[par->num_power];
-            double* tmp_Cw_priv = new double[par->num_power];
-            double* tmp_Cm_priv = new double[par->num_power];
-            double* tmp_C_pub = new double[par->num_power];
-
-            int num = 5;
-            double** list_couple = new double*[num]; 
-            double** list_single = new double*[num]; 
-            double** list_raw = new double*[num]; 
-
-            double* Sw = new double[par->num_power];
-            double* Sm = new double[par->num_power];
-
-            index_couple_struct* idx_couple = new index_couple_struct;
-
-            #pragma omp for
-            for (int iL=0; iL<par->num_love; iL++){
-                double love = par->grid_love[iL];
-                for (int iA=0; iA<par->num_A;iA++){
-                    double M_resources = par->R*par->grid_A[iA] + par->inc_w + par->inc_m;
-                    
-                    double starting_val = M_resources * 0.8;
-                    for (int iP=0; iP<par->num_power; iP++){
-                        double power = par->grid_power[iP];
-
-                        // continuation values
-                        int idx_next = index::index4(t+1,iP,0,0,par->T,par->num_power,par->num_love,par->num_A);
-                        if (t==(par->T-1)){ // does not matter in last period-> fix at some valid index
-                            idx_next = 0;
-                        }
-                        double *Vw_next = &sol->Vw_couple[idx_next];
-                        double *Vm_next = &sol->Vm_couple[idx_next];
-
-                        // starting values
-                        if (iP>0){
-                            double C_tot_last = tmp_Cw_priv[iP-1] + tmp_Cm_priv[iP-1] + tmp_C_pub[iP-1];
-                            starting_val = C_tot_last;
-                        }
-
-                        // solve unconstrained problem
-                        solve_uncon_couple(&tmp_Cw_priv[iP], &tmp_Cm_priv[iP], &tmp_C_pub[iP], &tmp_Vw[iP], &tmp_Vm[iP] , t,M_resources,iL,iP,Vw_next,Vm_next,starting_val,sol,par);
-                    
-                    } // power
-
-                    // check the participation constraints
-                    // indices
-                    int idx_single = index::index2(t,iA,par->T,par->num_A);
-                    idx_couple->t = t;
-                    idx_couple->iL = iL;
-                    idx_couple->iA = iA;
-                    idx_couple->par = par;
-
-                    // setup relevant lists
-                    int i = 0;
-                    list_couple[i] = sol->Vw_couple; i++;
-                    list_couple[i] = sol->Vm_couple; i++;
-                    list_couple[i] = sol->Cw_priv_couple; i++;
-                    list_couple[i] = sol->Cm_priv_couple; i++;
-                    list_couple[i] = sol->C_pub_couple; i++;
-
-                    i = 0;
-                    list_raw[i] = tmp_Vw; i++;
-                    list_raw[i] = tmp_Vm; i++;
-                    list_raw[i] = tmp_Cw_priv; i++;
-                    list_raw[i] = tmp_Cm_priv; i++;
-                    list_raw[i] = tmp_C_pub; i++;
-
-                    i = 0;
-                    list_single[i] = sol->Vw_single; i++;
-                    list_single[i] = sol->Vm_single; i++;
-                    list_single[i] = sol->Cw_priv_single; i++;
-                    list_single[i] = sol->Cm_priv_single; i++;
-                    list_single[i] = sol->Cw_pub_single; i++; // does not matter
-                    
-                    // marital surplus
-                    for (int iP=0; iP<par->num_power; iP++){
-                        Sw[iP] = calc_marital_surplus(tmp_Vw[iP],sol->Vw_single[idx_single],par);
-                        Sm[iP] = calc_marital_surplus(tmp_Vm[iP],sol->Vm_single[idx_single],par);
-                    }
-
-                    // update solution
-                    check_participation_constraints(sol->power_idx,sol->power,Sw,Sm,idx_single,idx_couple,list_couple,list_raw,list_single,num, par);
-
-                    // save values of remaining a couple
-                    for (int iP=0; iP<par->num_power; iP++){
-                        int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-                        sol->Vw_remain_couple[idx] = tmp_Vw[iP];
-                        sol->Vm_remain_couple[idx] = tmp_Vm[iP];
-                        sol->Cw_priv_remain_couple[idx] = tmp_Cw_priv[iP];
-                        sol->Cm_priv_remain_couple[idx] = tmp_Cm_priv[iP];
-                        sol->C_pub_remain_couple[idx] = tmp_C_pub[iP];
-                    }
-                    
-                }
-            }
-            
-            // delete pointers
-            delete[] list_couple;
-            delete[] list_single;
-            delete[] list_raw;
-
-            delete Sw;
-            delete Sm;
-
-            delete tmp_Vw;
-            delete tmp_Vm;
-            delete tmp_Cw_priv;
-            delete tmp_Cm_priv;
-            delete tmp_C_pub;
-
-        } // pragma
-    }
-
-
     
 }
+
+
+    // int update_bargaining_index(double* Sw,double* Sm,int iP,par_struct* par){
+    //     // check the participation constraints. Array
+    //     double min_Sw =tools::minf(Sw,par->num_power);
+    //     double min_Sm =tools::minf(Sm,par->num_power);
+    //     double max_Sw =tools::maxf(Sw,par->num_power);
+    //     double max_Sm =tools::maxf(Sm,par->num_power);
+
+    //     if ((min_Sw >= 0.0) & (min_Sm >= 0.0)) { // all values are consistent with marriage
+    //         return iP;
+
+    //     } else if ((max_Sw < 0.0) | (max_Sm < 0.0)){ // no value is consistent with marriage
+    //         return -1;
+
+    //     } else { 
+
+    //         // a. find lowest (highest) value with positive surplus for women (men)
+    //         int Low_w = 0;      // in case there is no crossing, this will be the correct value
+    //         int Low_m = par->num_power-1; // in case there is no crossing, this will be the correct value
+    //         for (int _iP=0; _iP<par->num_power; _iP++){
+    //             if ((Sw[_iP]<0) & (Sw[_iP+1]>=0)){
+    //                 Low_w = _iP+1;
+    //             }
+                    
+    //             if ((Sm[_iP]>=0) & (Sm[_iP+1]<0)){
+    //                 Low_m = iP;
+    //             }
+    //         }
+
+            
+    //         // i. woman wants to leave
+    //         if (iP<Low_w){ 
+    //             if (Sm[Low_w] > 0){ // man happy to shift some bargaining power
+    //                 return Low_w;
+
+    //             } else { // divorce
+    //                 return -1;
+    //             }
+    //         } 
+
+    //         // ii. man wants to leave
+    //         else if (iP>Low_m){  
+    //             if (Sw[Low_m] > 0){ // woman happy to shift some bargaining power
+    //                 return Low_m;
+                    
+    //             } else { // divorce
+    //                 return -1;
+    //             }
+    //         } 
+            
+    //         // iii. no-one wants to leave
+    //         else { 
+    //             return iP;
+    //         }
+
+    //     } // outer check
+
+    // }
