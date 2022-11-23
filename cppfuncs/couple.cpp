@@ -235,8 +235,8 @@ namespace couple {
     }
 
 
-    void check_participation_constraints(int *power_idx,double* power,double* Sw,double* Sm,int idx_single_w,int idx_single_m,index_couple_struct *idx_couple,double** list_couple_w,double** list_couple_m,double** list_raw_w,double** list_raw_m,double** list_single_w,double** list_single_m,int num,par_struct* par){
-        // TODO: make more simple and intuitive
+    void check_participation_constraints(int *power_idx,double* power,double* Sw,double* Sm,index_couple_struct *idx_couple,double** list_couple_w,double** list_couple_m,double** list_raw_w,double** list_raw_m,double* list_single_w,double* list_single_m,int num,par_struct* par){
+        
         // check the participation constraints. Array
         double min_Sw =tools::minf(Sw,par->num_power);
         double min_Sm =tools::minf(Sm,par->num_power);
@@ -262,8 +262,8 @@ namespace couple {
                 // overwrite output for couple
                 int idx = idx_couple->idx(iP);
                 for (int i=0; i< num; i++){
-                    list_couple_w[i][idx] = list_single_w[i][idx_single_w];
-                    list_couple_m[i][idx] = list_single_m[i][idx_single_m];
+                    list_couple_w[i][idx] = list_single_w[i];
+                    list_couple_m[i][idx] = list_single_m[i];
                 }
                 power_idx[idx] = -1.0;
                 power[idx] = -1;
@@ -328,8 +328,8 @@ namespace couple {
                     } else { // divorce
 
                         for (int i=0; i< num; i++){
-                            list_couple_w[i][idx] = list_single_w[i][idx_single_w];
-                            list_couple_m[i][idx] = list_single_m[i][idx_single_m];
+                            list_couple_w[i][idx] = list_single_w[i];
+                            list_couple_m[i][idx] = list_single_m[i];
                         }
                         power_idx[idx] = -1;
                         power[idx] = -1.0;
@@ -357,8 +357,8 @@ namespace couple {
                     } else { // divorce
 
                         for (int i=0; i< num; i++){
-                            list_couple_w[i][idx] = list_single_w[i][idx_single_w];
-                            list_couple_m[i][idx] = list_single_m[i][idx_single_m];
+                            list_couple_w[i][idx] = list_single_w[i];
+                            list_couple_m[i][idx] = list_single_m[i];
                         }
 
                         power_idx[idx] = -1;
@@ -400,10 +400,10 @@ namespace couple {
             int num = 4;
             double** list_couple_w = new double*[num]; 
             double** list_couple_m = new double*[num]; 
-            double** list_single_w = new double*[num]; 
-            double** list_single_m = new double*[num]; 
             double** list_raw_w = new double*[num]; 
             double** list_raw_m = new double*[num]; 
+            double* list_single_w = new double[num]; 
+            double* list_single_m = new double[num];             
 
             double* Sw = new double[par->num_power];
             double* Sm = new double[par->num_power];
@@ -489,18 +489,18 @@ namespace couple {
                     list_raw_m[i] = tmp_marg_V; i++;
 
                     i = 0;
-                    list_single_w[i] = sol->Vw_single; i++;
-                    list_single_w[i] = sol->Cw_priv_single; i++;
-                    list_single_w[i] = sol->Cw_pub_single; i++; 
-                    list_single_w[i] = sol->Cw_pub_single; i++; // does not matter here since marg_V calcualted below
+                    list_single_w[i] = sol->Vw_single[idx_single_w]; i++;
+                    list_single_w[i] = sol->Cw_priv_single[idx_single_w]; i++;
+                    list_single_w[i] = sol->Cw_pub_single[idx_single_w]; i++; 
+                    list_single_w[i] = sol->Cw_pub_single[idx_single_w]; i++; // does not matter here since marg_V calcualted below
                     i = 0;
-                    list_single_m[i] = sol->Vm_single; i++;
-                    list_single_m[i] = sol->Cm_priv_single; i++;
-                    list_single_m[i] = sol->Cm_pub_single; i++; 
-                    list_single_m[i] = sol->Cm_pub_single; i++; // does not matter here since marg_V calcualted below
+                    list_single_m[i] = sol->Vm_single[idx_single_m]; i++;
+                    list_single_m[i] = sol->Cm_priv_single[idx_single_m]; i++;
+                    list_single_m[i] = sol->Cm_pub_single[idx_single_m]; i++; 
+                    list_single_m[i] = sol->Cm_pub_single[idx_single_m]; i++; // does not matter here since marg_V calcualted below
 
                     // update solution
-                    check_participation_constraints(sol->power_idx,sol->power,Sw,Sm,idx_single_w,idx_single_m,idx_couple,list_couple_w,list_couple_m,list_raw_w,list_raw_m,list_single_w,list_single_m,num, par);
+                    check_participation_constraints(sol->power_idx,sol->power,Sw,Sm,idx_couple,list_couple_w,list_couple_m,list_raw_w,list_raw_m,list_single_w,list_single_m,num, par);
 
                     // calculate marginal utility in case of singlehood [update after check above] if EGM is implemented for singles, these numbers are stored elsewhere
                     if(par->do_egm){
@@ -526,10 +526,10 @@ namespace couple {
             // delete pointers
             delete[] list_couple_w;
             delete[] list_couple_m;
-            delete[] list_single_w;
-            delete[] list_single_m;
             delete[] list_raw_w;
             delete[] list_raw_m;
+            delete list_single_w;
+            delete list_single_m;
 
             delete Sw;
             delete Sm;
