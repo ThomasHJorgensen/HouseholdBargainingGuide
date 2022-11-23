@@ -235,7 +235,7 @@ namespace couple {
     }
 
 
-    void check_participation_constraints(int *power_idx,double* power,double* Sw,double* Sm,index_couple_struct *idx_couple,double** list_couple_w,double** list_couple_m,double** list_raw_w,double** list_raw_m,double* list_single_w,double* list_single_m,int num,par_struct* par){
+    void update_bargaining(int *power_idx,double* power,double* Sw,double* Sm,index_couple_struct *idx_couple,double** list_couple_w,double** list_couple_m,double** list_raw_w,double** list_raw_m,double* list_single_w,double* list_single_m,int num,par_struct* par){
         
         // check the participation constraints. Array
         double min_Sw =tools::minf(Sw,par->num_power);
@@ -500,7 +500,7 @@ namespace couple {
                     list_single_m[i] = sol->Cm_pub_single[idx_single_m]; i++; // does not matter here since marg_V calcualted below
 
                     // update solution
-                    check_participation_constraints(sol->power_idx,sol->power,Sw,Sm,idx_couple,list_couple_w,list_couple_m,list_raw_w,list_raw_m,list_single_w,list_single_m,num, par);
+                    update_bargaining(sol->power_idx,sol->power,Sw,Sm,idx_couple,list_couple_w,list_couple_m,list_raw_w,list_raw_m,list_single_w,list_single_m,num, par);
 
                     // calculate marginal utility in case of singlehood [update after check above] if EGM is implemented for singles, these numbers are stored elsewhere
                     if(par->do_egm){
