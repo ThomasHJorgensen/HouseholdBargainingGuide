@@ -195,7 +195,8 @@ namespace couple {
 
                 }
 
-                // inverte FOC to get consumption. Using interpolation of pre-computed inverse marginal utility
+                // invert FOC to get consumption. Using interpolation of pre-computed inverse marginal utility
+                // TODO: check if this makes sense with par.R. this is when everything is in relation to M. I do not think it should now..
                 double EmargU = par->beta*par->R*sol->EmargU_pd[idx_pd];
                 int idx_interp = index::index2(iP,0,par->num_power,par->num_Ctot);
                 
@@ -514,7 +515,7 @@ namespace couple {
                                 double Cm = sol->Cm_priv_single[idx_single_m] + sol->Cm_pub_single[idx_single_m];
                                 double margUw = single::marg_util_C(Cw,woman,par);
                                 double margUm = single::marg_util_C(Cm,man,par);
-                                sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUw;
+                                sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm;
                             
                             } 
                         }
