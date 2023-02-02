@@ -136,6 +136,11 @@ class HouseholdModelClass(EconModelClass):
         sol.power_idx = np.zeros(shape_couple,dtype=np.int_)
         sol.power = np.zeros(shape_couple)
 
+        # temporary containers
+        sol.savings_vec = np.zeros(par.num_shock_love)
+        sol.Vw_plus_vec = np.zeros(par.num_shock_love) 
+        sol.Vm_plus_vec = np.zeros(par.num_shock_love) 
+
         # EGM
         sol.marg_V_couple = np.zeros(shape_couple)
         sol.marg_V_remain_couple = np.zeros(shape_couple)
@@ -281,37 +286,28 @@ class HouseholdModelClass(EconModelClass):
         par = self.par
         sol = self.sol
         
-        # terminal period
-        if t == (par.T-1):
-            for iA in range(par.num_A):
-                idx = (t,iA)
+        # loop through state variable: wealth
+        for iA in range(par.num_A):
+            idx = (t,iA)
 
-                Aw = par.grid_Aw[iA]
-                Am = par.grid_Am[iA]
+            # resources
+            Aw = par.grid_Aw[iA]
+            Am = par.grid_Am[iA]
 
-                Cw = par.R*Aw + par.inc_w
-                Cm = par.R*Am + par.inc_m
+            Mw = resources_single(Aw,woman,par) 
+            Mm = resources_single(Am,man,par) 
+
+            if t == (par.T-1): # terminal period
                 
-                sol.Cw_priv_single[idx] = cons_priv_single(Cw,woman,par)
-                sol.Cw_pub_single[idx] = Cw - sol.Cw_priv_single[idx]
+                # intra-period allocation: consume all resources
+                sol.Cw_priv_single[idx],sol.Cw_pub_single[idx] = intraperiod_allocation_single(Mw,woman,par)
                 sol.Vw_single[idx] = util(sol.Cw_priv_single[idx],sol.Cw_pub_single[idx],woman,par)
                 
-                sol.Cm_priv_single[idx] = cons_priv_single(Cm,man,par)
-                sol.Cm_pub_single[idx] = Cm - sol.Cm_priv_single[idx]
+                sol.Cm_priv_single[idx],sol.Cm_pub_single[idx] = intraperiod_allocation_single(Mm,man,par)
                 sol.Vm_single[idx] = util(sol.Cm_priv_single[idx],sol.Cm_pub_single[idx],man,par)
             
-        # earlier periods
-        else:
-            for iA in range(par.num_A):
-                idx = (t,iA)
+            else: # earlier periods
 
-                Aw = par.grid_Aw[iA]
-                Am = par.grid_Am[iA]
-                
-                # resources
-                Mw = par.R*Aw + par.inc_w
-                Mm = par.R*Am + par.inc_m
-                
                 # search over optimal total consumption, C
                 obj_w = lambda C_tot: - self.value_of_choice_single(C_tot[0],Mw,woman,sol.Vw_single[t+1])
                 obj_m = lambda C_tot: - self.value_of_choice_single(C_tot[0],Mm,man,sol.Vm_single[t+1])
@@ -321,27 +317,24 @@ class HouseholdModelClass(EconModelClass):
                 
                 # store results
                 Cw = res_w.x
-                sol.Cw_priv_single[idx] = cons_priv_single(Cw,woman,par)
-                sol.Cw_pub_single[idx] = Cw - sol.Cw_priv_single[idx]
+                sol.Cw_priv_single[idx],sol.Cw_pub_single[idx] = intraperiod_allocation_single(Cw,woman,par)
+                sol.Vw_single[idx] = -res_w.fun
                 
                 Cm = res_m.x
-                sol.Cm_priv_single[idx] = cons_priv_single(Cm,man,par)
-                sol.Cm_pub_single[idx] = Cm - sol.Cm_priv_single[idx]
+                sol.Cm_priv_single[idx],sol.Cm_pub_single[idx] = intraperiod_allocation_single(Cm,man,par)
+                sol.Vm_single[idx] = -res_m.fun                
                 
-                sol.Vw_single[idx] = -res_w.fun
-                sol.Vm_single[idx] = -res_m.fun
-
     def solve_couple(self,t):
         par = self.par
         sol = self.sol
 
-        tmp_Vw,tmp_Vm,tmp_Cw_priv,tmp_Cm_priv,tmp_C_pub = np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power)
+        remain_Vw,remain_Vm,remain_Cw_priv,remain_Cm_priv,remain_C_pub = np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power)
         
         Vw_next = None
         Vm_next = None
         for iL,love in enumerate(par.grid_love):
             for iA,A in enumerate(par.grid_A):
-                M_resources = par.R*A + par.inc_w + par.inc_m
+                M_resources = resources_couple(A,par) 
                 
                 starting_val = None
                 for iP,power in enumerate(par.grid_power):
@@ -352,35 +345,35 @@ class HouseholdModelClass(EconModelClass):
 
                     # starting values
                     if iP>0:
-                        C_tot_last = tmp_Cw_priv[iP-1] + tmp_Cm_priv[iP-1] + tmp_C_pub[iP-1]
+                        C_tot_last = remain_Cw_priv[iP-1] + remain_Cm_priv[iP-1] + remain_C_pub[iP-1]
                         starting_val = np.array([C_tot_last])
                     
-                    # solve unconstrained problem
-                    tmp_Cw_priv[iP], tmp_Cm_priv[iP], tmp_C_pub[iP], tmp_Vw[iP], tmp_Vm[iP] = self.solve_uncon_couple(t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val=starting_val)
+                    # solve problem if remining married
+                    remain_Cw_priv[iP], remain_Cm_priv[iP], remain_C_pub[iP], remain_Vw[iP], remain_Vm[iP] = self.solve_remain_couple(t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val=starting_val)
 
                 # check the participation constraints
                 idx_single = (t,iA)
                 idx_couple = lambda iP: (t,iP,iL,iA)
 
-                list_couple = (sol.Vw_couple,sol.Vm_couple,sol.Cw_priv_couple,sol.Cm_priv_couple,sol.C_pub_couple)
-                list_raw = (tmp_Vw,tmp_Vm,tmp_Cw_priv,tmp_Cm_priv,tmp_C_pub)
-                list_single = (sol.Vw_single,sol.Vm_single,sol.Cw_priv_single,sol.Cm_priv_single,sol.Cw_pub_single) # last input here not important in case of divorce
+                list_start_as_couple = (sol.Vw_couple,sol.Vm_couple,sol.Cw_priv_couple,sol.Cm_priv_couple,sol.C_pub_couple)
+                list_remain_couple = (remain_Vw,remain_Vm,remain_Cw_priv,remain_Cm_priv,remain_C_pub)
+                list_trans_to_single = (sol.Vw_single,sol.Vm_single,sol.Cw_priv_single,sol.Cm_priv_single,sol.Cw_pub_single) # last input here not important in case of divorce
                 
-                Sw = tmp_Vw - sol.Vw_single[idx_single] 
-                Sm = tmp_Vm - sol.Vm_single[idx_single] 
+                Sw = remain_Vw - sol.Vw_single[idx_single] 
+                Sm = remain_Vm - sol.Vm_single[idx_single] 
                 
-                check_participation_constraints(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_couple,list_raw,list_single, par)
+                check_participation_constraints(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
 
-                # save transition values
+                # save remain values
                 for iP,power in enumerate(par.grid_power):
                     idx = (t,iP,iL,iA)
-                    sol.Cw_priv_remain_couple[idx] = tmp_Cw_priv[iP] 
-                    sol.Cm_priv_remain_couple[idx] = tmp_Cm_priv[iP]
-                    sol.C_pub_remain_couple[idx] = tmp_C_pub[iP]
-                    sol.Vw_remain_couple[idx] = tmp_Vw[iP]
-                    sol.Vm_remain_couple[idx] = tmp_Vm[iP]
+                    sol.Cw_priv_remain_couple[idx] = remain_Cw_priv[iP] 
+                    sol.Cm_priv_remain_couple[idx] = remain_Cm_priv[iP]
+                    sol.C_pub_remain_couple[idx] = remain_C_pub[iP]
+                    sol.Vw_remain_couple[idx] = remain_Vw[iP]
+                    sol.Vm_remain_couple[idx] = remain_Vm[iP]
 
-    def solve_uncon_couple(self,t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val = None):
+    def solve_remain_couple(self,t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val = None):
         par = self.par
 
         if t==(par.T-1): # Terminal period
@@ -389,13 +382,10 @@ class HouseholdModelClass(EconModelClass):
         else:
             # objective function
             obj = lambda x: - self.value_of_choice_couple(x[0],t,M_resources,iL,iP,power,Vw_next,Vm_next)[0]
-
-            # bound: credit constraint, no borrowing
-            bounds = optimize.Bounds(1.0e-6, M_resources - 1.0e-6, keep_feasible=True)
+            x0 = np.array([M_resources * 0.8]) if starting_val is None else starting_val
 
             # optimize
-            x0 = np.array([M_resources * 0.8]) if starting_val is None else starting_val
-            res = optimize.minimize(obj,x0,bounds=bounds)
+            res = optimize.minimize(obj,x0,bounds=((1.0e-6, M_resources - 1.0e-6),) ,method='SLSQP') 
             C_tot = res.x[0]
 
         # implied consumption allocation (re-calculation)
@@ -415,16 +405,17 @@ class HouseholdModelClass(EconModelClass):
         Vw = util(Cw_priv,C_pub,woman,par,love)
         Vm = util(Cm_priv,C_pub,man,par,love)
 
-        # add continuation value [TODO: re-use index would speed this up since only output different!]
+        # add continuation value
         if t < (par.T-1):
-            savings = M_resources - C_tot 
-            EVw_plus = 0.0
-            EVm_plus = 0.0
-            for iL_next in range(par.num_shock_love):
-                love_next = love + par.grid_shock_love[iL_next]
+            # savings_vec = np.ones(par.num_shock_love)
+            sol.savings_vec[:] = M_resources - C_tot #np.repeat(M_resources - C_tot,par.num_shock_love) np.tile(M_resources - C_tot,(par.num_shock_love,)) 
+            love_next_vec = love + par.grid_shock_love
 
-                EVw_plus += par.grid_weight_love[iL_next] * linear_interp.interp_2d(par.grid_love,par.grid_A , Vw_next, love_next,savings)
-                EVm_plus += par.grid_weight_love[iL_next] * linear_interp.interp_2d(par.grid_love,par.grid_A , Vm_next, love_next,savings)
+            linear_interp.interp_2d_vec(par.grid_love,par.grid_A , Vw_next, love_next_vec,sol.savings_vec,sol.Vw_plus_vec)
+            linear_interp.interp_2d_vec(par.grid_love,par.grid_A , Vm_next, love_next_vec,sol.savings_vec,sol.Vm_plus_vec)
+
+            EVw_plus = sol.Vw_plus_vec @ par.grid_weight_love
+            EVm_plus = sol.Vm_plus_vec @ par.grid_weight_love
 
             Vw += par.beta*EVw_plus
             Vm += par.beta*EVm_plus
@@ -514,7 +505,6 @@ def simulate(sim,sol,par):
 
                 sim.couple[i,t] = False
 
-
             # update behavior
             if sim.couple[i,t]:
                 
@@ -527,7 +517,7 @@ def simulate(sim,sol,par):
                 sim.Cm_pub[i,t] = C_pub
 
                 # update end-of-period states
-                M_resources = par.R*A_lag + par.inc_w + par.inc_m
+                M_resources = resources_couple(A_lag,par) 
                 sim.A[i,t] = M_resources - sim.Cw_priv[i,t] - sim.Cm_priv[i,t] - sim.Cw_pub[i,t]
                 if t<(par.simT-1):
                     sim.love[i,t+1] = love + par.sigma_love*sim.draw_love[i,t+1]
@@ -542,7 +532,7 @@ def simulate(sim,sol,par):
             else: # single
 
                 # pick relevant solution for single, depending on whether just became single
-                idx_sol_single = (t,0)
+                idx_sol_single = t
                 sol_single_w = sol.Cw_tot_trans_single[idx_sol_single]
                 sol_single_m = sol.Cm_tot_trans_single[idx_sol_single]
                 if (power_idx_lag<0):
@@ -552,28 +542,28 @@ def simulate(sim,sol,par):
                 # optimal consumption allocations
                 Cw_tot = linear_interp.interp_1d(par.grid_Aw,sol_single_w,Aw_lag)
                 Cm_tot = linear_interp.interp_1d(par.grid_Am,sol_single_m,Am_lag)
-
-                sim.Cw_priv[i,t] = cons_priv_single(Cw_tot,woman,par)
-                sim.Cw_pub[i,t] = Cw_tot - sim.Cw_priv[i,t]
                 
-                sim.Cm_priv[i,t] = cons_priv_single(Cm_tot,man,par)
-                sim.Cm_pub[i,t] = Cm_tot - sim.Cm_priv[i,t]
+                sim.Cw_priv[i,t],sim.Cw_pub[i,t] = intraperiod_allocation_single(Cw_tot,woman,par)
+                sim.Cm_priv[i,t],sim.Cm_pub[i,t] = intraperiod_allocation_single(Cm_tot,man,par)
 
                 # update end-of-period states
-                Mw = par.R*Aw_lag + par.inc_w
-                Mm = par.R*Am_lag + par.inc_m
+                Mw = resources_single(Aw_lag,woman,par)
+                Mm = resources_single(Am_lag,man,par) 
                 sim.Aw[i,t] = Mw - sim.Cw_priv[i,t] - sim.Cw_pub[i,t]
                 sim.Am[i,t] = Mm - sim.Cm_priv[i,t] - sim.Cm_pub[i,t]
 
+                # not updated: nans
+                # sim.power[i,t] = np.nan
+                # sim.love[i,t+1] = np.nan 
+                # sim.A[i,t] = np.nan
+
                 sim.power_idx[i,t] = -1
-                sim.power[i,t] = np.nan
 
-                sim.love[i,t] = np.nan
-                sim.A[i,t] = np.nan
-
-
+############################
+# User-specified functions #
+############################
 def util(c_priv,c_pub,gender,par,love=0.0):
-    if gender == 1:
+    if gender == woman:
         rho = par.rho_w
         phi = par.phi_w
         alpha1 = par.alpha1_w
@@ -586,12 +576,19 @@ def util(c_priv,c_pub,gender,par,love=0.0):
     
     return ((alpha1*c_priv**phi + alpha2*c_pub**phi)**(1.0-rho))/(1.0-rho) + love
 
-##########
-# Single #
-##########
+def resources_couple(A,par):
+    return par.R*A + par.inc_w + par.inc_m
+
+def resources_single(A,gender,par):
+    income = par.inc_w
+    if gender == man:
+        income = par.inc_m
+
+    return par.R*A + income
+
 def cons_priv_single(C_tot,gender,par):
     # closed form solution for intra-period problem of single.
-    if gender == 1:
+    if gender == woman:
         rho = par.rho_w
         phi = par.phi_w
         alpha1 = par.alpha1_w
@@ -604,16 +601,21 @@ def cons_priv_single(C_tot,gender,par):
     
     return C_tot/(1.0 + (alpha2/alpha1)**(1.0/(1.0-phi)) )
 
-##########
-# Couple #
-##########   
+############
+# routines #
+############
+def intraperiod_allocation_single(C_tot,gender,par):
+    C_priv = cons_priv_single(C_tot,gender,par)
+    C_pub = C_tot - C_priv
+    return C_priv,C_pub
+ 
 def intraperiod_allocation(C_tot,iP,sol,par):
 
-    # interpolate pre-computed solution (do smarter if working)
+    # interpolate pre-computed solution
     j1 = linear_interp.binary_search(0,par.num_Ctot,par.grid_Ctot,C_tot)
     Cw_priv = linear_interp_1d._interp_1d(par.grid_Ctot,sol.pre_Ctot_Cw_priv[iP],C_tot,j1)
     Cm_priv = linear_interp_1d._interp_1d(par.grid_Ctot,sol.pre_Ctot_Cm_priv[iP],C_tot,j1)
-    C_pub = linear_interp_1d._interp_1d(par.grid_Ctot,sol.pre_Ctot_C_pub[iP],C_tot,j1) 
+    C_pub = C_tot - Cw_priv - Cm_priv #linear_interp_1d._interp_1d(par.grid_Ctot,sol.pre_Ctot_C_pub[iP],C_tot,j1) 
 
     return Cw_priv, Cm_priv, C_pub
 
@@ -621,7 +623,7 @@ def solve_intraperiod_couple(C_tot,power,par,starting_val=None):
     
     # setup estimation. Impose constraint that C_tot = Cw+Cm+C
     bounds = optimize.Bounds(0.0, C_tot, keep_feasible=True)
-    obj = lambda x: - (power*util(x[0],C_tot-np.sum(x),1,par) + (1.0-power)*util(x[1],C_tot-np.sum(x),2,par))
+    obj = lambda x: - (power*util(x[0],C_tot-np.sum(x),woman,par) + (1.0-power)*util(x[1],C_tot-np.sum(x),man,par))
     
     # estimate
     x0 = np.array([C_tot/3,C_tot/3]) if starting_val is None else starting_val
@@ -667,8 +669,8 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
     else: 
     
         # find lowest (highest) value with positive surplus for women (men)
-        Low_w = 0 # in case there is no crossing, this will be the correct value
-        Low_m = par.num_power-1 # in case there is no crossing, this will be the correct value
+        Low_w = 1 #0 # in case there is no crossing, this will be the correct value
+        Low_m = par.num_power-1-1 #par.num_power-1 # in case there is no crossing, this will be the correct value
         for iP in range(par.num_power-1):
             if (Sw[iP]<0) & (Sw[iP+1]>=0):
                 Low_w = iP+1
@@ -706,7 +708,7 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
 
                     for i,key in enumerate(list_couple):
                         if iP==0:
-                            list_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_raw[i],power_at_zero_w,Low_w-1) #list_raw[i][Low_w];
+                            list_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_raw[i],power_at_zero_w,Low_w-1) 
                         else:
                             list_couple[i][idx] = list_couple[i][idx_couple(0)]; # re-use that the interpolated values are identical
 
@@ -727,7 +729,7 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
                     
                     for i,key in enumerate(list_couple):
                         if (iP==(Low_m+1)):
-                            list_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_raw[i],power_at_zero_m,Low_m) #list_raw[i][Low_m]
+                            list_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_raw[i],power_at_zero_m,Low_m) 
                         else:
                             list_couple[i][idx] = list_couple[i][idx_couple(Low_m+1)]; # re-use that the interpolated values are identical
 

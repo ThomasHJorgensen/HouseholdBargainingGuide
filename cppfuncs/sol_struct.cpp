@@ -30,6 +30,9 @@ typedef struct sol_struct
  double* C_tot_remain_couple;
  int* power_idx;
  double* power;
+ double* savings_vec;
+ double* Vw_plus_vec;
+ double* Vm_plus_vec;
  double* marg_V_couple;
  double* marg_V_remain_couple;
  double* EmargU_pd;
@@ -71,6 +74,9 @@ double* get_double_p_sol_struct(sol_struct* x, char* name){
  else if( strcmp(name,"C_pub_remain_couple") == 0 ){ return x->C_pub_remain_couple; }
  else if( strcmp(name,"C_tot_remain_couple") == 0 ){ return x->C_tot_remain_couple; }
  else if( strcmp(name,"power") == 0 ){ return x->power; }
+ else if( strcmp(name,"savings_vec") == 0 ){ return x->savings_vec; }
+ else if( strcmp(name,"Vw_plus_vec") == 0 ){ return x->Vw_plus_vec; }
+ else if( strcmp(name,"Vm_plus_vec") == 0 ){ return x->Vm_plus_vec; }
  else if( strcmp(name,"marg_V_couple") == 0 ){ return x->marg_V_couple; }
  else if( strcmp(name,"marg_V_remain_couple") == 0 ){ return x->marg_V_remain_couple; }
  else if( strcmp(name,"EmargU_pd") == 0 ){ return x->EmargU_pd; }

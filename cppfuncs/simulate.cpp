@@ -132,7 +132,7 @@ namespace sim {
                         sim->Cm_pub[it] = C_pub;
 
                         // update end-of-period states
-                        double M_resources = par->R*A_lag + par->inc_w + par->inc_m;
+                        double M_resources = couple::resources(A_lag,par); 
                         sim->A[it] = M_resources - sim->Cw_priv[it] - sim->Cm_priv[it] - C_pub;
                         if(t<par->simT-1){
                             sim->love[it1] = love + par->sigma_love*sim->draw_love[it1];
@@ -160,22 +160,19 @@ namespace sim {
                         double Cw_tot = tools::interp_1d(par->grid_Aw,par->num_A,sol_single_w,Aw_lag);
                         double Cm_tot = tools::interp_1d(par->grid_Am,par->num_A,sol_single_m,Am_lag);
 
-                        sim->Cw_priv[it] = single::cons_priv_single(Cw_tot,woman,par);
-                        sim->Cw_pub[it] = Cw_tot - sim->Cw_priv[it];
-                        
-                        sim->Cm_priv[it] = single::cons_priv_single(Cm_tot,man,par);
-                        sim->Cm_pub[it] = Cm_tot - sim->Cm_priv[it];
+                        single::intraperiod_allocation(&sim->Cw_priv[it],&sim->Cw_pub[it],Cw_tot,woman,par);
+                        single::intraperiod_allocation(&sim->Cm_priv[it],&sim->Cm_pub[it],Cm_tot,man,par);
 
                         // update end-of-period states
-                        double Mw = par->R*Aw_lag + par->inc_w;
-                        double Mm = par->R*Am_lag + par->inc_m;
+                        double Mw = single::resources(Aw_lag,woman,par); 
+                        double Mm = single::resources(Am_lag,man,par); 
                         sim->Aw[it] = Mw - sim->Cw_priv[it] - sim->Cw_pub[it];
                         sim->Am[it] = Mm - sim->Cm_priv[it] - sim->Cm_pub[it];
 
                         sim->power_idx[it] = -1;
 
                         // left as nans by not updating them:
-                        // sim->power[it] = nan
+                        // sim->power[it1] = nan
                         // sim->love[it] = nan
                         // sim->A[it] = nan
                     }

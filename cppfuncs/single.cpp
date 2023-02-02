@@ -30,6 +30,11 @@ namespace single {
         return C_tot/(1.0 + pow(alpha2/alpha1,1.0/(1.0-phi) ));
     }
 
+    void intraperiod_allocation(double* C_priv, double* C_pub , double C_tot, int gender,par_struct *par){
+        C_priv[0] = cons_priv_single(C_tot,gender,par);
+        C_pub[0] = C_tot - C_priv[0];
+    }
+
     double util_C(double C_tot, int gender, par_struct* par){
         double love = 0.0;
         
@@ -56,6 +61,13 @@ namespace single {
         double constant = alpha1*pow(share,phi) + alpha2*pow(1.0-constant,phi);
         return phi * pow(C_tot,(1.0-rho)*phi -1.0 ) * pow(constant,1.0 - rho);
 
+    }
+    double resources(double A,int gender,par_struct* par) {
+        double income = par->inc_w;
+        if (gender == man) {
+            income = par->inc_m;
+        }
+        return par->R*A + income;
     }
 
     double value_of_choice(double C_tot,double M, int gender, double* V_next, par_struct* par){
@@ -102,15 +114,13 @@ namespace single {
                 double Aw = par->grid_Aw[iA];
                 double Am = par->grid_Am[iA];
 
-                double Cw = par->R*Aw + par->inc_w;
-                double Cm = par->R*Am + par->inc_m;
+                double Cw = resources(Aw,woman,par); 
+                double Cm = resources(Am,man,par); 
                 
-                sol->Cw_priv_single[idx] = cons_priv_single(Cw,woman,par);
-                sol->Cw_pub_single[idx] = Cw - sol->Cw_priv_single[idx];
+                intraperiod_allocation(&sol->Cw_priv_single[idx],&sol->Cw_pub_single[idx],Cw,woman,par);
                 sol->Vw_single[idx] = utils::util(sol->Cw_priv_single[idx],sol->Cw_pub_single[idx],woman,par,love);
                 
-                sol->Cm_priv_single[idx] = cons_priv_single(Cm,man,par);
-                sol->Cm_pub_single[idx] = Cm - sol->Cm_priv_single[idx];
+                intraperiod_allocation(&sol->Cm_priv_single[idx],&sol->Cm_pub_single[idx],Cm,man,par);
                 sol->Vm_single[idx] = utils::util(sol->Cm_priv_single[idx],sol->Cm_pub_single[idx],man,par,love);
             }
         } else {
@@ -131,13 +141,13 @@ namespace single {
                 #pragma omp for
                 for (int iA=0; iA<par->num_A;iA++){
                     int idx = index::index2(t,iA,par->T,par->num_A);
-
+                    
+                    // resources
                     double Aw = par->grid_Aw[iA];
                     double Am = par->grid_Am[iA];
                     
-                    // resources
-                    double Mw = par->R*Aw + par->inc_w;
-                    double Mm = par->R*Am + par->inc_m;
+                    double Mw = resources(Aw,woman,par); 
+                    double Mm = resources(Am,man,par); 
                     
                     // search over optimal total consumption, C
                     // WOMEN
@@ -160,8 +170,7 @@ namespace single {
 
                     // store results
                     double Cw = x[0];
-                    sol->Cw_priv_single[idx] = cons_priv_single(Cw,woman,par);
-                    sol->Cw_pub_single[idx] = Cw - sol->Cw_priv_single[idx];
+                    intraperiod_allocation(&sol->Cw_priv_single[idx],&sol->Cw_pub_single[idx],Cw,woman,par);
                     sol->Vw_single[idx] = -minf;
 
                     // MEN
@@ -183,8 +192,7 @@ namespace single {
                     nlopt_optimize(opt, x, &minf);
 
                     double Cm = x[0];
-                    sol->Cm_priv_single[idx] = cons_priv_single(Cm,man,par);
-                    sol->Cm_pub_single[idx] = Cm - sol->Cm_priv_single[idx];
+                    intraperiod_allocation(&sol->Cm_priv_single[idx],&sol->Cm_pub_single[idx],Cm,man,par);
                     sol->Vm_single[idx] = -minf;            
                     
                 } // iA

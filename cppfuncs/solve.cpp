@@ -90,7 +90,7 @@ void precompute(sol_struct* sol, par_struct* par){
                     
                     if (i>0) {
 
-                        // marginal utility
+                        // marginal utility. Use finite difference but closed form could be used.
                         par->grid_marg_u[idx_lag] = (par->grid_util[idx] - par->grid_util[idx_lag])/(C_tot - par->grid_Ctot[i-1]);
                      
                         // inverse marginal utility: flip the grid of marginal util (such that ascending) and store as new "x-axis" grid
