@@ -325,33 +325,39 @@ class HouseholdModelClass(EconModelClass):
                 sol.Vm_single[idx] = -res_m.fun                
                 
     def solve_couple(self,t):
+
+        # a. unpack and allocate temporary memory
         par = self.par
         sol = self.sol
 
         remain_Vw,remain_Vm,remain_Cw_priv,remain_Cm_priv,remain_C_pub = np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power)
         
-        Vw_next = None
-        Vm_next = None
+        # b. loop through state variables
         for iL,love in enumerate(par.grid_love):
             for iA,A in enumerate(par.grid_A):
                 M_resources = resources_couple(A,par) 
                 
                 starting_val = None
                 for iP,power in enumerate(par.grid_power):
-                    # continuation values
+                    
+                    # i. continuation values
                     if t<(par.T-1):
                         Vw_next = self.sol.Vw_couple[t+1,iP]
                         Vm_next = self.sol.Vm_couple[t+1,iP]
+                    else:
+                        Vw_next = None
+                        Vm_next = None
 
-                    # starting values
+                    # ii. starting value for total consumption. The intra-temporal allocation problem solved conditional on this
                     if iP>0:
                         C_tot_last = remain_Cw_priv[iP-1] + remain_Cm_priv[iP-1] + remain_C_pub[iP-1]
                         starting_val = np.array([C_tot_last])
                     
-                    # solve problem if remining married
+                    # iii. solve problem if remining married, m->m
                     remain_Cw_priv[iP], remain_Cm_priv[iP], remain_C_pub[iP], remain_Vw[iP], remain_Vm[iP] = self.solve_remain_couple(t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val=starting_val)
 
-                # check the participation constraints
+                # c. check the participation constraints. 
+                # Construct index function and lists of arrays to be used to detrmine outcomes
                 idx_single = (t,iA)
                 idx_couple = lambda iP: (t,iP,iL,iA)
 
@@ -359,12 +365,13 @@ class HouseholdModelClass(EconModelClass):
                 list_remain_couple = (remain_Vw,remain_Vm,remain_Cw_priv,remain_Cm_priv,remain_C_pub)
                 list_trans_to_single = (sol.Vw_single,sol.Vm_single,sol.Cw_priv_single,sol.Cm_priv_single,sol.Cw_pub_single) # last input here not important in case of divorce
                 
+                # marital surplus
                 Sw = remain_Vw - sol.Vw_single[idx_single] 
                 Sm = remain_Vm - sol.Vm_single[idx_single] 
                 
                 check_participation_constraints(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
 
-                # save remain values
+                # d. save remain values in sol-struct
                 for iP,power in enumerate(par.grid_power):
                     idx = (t,iP,iL,iA)
                     sol.Cw_priv_remain_couple[idx] = remain_Cw_priv[iP] 
@@ -376,51 +383,56 @@ class HouseholdModelClass(EconModelClass):
     def solve_remain_couple(self,t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val = None):
         par = self.par
 
-        if t==(par.T-1): # Terminal period
+        # a. determine optimal total consumption
+        if t==(par.T-1): # Terminal period: consume all resources
             C_tot = M_resources
 
         else:
-            # objective function
+            # i. objective function
             obj = lambda x: - self.value_of_choice_couple(x[0],t,M_resources,iL,iP,power,Vw_next,Vm_next)[0]
             x0 = np.array([M_resources * 0.8]) if starting_val is None else starting_val
 
-            # optimize
+            # ii. optimize wrt. total consumption
             res = optimize.minimize(obj,x0,bounds=((1.0e-6, M_resources - 1.0e-6),) ,method='SLSQP') 
             C_tot = res.x[0]
 
-        # implied consumption allocation (re-calculation)
+        # b. implied intra-temporal consumption allocation (re-calculation)
         _, Cw_priv, Cm_priv, C_pub, Vw,Vm = self.value_of_choice_couple(C_tot,t,M_resources,iL,iP,power,Vw_next,Vm_next)
 
-        # return objects
+        # c. return objects
         return Cw_priv, Cm_priv, C_pub, Vw, Vm
 
     def value_of_choice_couple(self,C_tot,t,M_resources,iL,iP,power,Vw_next,Vm_next):
+        # This is the value of a given total consumption choice, conditional on remaining a couple.
         sol = self.sol
         par = self.par
 
         love = par.grid_love[iL]
         
-        # current utility from consumption allocation
+        # a. current utility from consumption allocation
         Cw_priv, Cm_priv, C_pub = intraperiod_allocation(C_tot,iP,sol,par)
         Vw = util(Cw_priv,C_pub,woman,par,love)
         Vm = util(Cm_priv,C_pub,man,par,love)
 
-        # add continuation value
+        # b. add continuation value if not last period
         if t < (par.T-1):
-            # savings_vec = np.ones(par.num_shock_love)
-            sol.savings_vec[:] = M_resources - C_tot #np.repeat(M_resources - C_tot,par.num_shock_love) np.tile(M_resources - C_tot,(par.num_shock_love,)) 
+            
+            # i. interpolate for vector of love shocks. Savings constant across these shocks
+            sol.savings_vec[:] = M_resources - C_tot 
             love_next_vec = love + par.grid_shock_love
 
             linear_interp.interp_2d_vec(par.grid_love,par.grid_A , Vw_next, love_next_vec,sol.savings_vec,sol.Vw_plus_vec)
             linear_interp.interp_2d_vec(par.grid_love,par.grid_A , Vm_next, love_next_vec,sol.savings_vec,sol.Vm_plus_vec)
 
+            # ii. expected continuation value
             EVw_plus = sol.Vw_plus_vec @ par.grid_weight_love
             EVm_plus = sol.Vm_plus_vec @ par.grid_weight_love
 
+            # iii. add discounted expected continuation value to flow utility
             Vw += par.beta*EVw_plus
             Vm += par.beta*EVm_plus
 
-        # return
+        # c. return weighted household value and other items
         Val = power*Vw + (1.0-power)*Vm
         return Val , Cw_priv, Cm_priv, C_pub, Vw,Vm
         
@@ -615,7 +627,7 @@ def intraperiod_allocation(C_tot,iP,sol,par):
     j1 = linear_interp.binary_search(0,par.num_Ctot,par.grid_Ctot,C_tot)
     Cw_priv = linear_interp_1d._interp_1d(par.grid_Ctot,sol.pre_Ctot_Cw_priv[iP],C_tot,j1)
     Cm_priv = linear_interp_1d._interp_1d(par.grid_Ctot,sol.pre_Ctot_Cm_priv[iP],C_tot,j1)
-    C_pub = C_tot - Cw_priv - Cm_priv #linear_interp_1d._interp_1d(par.grid_Ctot,sol.pre_Ctot_C_pub[iP],C_tot,j1) 
+    C_pub = C_tot - Cw_priv - Cm_priv 
 
     return Cw_priv, Cm_priv, C_pub
 
