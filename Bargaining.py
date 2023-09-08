@@ -96,69 +96,71 @@ class HouseholdModelClass(EconModelClass):
         self.setup_grids()
         
         # singles
-        shape_single = (par.T,par.num_A)
+        shape_single = (par.T,par.num_A)                        # single states: T and assets
         sol.Vw_single = np.nan + np.ones(shape_single)
-        sol.Vm_single = np.nan + np.ones(shape_single)
-        sol.Cw_priv_single = np.nan + np.ones(shape_single)
+        sol.Vm_single = np.nan + np.ones(shape_single)      
+        sol.Cw_priv_single = np.nan + np.ones(shape_single)     # private consumption, single
         sol.Cm_priv_single = np.nan + np.ones(shape_single)
-        sol.Cw_pub_single = np.nan + np.ones(shape_single)
+        sol.Cw_pub_single = np.nan + np.ones(shape_single)      # public consumption, single (i guess this functions as a private good when single)
         sol.Cm_pub_single = np.nan + np.ones(shape_single)
-        sol.Cw_tot_single = np.nan + np.ones(shape_single)
+        sol.Cw_tot_single = np.nan + np.ones(shape_single)      # total concumption, single
         sol.Cm_tot_single = np.nan + np.ones(shape_single)
 
-        sol.Vw_trans_single = np.nan + np.ones(shape_single)
+        sol.Vw_trans_single = np.nan + np.ones(shape_single)        # Value marriage -> single
         sol.Vm_trans_single = np.nan + np.ones(shape_single)
-        sol.Cw_priv_trans_single = np.nan + np.ones(shape_single)
+        sol.Cw_priv_trans_single = np.nan + np.ones(shape_single)   # Private consumption marriage -> single
         sol.Cm_priv_trans_single = np.nan + np.ones(shape_single)
-        sol.Cw_pub_trans_single = np.nan + np.ones(shape_single)
+        sol.Cw_pub_trans_single = np.nan + np.ones(shape_single)    # Public consumption marriage -> single 
         sol.Cm_pub_trans_single = np.nan + np.ones(shape_single)
-        sol.Cw_tot_trans_single = np.nan + np.ones(shape_single)
-        sol.Cm_tot_trans_single = np.nan + np.ones(shape_single)
+        sol.Cw_tot_trans_single = np.nan + np.ones(shape_single)    # Total consumption marriage -> single
+        sol.Cm_tot_trans_single = np.nan + np.ones(shape_single)    # (Are these different from consumption when single? - no bc singlehood is absorbing)
 
         # couples
-        shape_couple = (par.T,par.num_power,par.num_love,par.num_A)
+        shape_couple = (par.T,par.num_power,par.num_love,par.num_A)     # states when couple: T, assets, power, love
         sol.Vw_couple = np.nan + np.ones(shape_couple)
         sol.Vm_couple = np.nan + np.ones(shape_couple)
         
-        sol.Cw_priv_couple = np.nan + np.ones(shape_couple)
-        sol.Cm_priv_couple = np.nan + np.ones(shape_couple)
-        sol.C_pub_couple = np.nan + np.ones(shape_couple)
-        sol.C_tot_couple = np.nan + np.ones(shape_couple)
+        sol.Cw_priv_couple = np.nan + np.ones(shape_couple)             # private consumption, couple
+        sol.Cm_priv_couple = np.nan + np.ones(shape_couple)             
+        sol.C_pub_couple = np.nan + np.ones(shape_couple)               # public consumption, couple
+        sol.C_tot_couple = np.nan + np.ones(shape_couple)               # total consumption, couple
 
-        sol.Vw_remain_couple = np.nan + np.ones(shape_couple)
+        sol.Vw_remain_couple = np.nan + np.ones(shape_couple)           # value marriage -> marriage
         sol.Vm_remain_couple = np.nan + np.ones(shape_couple)
         
-        sol.Cw_priv_remain_couple = np.nan + np.ones(shape_couple)
-        sol.Cm_priv_remain_couple = np.nan + np.ones(shape_couple)
-        sol.C_pub_remain_couple = np.nan + np.ones(shape_couple)
-        sol.C_tot_remain_couple = np.nan + np.ones(shape_couple)
+        sol.Cw_priv_remain_couple = np.nan + np.ones(shape_couple)      # private consumption, marriage -> marriage
+        sol.Cm_priv_remain_couple = np.nan + np.ones(shape_couple)      
+        sol.C_pub_remain_couple = np.nan + np.ones(shape_couple)        # public consumption, marriage -> marriage
+        sol.C_tot_remain_couple = np.nan + np.ones(shape_couple)        # total consumption, marriage -> marriage
+                                                                        # different from marriage because this is conditional
+                                                                        # on remaining together
 
-        sol.power_idx = np.zeros(shape_couple,dtype=np.int_)
-        sol.power = np.zeros(shape_couple)
+        sol.power_idx = np.zeros(shape_couple,dtype=np.int_)            # index of bargaining weight (approx)
+        sol.power = np.zeros(shape_couple)                              # bargaining weight (interpolated)
 
         # temporary containers
-        sol.savings_vec = np.zeros(par.num_shock_love)
-        sol.Vw_plus_vec = np.zeros(par.num_shock_love) 
+        sol.savings_vec = np.zeros(par.num_shock_love)          
+        sol.Vw_plus_vec = np.zeros(par.num_shock_love)          # not sure (next period maybe)
         sol.Vm_plus_vec = np.zeros(par.num_shock_love) 
 
         # EGM
-        sol.marg_V_couple = np.zeros(shape_couple)
-        sol.marg_V_remain_couple = np.zeros(shape_couple)
+        sol.marg_V_couple = np.zeros(shape_couple)              # marginal value (wrt c total) of being couple
+        sol.marg_V_remain_couple = np.zeros(shape_couple)       # marginal value (wrt c total) of remaining couple
 
         shape_egm = (par.num_power,par.num_love,par.num_A_pd)
-        sol.EmargU_pd = np.zeros(shape_egm)
-        sol.C_tot_pd = np.zeros(shape_egm)
-        sol.M_pd = np.zeros(shape_egm)
+        sol.EmargU_pd = np.zeros(shape_egm)                     # not sure
+        sol.C_tot_pd = np.zeros(shape_egm)                      # endogenous grid C?
+        sol.M_pd = np.zeros(shape_egm)                          # endogenous grid M? 
 
         # pre-compute optimal consumption allocation
         shape_pre = (par.num_power,par.num_Ctot)
-        sol.pre_Ctot_Cw_priv = np.nan + np.ones(shape_pre)
+        sol.pre_Ctot_Cw_priv = np.nan + np.ones(shape_pre)      # precomputed optimal allocation of consumption over grid of total C 
         sol.pre_Ctot_Cm_priv = np.nan + np.ones(shape_pre)
         sol.pre_Ctot_C_pub = np.nan + np.ones(shape_pre)
         
         # simulation
         shape_sim = (par.simN,par.simT)
-        sim.Cw_priv = np.nan + np.ones(shape_sim)
+        sim.Cw_priv = np.nan + np.ones(shape_sim)               
         sim.Cm_priv = np.nan + np.ones(shape_sim)
         sim.Cw_pub = np.nan + np.ones(shape_sim)
         sim.Cm_pub = np.nan + np.ones(shape_sim)
@@ -182,7 +184,7 @@ class HouseholdModelClass(EconModelClass):
         sim.init_A = par.grid_A[0] + np.zeros(par.simN)
         sim.init_Aw = np.zeros(par.simN)
         sim.init_Am = np.zeros(par.simN)
-        sim.init_couple = np.ones(par.simN,dtype=np.bool)
+        sim.init_couple = np.ones(par.simN,dtype=np.bool_)
         sim.init_power_idx = par.num_power//2 * np.ones(par.simN,dtype=np.int_)
         sim.init_love = np.zeros(par.simN)
         
@@ -190,9 +192,9 @@ class HouseholdModelClass(EconModelClass):
         par = self.par
         
         # wealth. Single grids are such to avoid interpolation
-        par.grid_A = nonlinspace(0.0,par.max_A,par.num_A,1.1)
+        par.grid_A = nonlinspace(0.0,par.max_A,par.num_A,1.1)       # asset grid
 
-        par.grid_Aw = par.div_A_share * par.grid_A
+        par.grid_Aw = par.div_A_share * par.grid_A                  # asset grid in case of divorce
         par.grid_Am = (1.0 - par.div_A_share) * par.grid_A
 
         # power. non-linear grid with more mass in both tails.
@@ -215,15 +217,15 @@ class HouseholdModelClass(EconModelClass):
             par.grid_shock_love,par.grid_weight_love = quadrature.normal_gauss_hermite(par.sigma_love,par.num_shock_love)
 
         # pre-computation
-        par.grid_Ctot = nonlinspace(1.0e-6,par.max_Ctot,par.num_Ctot,1.1)
+        par.grid_Ctot = nonlinspace(1.0e-6,par.max_Ctot,par.num_Ctot,1.1)   # maybe this is for the non-analytical inverse margu? idk
 
         # EGM
         par.grid_util = np.nan + np.ones((par.num_power,par.num_Ctot))
         par.grid_marg_u = np.nan + np.ones(par.grid_util.shape)
-        par.grid_inv_marg_u = np.flip(par.grid_Ctot)
+        par.grid_inv_marg_u = np.flip(par.grid_Ctot)                        # what
         par.grid_marg_u_for_inv = np.nan + np.ones(par.grid_util.shape)
 
-        par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)
+        par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)         # maybe for endogenous grid
 
     def solve(self):
         sol = self.sol
@@ -282,7 +284,7 @@ class HouseholdModelClass(EconModelClass):
         sim.C_tot = sim.Cw_priv + sim.Cm_priv + sim.Cw_pub
 
                
-    def solve_single(self,t):
+    def solve_single(self,t): # vfi solution conditional on being single
         par = self.par
         sol = self.sol
         
@@ -324,7 +326,7 @@ class HouseholdModelClass(EconModelClass):
                 sol.Cm_priv_single[idx],sol.Cm_pub_single[idx] = intraperiod_allocation_single(Cm,man,par)
                 sol.Vm_single[idx] = -res_m.fun                
                 
-    def solve_couple(self,t):
+    def solve_couple(self,t): # vfi solution conditional on being married
 
         # a. unpack and allocate temporary memory
         par = self.par
@@ -697,7 +699,7 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
         ratio_w = (Sw[id+1] - Sw[id])/denom
         ratio_m = (Sm[id+1] - Sm[id])/denom
         power_at_zero_w = par.grid_power[id] - Sw[id]/ratio_w
-        Sm_at_zero_w = Sm[id] + ratio_m*( power_at_zero_w - par.grid_power[id] )
+        Sm_at_zero_w = Sm[id] + ratio_m*( power_at_zero_w - par.grid_power[id] ) # man's surplus at woman's indifference point
 
         # men indifference
         id = Low_m
@@ -705,7 +707,7 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
         ratio_w = (Sw[id+1] - Sw[id])/denom
         ratio_m = (Sm[id+1] - Sm[id])/denom
         power_at_zero_m = par.grid_power[id] - Sm[id]/ratio_m
-        Sw_at_zero_m = Sw[id] + ratio_w*( power_at_zero_m - par.grid_power[id] )
+        Sw_at_zero_m = Sw[id] + ratio_w*( power_at_zero_m - par.grid_power[id] ) # woman's surplus at man's indifference point
 
 
         # update the outcomes
@@ -720,9 +722,11 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
 
                     for i,key in enumerate(list_couple):
                         if iP==0:
-                            list_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_raw[i],power_at_zero_w,Low_w-1) 
+                            list_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_raw[i],power_at_zero_w,Low_w-1) # list_raw is remain_as_couple
+                                                    # _interp_1d is second step of interpolation when location in grid has been found -> speedy
                         else:
                             list_couple[i][idx] = list_couple[i][idx_couple(0)]; # re-use that the interpolated values are identical
+                                                    # any bargaining point lower than Low_w will result in same outcome
 
                     power_idx[idx] = Low_w
                     power[idx] = power_at_zero_w
