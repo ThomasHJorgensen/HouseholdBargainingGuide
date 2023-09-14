@@ -8,12 +8,12 @@
 namespace couple {
     
     typedef struct {
-        int t;
-        int iL;
-        int iP;
-        double M;
-        double *Vw_next;
-        double *Vm_next;
+        int t;              //AMO: time
+        int iL;             //AMO: love index
+        int iP;             //AMO: power index
+        double M;           //AMO: resources
+        double *Vw_next;    //AMO: man cont val
+        double *Vm_next;    //AMO: woman cont val
 
         sol_struct *sol;
         par_struct *par;
@@ -30,7 +30,7 @@ namespace couple {
             return index::index4(t,iP,iL,iA , par->T,par->num_power,par->num_love,par->num_A); 
     }
     
-    } index_couple_struct; 
+    } index_couple_struct; //AMO: returns index for iP given t, iL and iA
 
     double calc_marital_surplus(double V_remain_couple,double V_trans_single,par_struct* par){
         return V_remain_couple - V_trans_single;
@@ -38,8 +38,9 @@ namespace couple {
 
     void intraperiod_allocation(double* Cw_priv, double* Cm_priv, double* C_pub , double C_tot,int iP,sol_struct *sol,par_struct *par){
         // interpolate pre-computed solution 
-        int idx = index::index2(iP,0,par->num_power,par->num_Ctot);
-        int j1 = tools::binary_search(0,par->num_Ctot,par->grid_Ctot,C_tot);
+        int idx = index::index2(iP,0,par->num_power,par->num_Ctot); //AMO Q: index for iP at index 0 of C_tot - why always 0?
+                                                                    //AMO Q: I guess we just need the starting address of the array?
+        int j1 = tools::binary_search(0,par->num_Ctot,par->grid_Ctot,C_tot); //AMO: returns index of C_tot in grid_Ctot
 
         Cw_priv[0] = tools::interp_1d_index(par->grid_Ctot,par->num_Ctot,&sol->pre_Ctot_Cw_priv[idx],C_tot,j1);
         Cm_priv[0] = tools::interp_1d_index(par->grid_Ctot,par->num_Ctot,&sol->pre_Ctot_Cm_priv[idx],C_tot,j1);
@@ -84,7 +85,10 @@ namespace couple {
     double objfunc_couple(unsigned n, const double *x, double *grad, void *solver_data_in){
         // unpack
         solver_couple_struct *solver_data = (solver_couple_struct *) solver_data_in;
-        
+        //AMO: cast solver_data_in to solver_couple_struct
+        //AMO Q: but isn't solver_data_in already of solver_couple_struct? what exactly is happening here?
+        //AMO: solver_data_in is of void type, so we have to type cast to be able to work with it.
+
         double C_tot = x[0];
 
         int t = solver_data->t;
@@ -147,14 +151,15 @@ namespace couple {
     
     void solve_remain_Agrid_vfi(int t, int iP, int iL, double* Vw_next, double* Vm_next,sol_struct* sol, par_struct* par){
         for (int iA=0; iA<par->num_A;iA++){
-            int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-            int idx_last = index::index4(t,iP,iL,iA-1,par->T,par->num_power,par->num_love,par->num_A);
+            int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A); //AMO: current index
+            int idx_last = index::index4(t,iP,iL,iA-1,par->T,par->num_power,par->num_love,par->num_A); //AMO: index for one lower asset
+                                                                                            //AMO: doesn't this give some strange wrap around behavior when iA=0?
 
             double M_resources = resources(par->grid_A[iA],par); //par->R*par->grid_A[iA] + par->inc_w + par->inc_m;
 
             // starting values
             double starting_val = M_resources * 0.8;
-            if (iA>0){
+            if (iA>0){ //AMO: right, it's not an issue
                 starting_val = sol->Cw_priv_remain_couple[idx_last] + sol->Cm_priv_remain_couple[idx_last] + sol->C_pub_remain_couple[idx_last];
             }
 
@@ -400,7 +405,7 @@ namespace couple {
         {
             // allocate memory to store relevant objects for the participation constraint check
             int shape_tmp = par->num_power;
-            double* remain_Vw = new double[shape_tmp];
+            double* remain_Vw = new double[shape_tmp]; //AMO: creates new object of type double[shape_tmp], and creates a pointer to said object remain_Vw
             double* remain_Vm = new double[shape_tmp];
             double* remain_Cw_priv = new double[shape_tmp];
             double* remain_Cm_priv = new double[shape_tmp];
@@ -408,8 +413,8 @@ namespace couple {
             double* remain_marg_V = new double[shape_tmp];
 
             int num = 4;
-            double** list_start_as_couple_w = new double*[num]; 
-            double** list_start_as_couple_m = new double*[num]; 
+            double** list_start_as_couple_w = new double*[num]; //AMO: double asterix creates a pointer to a pointer (this is madness). So list_start_as_couple_w
+            double** list_start_as_couple_m = new double*[num]; // and others each points to arrays of 4 (num) pointers. Essentially creating a matrix of dim 2 (**).
             double** list_remain_couple_w = new double*[num]; 
             double** list_remain_couple_m = new double*[num]; 
             double* list_trans_to_single_w = new double[num]; 
@@ -477,10 +482,10 @@ namespace couple {
 
                     // setup relevant lists
                     int i = 0;
-                    list_start_as_couple_w[i] = sol->Vw_couple; i++;
+                    list_start_as_couple_w[i] = sol->Vw_couple; i++; //AMO: overwrite element in list_start_as_couple[i] and increment i with 1
                     list_start_as_couple_w[i] = sol->Cw_priv_couple; i++;
                     list_start_as_couple_w[i] = sol->C_pub_couple; i++;
-                    list_start_as_couple_w[i] = sol->marg_V_couple; i++;
+                    list_start_as_couple_w[i] = sol->marg_V_couple; i++; //AMO: marg V for EGM 
                     i = 0;
                     list_start_as_couple_m[i] = sol->Vm_couple; i++;
                     list_start_as_couple_m[i] = sol->Cm_priv_couple; i++;
@@ -522,9 +527,9 @@ namespace couple {
 
                                 double Cw = sol->Cw_priv_single[idx_single_w] + sol->Cw_pub_single[idx_single_w];
                                 double Cm = sol->Cm_priv_single[idx_single_m] + sol->Cm_pub_single[idx_single_m];
-                                double margUw = single::marg_util_C(Cw,woman,par);
+                                double margUw = single::marg_util_C(Cw,woman,par); //AMO Q: can we be sure that marg V is just weighted sum of marg U? - I'm not sure if we are conditioning on discrete choice here
                                 double margUm = single::marg_util_C(Cm,man,par);
-                                sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm;
+                                sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; //AMO Q: what
                             
                             } 
                         }

@@ -217,12 +217,12 @@ class HouseholdModelClass(EconModelClass):
             par.grid_shock_love,par.grid_weight_love = quadrature.normal_gauss_hermite(par.sigma_love,par.num_shock_love)
 
         # pre-computation
-        par.grid_Ctot = nonlinspace(1.0e-6,par.max_Ctot,par.num_Ctot,1.1)   # maybe this is for the non-analytical inverse margu? idk
+        par.grid_Ctot = nonlinspace(1.0e-6,par.max_Ctot,par.num_Ctot,1.1)   
 
         # EGM
         par.grid_util = np.nan + np.ones((par.num_power,par.num_Ctot))
         par.grid_marg_u = np.nan + np.ones(par.grid_util.shape)
-        par.grid_inv_marg_u = np.flip(par.grid_Ctot)                        # what
+        par.grid_inv_marg_u = np.flip(par.grid_Ctot)                        # Flipped to make interpolation possible
         par.grid_marg_u_for_inv = np.nan + np.ones(par.grid_util.shape)
 
         par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)         # maybe for endogenous grid
@@ -339,7 +339,7 @@ class HouseholdModelClass(EconModelClass):
             for iA,A in enumerate(par.grid_A):
                 M_resources = resources_couple(A,par) 
                 
-                starting_val = None
+                starting_val = None # trick :)
                 for iP,power in enumerate(par.grid_power):
                     
                     # i. continuation values
@@ -478,7 +478,7 @@ def simulate(sim,sol,par):
                 power_idx_lag = sim.power_idx[i,t-1]
                 love = sim.love[i,t]
             
-            power_lag = par.grid_power[power_idx_lag]
+            power_lag = par.grid_power[power_idx_lag] 
 
             # first check if they want to remain together and what the bargaining power will be if they do.
             if couple_lag:                   
@@ -492,7 +492,7 @@ def simulate(sim,sol,par):
                 Vm_couple_i = linear_interp.interp_2d(par.grid_love,par.grid_A,sol.Vm_remain_couple[idx],love,A_lag)
 
                 if ((Vw_couple_i>=Vw_single) & (Vm_couple_i>=Vm_single)):
-                    power_idx = power_idx_lag
+                    power_idx = power_idx_lag                            # no bargaining takes place if both have positive surplus
 
                 else:
                     # value of partnerhip for all levels of power
@@ -500,13 +500,13 @@ def simulate(sim,sol,par):
                     Vm_couple = np.zeros(par.num_power)
                     for iP in range(par.num_power):
                         idx = (t,iP)
-                        Vw_couple[iP] = linear_interp.interp_2d(par.grid_love,par.grid_A,sol.Vw_remain_couple[idx],love,A_lag)
+                        Vw_couple[iP] = linear_interp.interp_2d(par.grid_love,par.grid_A,sol.Vw_remain_couple[idx],love,A_lag)  # interpolate over love and assets
                         Vm_couple[iP] = linear_interp.interp_2d(par.grid_love,par.grid_A,sol.Vm_remain_couple[idx],love,A_lag)
 
                     # check participation constraint TODO: should it be the value of REMAINING MARRIED? now it is the value of entering the period as married...
-                    Sw = Vw_couple - Vw_single
+                    Sw = Vw_couple - Vw_single          # <----------- but isn't it really remaining married?
                     Sm = Vm_couple - Vm_single
-                    power_idx = update_bargaining_index(Sw,Sm,power_idx_lag, par)
+                    power_idx = update_bargaining_index(Sw,Sm,power_idx_lag, par)  # <--------------------- is power discretized? Is it a problem?
 
                 # infer partnership status
                 if power_idx < 0.0: # divorce is coded as -1
@@ -687,18 +687,19 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
         Low_m = par.num_power-1-1 #par.num_power-1 # in case there is no crossing, this will be the correct value
         for iP in range(par.num_power-1):
             if (Sw[iP]<0) & (Sw[iP+1]>=0):
-                Low_w = iP+1
+                Low_w = iP+1                # first node where she has positive surplus
                 
             if (Sm[iP]>=0) & (Sm[iP+1]<0):
-                Low_m = iP
+                Low_m = iP                  # last node where he has positive surplus
+
 
         # b. interpolate the surplus of each member at indifference points
         # women indifference
-        id = Low_w-1
+        id = Low_w-1        # last node where she hase negative surplus
         denom = (par.grid_power[id+1] - par.grid_power[id])
         ratio_w = (Sw[id+1] - Sw[id])/denom
         ratio_m = (Sm[id+1] - Sm[id])/denom
-        power_at_zero_w = par.grid_power[id] - Sw[id]/ratio_w
+        power_at_zero_w = par.grid_power[id] - Sw[id]/ratio_w  # interpolated power at indifference point
         Sm_at_zero_w = Sm[id] + ratio_m*( power_at_zero_w - par.grid_power[id] ) # man's surplus at woman's indifference point
 
         # men indifference
@@ -706,7 +707,7 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
         denom = (par.grid_power[id+1] - par.grid_power[id])
         ratio_w = (Sw[id+1] - Sw[id])/denom
         ratio_m = (Sm[id+1] - Sm[id])/denom
-        power_at_zero_m = par.grid_power[id] - Sm[id]/ratio_m
+        power_at_zero_m = par.grid_power[id] - Sm[id]/ratio_m  # interpolated power at indifference point
         Sw_at_zero_m = Sw[id] + ratio_w*( power_at_zero_m - par.grid_power[id] ) # woman's surplus at man's indifference point
 
 
@@ -877,7 +878,7 @@ def update_bargaining_index(Sw,Sm,iP, par):
                 Low_w = _iP+1
                 
             if (Sm[_iP]>=0) & (Sm[_iP+1]<0):
-                Low_m = iP
+                Low_m = _iP # iP  # <------------------- mistake 
 
         # update the outcomes
         # woman wants to leave

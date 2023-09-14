@@ -4,12 +4,13 @@
 #endif
 
 namespace single {
-    typedef struct {
+    typedef struct { //AMO: define structure to hold data relevant for optimizer
         
-        double M;
-        double *V_next;
-        int gender;
-        par_struct *par;
+        double M;               //AMO: resources
+        double *V_next;         //AMO: pointer to continuation value
+        int gender;             //AMO: gender indicator
+        par_struct *par;        //AMO: pointer to par
+                                //AMO Q: not time? sol?
 
     } solver_single_struct;
 
@@ -36,7 +37,7 @@ namespace single {
     }
 
     double util_C(double C_tot, int gender, par_struct* par){
-        double love = 0.0;
+        double love = 0.0;     //AMO Q: where does love enter the problem if not here? 
         
         // flow-utility
         double C_priv = cons_priv_single(C_tot,gender,par);
@@ -46,6 +47,7 @@ namespace single {
     }
 
     double marg_util_C(double C_tot, int gender, par_struct* par){
+        //AMO: closed for marginal utility of C_tot
         double rho = par->rho_w;
         double phi = par->phi_w;
         double alpha1 = par->alpha1_w;
@@ -63,6 +65,7 @@ namespace single {
 
     }
     double resources(double A,int gender,par_struct* par) {
+        //AMO: resources when single
         double income = par->inc_w;
         if (gender == man) {
             income = par->inc_m;
@@ -76,7 +79,7 @@ namespace single {
         double Util = util_C(C_tot,gender,par);
         
         // continuation value
-        double *grid_A = par->grid_Aw;
+        double *grid_A = par->grid_Aw; //AMO: pointer to relevant assets grid (w/m)
         if (gender==man){
             grid_A = par->grid_Am;
         }
@@ -89,10 +92,15 @@ namespace single {
     }
 
     double objfunc_single(unsigned n, const double *x, double *grad, void *solver_data_in){
+                //AMO: objective function takes (const double &x, double &grad, void* solver_data) as input according to NLopt docs
+                // - and appearantly also n (dimension)
+                //AMO: unsigned means only non-negative values (integers)
+                //AMO: const keyword indicates that x should not be modified by this function
+                //AMO Q: grad is not used - just for optimizer syntax?
         double love = 0.0;
 
         // unpack
-        solver_single_struct *solver_data = (solver_single_struct *) solver_data_in;
+        solver_single_struct *solver_data = (solver_single_struct *) solver_data_in;  //AMO: casts solver_data_in to solver_data (which is type solver_single_struct)
         
         double C_tot = x[0];
         int gender = solver_data->gender;
@@ -104,7 +112,7 @@ namespace single {
     }
 
     void solve_single(int t,sol_struct *sol,par_struct *par){
-        double love = 0.0; // no love for singles
+        double love = 0.0; // no love for singles  //AMO: ouch
 
         // terminal period
         if (t == (par->T-1)){
@@ -114,7 +122,7 @@ namespace single {
                 double Aw = par->grid_Aw[iA];
                 double Am = par->grid_Am[iA];
 
-                double Cw = resources(Aw,woman,par); 
+                double Cw = resources(Aw,woman,par); //AMO: consume everything in final period
                 double Cm = resources(Am,man,par); 
                 
                 intraperiod_allocation(&sol->Cw_priv_single[idx],&sol->Cw_pub_single[idx],Cw,woman,par);
@@ -125,7 +133,7 @@ namespace single {
             }
         } else {
             
-            #pragma omp parallel num_threads(par->threads)
+            #pragma omp parallel num_threads(par->threads) //AMO: settings for parallelization
             {
 
                 // 1. allocate objects for solver
@@ -135,7 +143,8 @@ namespace single {
                 double lb[1],ub[1],x[1];
                 
                 auto opt = nlopt_create(NLOPT_LN_BOBYQA, dim); // NLOPT_LD_MMA NLOPT_LD_LBFGS NLOPT_GN_ORIG_DIRECT
-                double minf=0.0;
+                // AMO: opt objects takes (optimization algorithm, dimensions) as input
+                double minf=0.0; //AMO: initialize: will eventually contain the value of the objective fct at minimum
 
                 // 2. loop over assets
                 #pragma omp for
@@ -155,8 +164,9 @@ namespace single {
                     solver_data->M = Mw;
                     solver_data->V_next = &sol->Vw_single[index::index2(t+1,0,par->T,par->num_A)];
                     solver_data->gender = woman;
-                    solver_data->par = par;
-                    nlopt_set_min_objective(opt, objfunc_single, solver_data);
+                    solver_data->par = par; //AMO: update solver_data
+                    nlopt_set_min_objective(opt, objfunc_single, solver_data); 
+                    //AMO: set objective function: find min of objfunc_single with solver_data using opt optimizer
                         
                     // bounds
                     lb[0] = 1.0e-8;
@@ -165,11 +175,12 @@ namespace single {
                     nlopt_set_upper_bounds(opt, ub);
 
                     // optimize
-                    x[0] = solver_data->M/2.0;
-                    nlopt_optimize(opt, x, &minf);
+                    x[0] = solver_data->M/2.0; //AMO: set starting value 
+                    nlopt_optimize(opt, x, &minf); //AMO: do optimization. Takes (function, &starting val, &fct val)
 
                     // store results
-                    double Cw = x[0];
+                    double Cw = x[0]; //AMO: optimizer result
+                    //AMO Q: Is there a way to verify succesfull optimization?
                     intraperiod_allocation(&sol->Cw_priv_single[idx],&sol->Cw_pub_single[idx],Cw,woman,par);
                     sol->Vw_single[idx] = -minf;
 
