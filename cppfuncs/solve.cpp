@@ -61,7 +61,7 @@ void solve_intraperiod_couple(double* Cw_priv,double* Cm_priv,double* C_pub , do
     x[0] = solver_data->C_tot/3.0;
     x[1] = solver_data->C_tot/3.0;
     nlopt_optimize(opt, x, &minf);          //AMO: run optimizer to find optimal intra-temporal allocation
-    nlopt_destroy(opt);
+    nlopt_destroy(opt);                 //AMO Q: why adress of minf but just x? 
     
     // unpack
     Cw_priv[0] = x[0];
@@ -95,6 +95,7 @@ void precompute(sol_struct* sol, par_struct* par){
                         par->grid_marg_u[idx_lag] = (par->grid_util[idx] - par->grid_util[idx_lag])/(C_tot - par->grid_Ctot[i-1]);
                      
                         // inverse marginal utility: flip the grid of marginal util (such that ascending) and store as new "x-axis" grid
+                        //AMO: this is necessary for the binary search in the interpolaiton algo
                         int idx_flip_lag = index::index2(iP,par->num_Ctot-1 - (i-1),par->num_power,par->num_Ctot);
                         par->grid_marg_u_for_inv[idx_flip_lag] = par->grid_marg_u[idx_lag];
 

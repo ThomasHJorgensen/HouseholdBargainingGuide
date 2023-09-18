@@ -1,0 +1,20 @@
+Questions:
+
+- Why always stay on power grid in solution AND simulation? In practice, too much power is shifted when bargaining happens?
+- What is going on with sol->marg_V_couple??
+
+TODO:
+- C++:
+    - EGM
+        - EGM for singles
+        - EGM for couples
+            - Fix the continuation value thing
+            - Make sure algortihm works (are we sure A is sufficient statistic?)
+            - (Proper algorithm)
+            - Credit constraint
+
+
+- Python:
+    - EGM
+        - EGM for singles
+        - EGM for couples

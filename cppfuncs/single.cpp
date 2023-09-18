@@ -37,7 +37,7 @@ namespace single {
     }
 
     double util_C(double C_tot, int gender, par_struct* par){
-        double love = 0.0;     //AMO Q: where does love enter the problem if not here? 
+        double love = 0.0;
         
         // flow-utility
         double C_priv = cons_priv_single(C_tot,gender,par);

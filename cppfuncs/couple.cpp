@@ -21,16 +21,16 @@ namespace couple {
     } solver_couple_struct;
 
     typedef struct{
-    int t;
-    int iL;
-    int iA;
-    par_struct *par; 
+        int t;
+        int iL;
+        int iA;
+        par_struct *par; 
 
-    int idx(int iP){
-            return index::index4(t,iP,iL,iA , par->T,par->num_power,par->num_love,par->num_A); 
-    }
+        int idx(int iP){
+                return index::index4(t,iP,iL,iA , par->T,par->num_power,par->num_love,par->num_A); 
+        }
     
-    } index_couple_struct; //AMO: returns index for iP given t, iL and iA
+    } index_couple_struct; //AMO: returns index for iP given t, iL and iA, like lambda function
 
     double calc_marital_surplus(double V_remain_couple,double V_trans_single,par_struct* par){
         return V_remain_couple - V_trans_single;
@@ -86,7 +86,6 @@ namespace couple {
         // unpack
         solver_couple_struct *solver_data = (solver_couple_struct *) solver_data_in;
         //AMO: cast solver_data_in to solver_couple_struct
-        //AMO Q: but isn't solver_data_in already of solver_couple_struct? what exactly is happening here?
         //AMO: solver_data_in is of void type, so we have to type cast to be able to work with it.
 
         double C_tot = x[0];
@@ -186,6 +185,8 @@ namespace couple {
 
                 double C_tot = sol->Cw_priv_remain_couple[idx] + sol->Cm_priv_remain_couple[idx] + sol->C_pub_remain_couple[idx];
                 sol->marg_V_remain_couple[idx] = tools::interp_1d(par->grid_Ctot,par->num_Ctot,&par->grid_marg_u[idx_interp],C_tot);
+                //AMO Q: wouldn't it to be perfectly correct be the value of entering as a couple? 
+                //AMO: or is interpretation really marginal value cond. on remaining a couple in previous period?
             }
 
         } else {
@@ -238,6 +239,7 @@ namespace couple {
                 // marginal utility TODO: should this then not be without discounting and everything!? At least not the expected value.. MAybe that is where it went wrong..
                 sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(M_grid,par->num_A_pd,EmargU_grid,M_now);
                 // sol->marg_V_remain_couple[idx] = tools::interp_1d(M_grid,par->num_A_pd,EmargU_grid,M_now);
+                //AMO Q: Check math here - is marginal value equal to marginal utility, even without conditioning on discrete choice? 
 
                 // int idx_interp_marg = index::index2(iP,0,par->num_power,par->num_Ctot);
                 // sol->marg_V_remain_couple[idx] = tools::interp_1d(par->grid_Ctot,par->num_Ctot,&par->grid_marg_u[idx_interp_marg],C_tot);
@@ -436,7 +438,7 @@ namespace couple {
                 }
                 double *Vw_next = &sol->Vw_couple[idx_next];
                 double *Vm_next = &sol->Vm_couple[idx_next];
-                double *marg_V_next = &sol->marg_V_couple[idx_next]; 
+                double *marg_V_next = &sol->marg_V_couple[idx_next]; //AMO Q: Are we sure this is marg V of entering as married?
 
                 for (int iL=0; iL<par->num_love; iL++){
 
