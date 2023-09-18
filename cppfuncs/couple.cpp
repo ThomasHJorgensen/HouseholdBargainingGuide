@@ -38,8 +38,7 @@ namespace couple {
 
     void intraperiod_allocation(double* Cw_priv, double* Cm_priv, double* C_pub , double C_tot,int iP,sol_struct *sol,par_struct *par){
         // interpolate pre-computed solution 
-        int idx = index::index2(iP,0,par->num_power,par->num_Ctot); //AMO Q: index for iP at index 0 of C_tot - why always 0?
-                                                                    //AMO Q: I guess we just need the starting address of the array?
+        int idx = index::index2(iP,0,par->num_power,par->num_Ctot); 
         int j1 = tools::binary_search(0,par->num_Ctot,par->grid_Ctot,C_tot); //AMO: returns index of C_tot in grid_Ctot
 
         Cw_priv[0] = tools::interp_1d_index(par->grid_Ctot,par->num_Ctot,&sol->pre_Ctot_Cw_priv[idx],C_tot,j1);
@@ -58,7 +57,7 @@ namespace couple {
 
         // current utility from consumption allocation
         intraperiod_allocation(Cw_priv, Cm_priv, C_pub , C_tot,iP,sol,par);
-        Vw[0] = utils::util(*Cw_priv,*C_pub,woman,par,love);
+        Vw[0] = utils::util(*Cw_priv,*C_pub,woman,par,love); 
         Vm[0] = utils::util(*Cm_priv,*C_pub,man,par,love);
 
         // add continuation value [TODO: re-use index would speed this up since only output different!]
@@ -185,8 +184,6 @@ namespace couple {
 
                 double C_tot = sol->Cw_priv_remain_couple[idx] + sol->Cm_priv_remain_couple[idx] + sol->C_pub_remain_couple[idx];
                 sol->marg_V_remain_couple[idx] = tools::interp_1d(par->grid_Ctot,par->num_Ctot,&par->grid_marg_u[idx_interp],C_tot);
-                //AMO Q: wouldn't it to be perfectly correct be the value of entering as a couple? 
-                //AMO: or is interpretation really marginal value cond. on remaining a couple in previous period?
             }
 
         } else {
@@ -432,22 +429,22 @@ namespace couple {
             for (int iP=0; iP<par->num_power; iP++){
 
                 // continuation values
-                int idx_next = index::index4(t+1,iP,0,0,par->T,par->num_power,par->num_love,par->num_A);
+                int idx_next = index::index4(t+1,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); //AMO Q: <-------- same iP as this period (value of entering with same iP as today)
                 if (t==(par->T-1)){ // does not matter in last period-> fix at some valid index
                     idx_next = 0;
                 }
-                double *Vw_next = &sol->Vw_couple[idx_next];
+                double *Vw_next = &sol->Vw_couple[idx_next];  
                 double *Vm_next = &sol->Vm_couple[idx_next];
-                double *marg_V_next = &sol->marg_V_couple[idx_next]; //AMO Q: Are we sure this is marg V of entering as married?
+                double *marg_V_next = &sol->marg_V_couple[idx_next]; //AMO Q: Are we sure this is marg V of entering as married? - something off with calculation
 
                 for (int iL=0; iL<par->num_love; iL++){
 
                     // solve for all values in grid_A.
                     if (par->do_egm){
-                        solve_remain_Agrid_egm(t,iP,iL,Vw_next,Vm_next,marg_V_next,sol,par);
+                        solve_remain_Agrid_egm(t,iP,iL,Vw_next,Vm_next,marg_V_next,sol,par); 
 
                     } else {
-                        solve_remain_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par);
+                        solve_remain_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par); 
 
                     }
  

@@ -10,7 +10,6 @@ namespace single {
         double *V_next;         //AMO: pointer to continuation value
         int gender;             //AMO: gender indicator
         par_struct *par;        //AMO: pointer to par
-                                //AMO Q: not time? sol?
 
     } solver_single_struct;
 
@@ -180,7 +179,6 @@ namespace single {
 
                     // store results
                     double Cw = x[0]; //AMO: optimizer result
-                    //AMO Q: Is there a way to verify succesfull optimization?
                     intraperiod_allocation(&sol->Cw_priv_single[idx],&sol->Cw_pub_single[idx],Cw,woman,par);
                     sol->Vw_single[idx] = -minf;
 

@@ -9,8 +9,7 @@ TODO:
         - EGM for singles
         - EGM for couples
             - Fix the continuation value thing
-            - Make sure algortihm works (are we sure A is sufficient statistic?)
-            - (Proper algorithm)
+                - but how
             - Credit constraint
 
 
@@ -18,3 +17,13 @@ TODO:
     - EGM
         - EGM for singles
         - EGM for couples
+
+
+- From note:
+    - Check solution + simulation with finer grids
+    - Interpolation in simulation? re-use check function? now it is another one. or split the check function to use the index-function.
+    - Simulation in C++: is the divorce level of wealth correct? Se lecture 8/9 in course.
+        – check also for singles. 
+    - Write EGM part such that only discrete choices in outside.
+    - Much code is repeated - put into functions
+    - Example with re-marriage?
