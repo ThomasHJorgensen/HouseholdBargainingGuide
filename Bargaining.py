@@ -650,7 +650,137 @@ def solve_intraperiod_couple(C_tot,power,par,starting_val=None):
 
     return Cw_priv,Cm_priv,C_pub
 
-def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,list_couple,list_raw,list_single, par):
+def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par):
+
+    # step 1: check end points
+    if (Sw[0] > 0.0) & (Sm[-1] > 0.0): # all values are consistent with marriage
+        # overwrite output for couple
+        for iP in range(par.num_power):
+            idx = idx_couple(iP)
+            for i,key in enumerate(list_start_as_couple):
+                list_start_as_couple[i][idx] = list_remain_couple[i][iP]
+
+            power_idx[idx] = iP
+            power[idx] = par.grid_power[iP]
+
+    elif (Sw[-1] < 0.0) | (Sm[0] < 0.0): # no value is consistent with marriage
+        divorce(power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single, par)
+    
+    # step 2: find indifference points
+    else:
+        Low_w, power_at_zero_w = find_indifference_point(Sw,par, woman); Low_w+=1 #update Low_w because function returns point below indifference point
+        Low_m, power_at_zero_m = find_indifference_point(Sm,par, man)
+
+        # step 3: update bargaining power and consumption allocations
+        if power_at_zero_w<=power_at_zero_m: # no divorce
+
+            # loop through range of bargaining power
+            for iP in range(par.num_power): 
+                idx = idx_couple(iP)
+
+                # update bargaining power
+                if iP<Low_w: # update to woman's indifference point
+                    power_idx[idx] = Low_w
+                    power[idx] = power_at_zero_w
+                elif iP>Low_m: # update to man's indifference point
+                    power_idx[idx] = Low_m
+                    power[idx] = power_at_zero_m
+                else: # bargaining power constant between Low_w and Low_m
+                    power_idx[idx] = iP
+                    power[idx] = par.grid_power[iP]
+
+                # update consumption allocations
+                for i,key in enumerate(list_start_as_couple):
+                    if (iP==0): # update to woman's indifference point
+                        list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i],power_at_zero_w,Low_w-1)
+                    elif iP <= Low_w: # bargaining power constant until Low_w
+                        list_start_as_couple[i][idx]=list_start_as_couple[i][idx_couple(0)]
+                    elif (iP > Low_w) & (iP < Low_m): # No change between Low_w and Low_m   
+                        list_start_as_couple[i][idx] = list_remain_couple[i][iP]
+                    elif iP == Low_m: # update to man's indifference point
+                        list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i],power_at_zero_m,Low_m)
+                    else:   # bargaining power constant after Low_m
+                        list_start_as_couple[i][idx] = list_start_as_couple[i][idx_couple(Low_m)]; # re-use that the interpolated values are identical
+
+        else: # divorce
+            divorce(power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single, par)
+
+def update_bargaining_index(Sw,Sm,iP, par):
+    
+    # check the participation constraints. Array
+    min_Sw = np.min(Sw)
+    min_Sm = np.min(Sm)
+    max_Sw = np.max(Sw)
+    max_Sm = np.max(Sm)
+
+    if (min_Sw >= 0.0) & (min_Sm >= 0.0): # all values are consistent with marriage
+        return iP
+
+    elif (max_Sw < 0.0) | (max_Sm < 0.0): # no value is consistent with marriage
+        return -1
+
+    else: 
+    
+        # find lowest (highest) value with positive surplus for women (men)
+        Low_w = 0 # in case there is no crossing, this will be the correct value
+        Low_m = par.num_power-1 # in case there is no crossing, this will be the correct value
+        for _iP in range(par.num_power-1):
+            if (Sw[_iP]<0) & (Sw[_iP+1]>=0):
+                Low_w = _iP+1
+                
+            if (Sm[_iP]>=0) & (Sm[_iP+1]<0):
+                Low_m = _iP # iP  # <------------------- mistake 
+
+        # update the outcomes
+        # woman wants to leave
+        if iP<Low_w: 
+            if Sm[Low_w] > 0: # man happy to shift some bargaining power
+                return Low_w
+                
+            else: # divorce
+                return -1
+            
+        # man wants to leave
+        elif iP>Low_m: 
+            if Sw[Low_m] > 0: # woman happy to shift some bargaining power
+                return Low_m
+                
+            else: # divorce
+                return -1
+
+        else: # no-one wants to leave
+            return iP
+
+def find_indifference_point(S,par,gender):
+
+    # check that there is an indifference point
+    if S[0]*S[-1] < 0:
+        for iP in range(par.num_power-1):
+            if S[iP]*S[iP+1] < 0:
+                denom = (par.grid_power[iP+1] - par.grid_power[iP])
+                ratio = (S[iP+1] - S[iP])/denom
+                power_at_zero = par.grid_power[iP] - S[iP]/ratio  # interpolated power at indifference point
+                return iP, power_at_zero # return point below indifference point and power at indifference point
+    else:
+        if gender == man:
+            return par.num_power-2, par.grid_power[-2] # check
+        if gender == woman:
+            return 1, par.grid_power[1] # check
+
+def divorce(power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single, par):
+    for iP in range(par.num_power):
+        # overwrite output for couple
+        idx = idx_couple(iP)
+        for i,key in enumerate(list_start_as_couple):
+            list_start_as_couple[i][idx] = list_trans_to_single[i][idx_single]
+
+        power_idx[idx] = -1
+        power[idx] = -1.0
+
+################################################
+# OLD                                          #
+################################################
+def check_participation_constraints_old2(power_idx,power,Sw,Sm,idx_single,idx_couple,list_couple,list_raw,list_single, par):
     
     # check the participation constraints. Array
     min_Sw = np.min(Sw)
@@ -723,7 +853,7 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
 
                     for i,key in enumerate(list_couple):
                         if iP==0:
-                            list_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_raw[i],power_at_zero_w,Low_w-1) # list_raw is remain_as_couple
+                            list_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_raw[i],power_at_zero_w,Low_w-1) # list_raw is remain_couple
                                                     # _interp_1d is second step of interpolation when location in grid has been found -> speedy
                         else:
                             list_couple[i][idx] = list_couple[i][idx_couple(0)]; # re-use that the interpolated values are identical
@@ -854,48 +984,4 @@ def check_participation_constraints_old(power,Sw,Sm,idx_single,idx_couple,list_c
 
                 power[idx] = iP
 
-def update_bargaining_index(Sw,Sm,iP, par):
-    
-    # check the participation constraints. Array
-    min_Sw = np.min(Sw)
-    min_Sm = np.min(Sm)
-    max_Sw = np.max(Sw)
-    max_Sm = np.max(Sm)
 
-    if (min_Sw >= 0.0) & (min_Sm >= 0.0): # all values are consistent with marriage
-        return iP
-
-    elif (max_Sw < 0.0) | (max_Sm < 0.0): # no value is consistent with marriage
-        return -1
-
-    else: 
-    
-        # find lowest (highest) value with positive surplus for women (men)
-        Low_w = 0 # in case there is no crossing, this will be the correct value
-        Low_m = par.num_power-1 # in case there is no crossing, this will be the correct value
-        for _iP in range(par.num_power-1):
-            if (Sw[_iP]<0) & (Sw[_iP+1]>=0):
-                Low_w = _iP+1
-                
-            if (Sm[_iP]>=0) & (Sm[_iP+1]<0):
-                Low_m = _iP # iP  # <------------------- mistake 
-
-        # update the outcomes
-        # woman wants to leave
-        if iP<Low_w: 
-            if Sm[Low_w] > 0: # man happy to shift some bargaining power
-                return Low_w
-                
-            else: # divorce
-                return -1
-            
-        # man wants to leave
-        elif iP>Low_m: 
-            if Sw[Low_m] > 0: # woman happy to shift some bargaining power
-                return Low_m
-                
-            else: # divorce
-                return -1
-
-        else: # no-one wants to leave
-            return iP

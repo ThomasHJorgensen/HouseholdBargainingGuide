@@ -14,6 +14,9 @@ TODO:
 
 
 - Python:
+    - Bargaining algo:
+        - Verify more thoroughly that results are the same (but it seems to work)
+        - Clean up and organize plots
     - EGM
         - EGM for singles
         - EGM for couples
