@@ -711,14 +711,14 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
                 for i,key in enumerate(list_start_as_couple):
                     if (iP==0): # update to woman's indifference point
                         list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i],power_at_zero_w,Low_w-1)
-                    elif iP <= Low_w: # bargaining power constant until Low_w
+                    elif iP < Low_w: # bargaining power constant until Low_w
                         list_start_as_couple[i][idx]=list_start_as_couple[i][idx_couple(0)]
-                    elif (iP > Low_w) & (iP < Low_m): # No change between Low_w and Low_m   
+                    elif (iP >= Low_w) & (iP <= Low_m): # No change between Low_w and Low_m   
                         list_start_as_couple[i][idx] = list_remain_couple[i][iP]
-                    elif iP == Low_m: # update to man's indifference point
+                    elif iP == Low_m+1: # update to man's indifference point
                         list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i],power_at_zero_m,Low_m)
                     else:   # bargaining power constant after Low_m
-                        list_start_as_couple[i][idx] = list_start_as_couple[i][idx_couple(Low_m)]; # re-use that the interpolated values are identical
+                        list_start_as_couple[i][idx] = list_start_as_couple[i][idx_couple(Low_m+1)]; # re-use that the interpolated values are identical
 
         else: # divorce
             divorce(power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single, par)
