@@ -7,6 +7,8 @@ from consav.grids import nonlinspace
 from consav import linear_interp, linear_interp_1d
 from consav import quadrature
 
+import time
+
 # set gender indication as globals
 woman = 1
 man = 2
@@ -86,6 +88,9 @@ class HouseholdModelClass(EconModelClass):
         # cpp
         par.do_cpp = False
         par.threads = 8
+        
+        # Solution
+        par.old_bargaining = False
         
     def allocate(self):
         par = self.par
@@ -188,6 +193,9 @@ class HouseholdModelClass(EconModelClass):
         sim.init_power_idx = par.num_power//2 * np.ones(par.simN,dtype=np.int_)
         sim.init_love = np.zeros(par.simN)
         
+        # Time
+        sol.solution_time = np.array([0.0])
+        
     def setup_grids(self):
         par = self.par
         
@@ -228,6 +236,10 @@ class HouseholdModelClass(EconModelClass):
         par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)         # maybe for endogenous grid
 
     def solve(self):
+        
+        #Begin timing
+        start_time = time.time()
+        
         sol = self.sol
         par = self.par 
 
@@ -266,6 +278,8 @@ class HouseholdModelClass(EconModelClass):
         sol.Cw_tot_trans_single = sol.Cw_tot_single.copy()
         sol.Cm_tot_trans_single = sol.Cm_tot_single.copy()
         
+        # End timing
+        sol.solution_time[0] = time.time() - start_time
 
     def simulate(self):
         sol = self.sol
@@ -327,6 +341,7 @@ class HouseholdModelClass(EconModelClass):
                 sol.Vm_single[idx] = -res_m.fun                
                 
     def solve_couple(self,t): # vfi solution conditional on being married
+        
 
         # a. unpack and allocate temporary memory
         par = self.par
@@ -371,7 +386,10 @@ class HouseholdModelClass(EconModelClass):
                 Sw = remain_Vw - sol.Vw_single[idx_single] 
                 Sm = remain_Vm - sol.Vm_single[idx_single] 
                 
-                check_participation_constraints(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                if par.old_bargaining == False:
+                    check_participation_constraints(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                else:
+                    check_participation_constraints_old2(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
 
                 # d. save remain values in sol-struct
                 for iP,power in enumerate(par.grid_power):

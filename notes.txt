@@ -17,6 +17,7 @@ TODO:
     - Bargaining algo:
         - Verify more thoroughly that results are the same (but it seems to work)
         - Clean up and organize plots
+        - Check Surplus function are monotinistically increasing in bargaining power
     - EGM
         - EGM for singles
         - EGM for couples

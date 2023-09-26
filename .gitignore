@@ -109,3 +109,11 @@ venv.bak/
 
 # vscode
 .vscode/
+
+
+##### Non-standard stuff #####
+# Ignore all in output folder
+output/**
+
+# Ignore all in saved folder
+saved/**
