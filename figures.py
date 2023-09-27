@@ -169,12 +169,12 @@ def plot_surplus(model, t, iP, iL, iA, title=None, ax=None):
     
     #add vertical line at start_power
     start_power = par.grid_power[iP]
-    ax.axvline(x=start_power, color=colors['gray'],linestyle='--')
+    ax.axvline(x=start_power, color=colors['gray'],linestyle='--', label='$\mu_{t-1}$')
 
     #add vertical line at end_power if it exists
     end_power = power[idx_couple(iP)]
     if end_power > 0:
-        ax.axvline(x=end_power, color=colors['gray_dark'],linestyle=':')
+        ax.axvline(x=end_power, color=colors['gray_dark'],linestyle=':', label='$\mu_{t}$')
 
         # make a one directional arrow from start_power to end_power lower than the x axis
         ax.annotate("", xy=(end_power, -0.1), xytext=(start_power, -0.1), arrowprops=dict(arrowstyle="->"))
