@@ -173,7 +173,7 @@ def plot_surplus(model, t, iP, iL, iA, title=None, ax=None):
 
     #add vertical line at end_power if it exists
     end_power = power[idx_couple(iP)]
-    if end_power > 0:
+    if end_power >= 0:
         ax.axvline(x=end_power, color=colors['gray_dark'],linestyle=':')
 
         # make a one directional arrow from start_power to end_power lower than the x axis
