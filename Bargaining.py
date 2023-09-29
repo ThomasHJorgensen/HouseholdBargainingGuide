@@ -7,6 +7,8 @@ from consav.grids import nonlinspace
 from consav import linear_interp, linear_interp_1d
 from consav import quadrature
 
+import bargaining_algorithm as ba
+
 import time
 
 # set gender indication as globals
@@ -90,7 +92,7 @@ class HouseholdModelClass(EconModelClass):
         par.threads = 8
         
         # Solution
-        par.old_bargaining = False
+        par.brg_algo = 0 # 0 = new in module, 1 = new, 2 = old2
         
     def allocate(self):
         par = self.par
@@ -386,10 +388,14 @@ class HouseholdModelClass(EconModelClass):
                 Sw = remain_Vw - sol.Vw_single[idx_single] 
                 Sm = remain_Vm - sol.Vm_single[idx_single] 
                 
-                if par.old_bargaining == False:
+                if par.brg_algo == 0:
+                    ba.check_participation_constraints(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                elif par.brg_algo == 1:
                     check_participation_constraints(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
-                else:
+                elif par.brg_algo == 2:
                     check_participation_constraints_old2(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                else:
+                    raise ValueError('par.brg_algo must be 0, 1 or 2')
 
                 # d. save remain values in sol-struct
                 for iP,power in enumerate(par.grid_power):
@@ -781,9 +787,9 @@ def find_indifference_point(S,par,gender):
                 return iP, power_at_zero # return point below indifference point and power at indifference point
     else:
         if gender == man:
-            return par.num_power-2, par.grid_power[-2] # check
+            return par.num_power-1, par.grid_power[-1] # check
         if gender == woman:
-            return 1, par.grid_power[1] # check
+            return 0, par.grid_power[0] # check
 
 def divorce(power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single, par):
     for iP in range(par.num_power):
