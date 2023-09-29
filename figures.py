@@ -169,7 +169,7 @@ def plot_surplus(model, t, iP, iL, iA, title=None, ax=None):
     
     #add vertical line at start_power
     start_power = par.grid_power[iP]
-    ax.axvline(x=start_power, color=colors['gray'],linestyle='--')
+    ax.axvline(x=start_power, color=colors['gray'],linestyle='--', label='$\mu_{t-1}$')
 
     #add vertical line at end_power if it exists
     end_power = power[idx_couple(iP)]

@@ -692,7 +692,9 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
     
     # step 2: find indifference points
     else:
-        Low_w, power_at_zero_w = find_indifference_point(Sw,par, woman); Low_w+=1 #update Low_w because function returns point below indifference point
+        Low_w, power_at_zero_w = find_indifference_point(Sw,par, woman); 
+        Low_w+=1 #update Low_w because function returns point below indifference point
+        
         Low_m, power_at_zero_m = find_indifference_point(Sm,par, man)
 
         # step 3: update bargaining power and consumption allocations
