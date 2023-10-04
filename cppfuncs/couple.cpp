@@ -1,5 +1,5 @@
 
-// functions for solving model for singles.
+// functions for solving model for couples.
 #ifndef MAIN
 #define COUPLE
 #include "myheader.cpp"

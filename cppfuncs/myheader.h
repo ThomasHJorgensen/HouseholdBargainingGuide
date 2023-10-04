@@ -44,6 +44,9 @@
 #ifndef SINGLE
 #include "single.cpp"
 #endif
+#ifndef BARGAINING
+#include "bargaining.cpp"
+#endif
 #ifndef COUPLE
 #include "couple.cpp"
 #endif
