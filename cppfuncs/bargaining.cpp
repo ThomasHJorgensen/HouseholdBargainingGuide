@@ -1,4 +1,3 @@
-
 // functions for bargaining process.
 #ifndef MAIN
 #define BARGAINING

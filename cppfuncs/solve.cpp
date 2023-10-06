@@ -140,3 +140,141 @@ EXPORT void simulate(sim_struct *sim, sol_struct *sol, par_struct *par){
     sim::model(sim,sol,par);
 
 }
+
+
+//Runs but appearantly does not do anything...
+EXPORT void test_divorce(int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol){
+    
+    //recast from Python type data to c++ type data
+    // idx_couple
+    bargaining::index_couple_struct* idx_couple = new bargaining::index_couple_struct;
+    idx_couple->t = t;
+    idx_couple->iL = iL;
+    idx_couple->iA = iA;
+    idx_couple->par = par;
+
+    // idx_single
+    int idx_single = index::index2(t,iA,par->T,par->num_A);
+
+    // power_idx
+    int* power_idx = sol->power_idx;
+
+    // power
+    double* power = sol->power;
+
+    // lists
+    int num = 5;
+    double** list_start_as_couple = new double*[num];
+    double** list_remain_couple = new double*[num];  
+    double** list_trans_to_single = new double*[num]; 
+
+    list_start_as_couple[0] = sol->Vw_couple;
+    list_start_as_couple[1] = sol->Vm_couple;
+    list_start_as_couple[2] = sol->Cw_priv_couple;
+    list_start_as_couple[3] = sol->Cm_priv_couple;
+    list_start_as_couple[4] = sol->C_pub_couple;
+
+    list_remain_couple[0] = sol->Vw_remain_couple;
+    list_remain_couple[1] = sol->Vm_remain_couple;
+    list_remain_couple[2] = sol->Cw_priv_remain_couple;
+    list_remain_couple[3] = sol->Cm_priv_remain_couple;
+    list_remain_couple[4] = sol->C_pub_remain_couple;
+
+    list_trans_to_single[0] = sol->Vw_single;
+    list_trans_to_single[1] = sol->Vm_single;
+    list_trans_to_single[2] = sol->Cw_priv_single;
+    list_trans_to_single[3] = sol->Cm_priv_single;
+    list_trans_to_single[4] = sol->Cw_pub_single;
+
+
+    // test
+    bargaining::divorce(iP, power_idx, power, idx_single, idx_couple, list_start_as_couple, list_trans_to_single, num, par);
+
+}
+
+
+//Runs but appearantly does not do anything...
+EXPORT void test_remain(int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol){
+    
+    //recast from Python type data to c++ type data
+    // idx_couple
+    bargaining::index_couple_struct* idx_couple = new bargaining::index_couple_struct;
+    idx_couple->t = t;
+    idx_couple->iL = iL;
+    idx_couple->iA = iA;
+    idx_couple->par = par;
+
+    // power_idx
+    int* power_idx = sol->power_idx;
+
+    // power
+    double* power = sol->power;
+
+    // lists
+    int num = 5;
+    double** list_start_as_couple = new double*[num];
+    double** list_remain_couple = new double*[num];   
+
+    list_start_as_couple[0] = sol->Vw_couple;
+    list_start_as_couple[1] = sol->Vm_couple;
+    list_start_as_couple[2] = sol->Cw_priv_couple;
+    list_start_as_couple[3] = sol->Cm_priv_couple;
+    list_start_as_couple[4] = sol->C_pub_couple;
+
+    list_remain_couple[0] = sol->Vw_remain_couple;
+    list_remain_couple[1] = sol->Vm_remain_couple;
+    list_remain_couple[2] = sol->Cw_priv_remain_couple;
+    list_remain_couple[3] = sol->Cm_priv_remain_couple;
+    list_remain_couple[4] = sol->C_pub_remain_couple;
+
+
+    // test
+    bargaining::remain(iP, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
+
+}
+
+// once again, running but not updating...
+EXPORT double test_update_to_indifference(int left_point, double power_at_zero, int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol){
+    
+
+    //recast from Python type data to c++ type data
+    // idx_couple
+    bargaining::index_couple_struct* idx_couple = new bargaining::index_couple_struct;
+    idx_couple->t = t;
+    idx_couple->iL = iL;
+    idx_couple->iA = iA;
+    idx_couple->par = par;
+
+    // idx_single
+    int idx_single = index::index2(t,iA,par->T,par->num_A);
+
+    // power_idx
+    int* power_idx = sol->power_idx;
+
+    // power
+    double* power = sol->power;
+
+    // lists
+    int num = 5;
+    double** list_start_as_couple = new double*[num];
+    double** list_remain_couple = new double*[num];  
+    double** list_trans_to_single = new double*[num]; 
+
+    list_start_as_couple[0] = sol->Vw_couple;
+    list_start_as_couple[1] = sol->Vm_couple;
+    list_start_as_couple[2] = sol->Cw_priv_couple;
+    list_start_as_couple[3] = sol->Cm_priv_couple;
+    list_start_as_couple[4] = sol->C_pub_couple;
+
+    list_remain_couple[0] = sol->Vw_remain_couple;
+    list_remain_couple[1] = sol->Vm_remain_couple;
+    list_remain_couple[2] = sol->Cw_priv_remain_couple;
+    list_remain_couple[3] = sol->Cm_priv_remain_couple;
+    list_remain_couple[4] = sol->C_pub_remain_couple;
+
+    double x = 0.0;
+    bargaining::update_to_indifference(&x, iP, left_point, power_at_zero, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
+
+    return x;
+
+}
