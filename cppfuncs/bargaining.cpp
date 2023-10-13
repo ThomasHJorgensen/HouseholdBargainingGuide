@@ -22,13 +22,13 @@ namespace bargaining {
 
     int find_left(double *S, par_struct *par){
 
+        //flip is descending
         if (S[0] > S[-1]){
             for (int i = 0; i < par->num_power; i++){
                 S[i] = -S[i];
             }
-
+        }
         return tools::binary_search(0, par-> num_power, S, 0.0);
-    }
 }
 
     // divorce
