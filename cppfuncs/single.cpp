@@ -59,7 +59,7 @@ namespace single {
         }  
         
         double share = 1.0/(1.0 + pow(alpha2/alpha1,1.0/(1.0-phi) ));
-        double constant = alpha1*pow(share,phi) + alpha2*pow(1.0-constant,phi);
+        double constant = alpha1*pow(share,phi) + alpha2*pow(1.0-share,phi);
         return phi * pow(C_tot,(1.0-rho)*phi -1.0 ) * pow(constant,1.0 - rho);
 
     }
