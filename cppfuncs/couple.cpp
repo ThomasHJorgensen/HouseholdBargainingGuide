@@ -279,8 +279,8 @@ namespace couple {
                     list_start_as_couple_w[i][idx] = list_trans_to_single_w[i];
                     list_start_as_couple_m[i][idx] = list_trans_to_single_m[i];
                 }
-                power_idx[idx] = -1.0;
-                power[idx] = -1;
+                power_idx[idx] = -1;
+                power[idx] = -1.0;
             }
 
         } else { 
