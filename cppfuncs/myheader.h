@@ -29,8 +29,13 @@
 #define woman 1
 #define man 2
 
+////////////////
+// 5. Logs    //
+////////////////
+#include "logs.cpp"
+
 /////////////////
-// 5. includes //
+// 6. includes //
 /////////////////
 #ifndef INDEX
 #include "index.cpp"

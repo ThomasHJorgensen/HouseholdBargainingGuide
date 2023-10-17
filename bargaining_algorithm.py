@@ -126,8 +126,10 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
                
 
 def divorce(iP,power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single):
-    # overwrite output for couple
     idx = idx_couple(iP)
+    power_idx[idx] = -1
+    power[idx] = -1.0
+
     for i in range(len(list_start_as_couple)):
         list_start_as_couple[i][idx] = list_trans_to_single[i][idx_single]
 
