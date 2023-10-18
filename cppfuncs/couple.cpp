@@ -263,8 +263,8 @@ namespace couple {
                 // overwrite output for couple
                 int idx = idx_couple->idx(iP);
                 for (int i=0; i< num; i++){
-                    list_start_as_couple_w[i][idx] = list_remain_couple_w[i][iP];
-                    list_start_as_couple_m[i][idx] = list_remain_couple_m[i][iP];
+                    list_start_as_couple_w[i][idx] = list_remain_couple_w[i][idx];
+                    list_start_as_couple_m[i][idx] = list_remain_couple_m[i][idx];
                 }
                 power_idx[idx] = iP;
                 power[idx] = par->grid_power[iP];
@@ -315,7 +315,26 @@ namespace couple {
             double power_at_zero_m = par->grid_power[id] - Sm[id]/ratio_m;
             double Sw_at_zero_m = Sw[id] + ratio_w*( power_at_zero_m - par->grid_power[id] );
 
-            // c. update the outcomes
+            //c. update the outcomes
+            // setup temporary arrays with the one dimension being power
+            double** list_remain_couple_w_interp = new double*[num]; 
+            double** list_remain_couple_m_interp = new double*[num];
+
+            int t = idx_couple->t;
+            int iL = idx_couple->iL;
+            int iA = idx_couple->iA;
+            
+            for (int i=0; i<num; i++){
+                list_remain_couple_w_interp[i] = new double[par->num_power];
+                list_remain_couple_m_interp[i] = new double[par->num_power];
+                for (int iP=0; iP<par->num_power; iP++){
+                    int idx_tmp = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                    list_remain_couple_w_interp[i][iP] = list_remain_couple_w[i][idx_tmp];
+                    list_remain_couple_m_interp[i][iP] = list_remain_couple_m[i][idx_tmp];
+                }
+            }
+
+
             for (int iP=0; iP<par->num_power; iP++){
 
                 // index to store solution for couple 
@@ -328,8 +347,8 @@ namespace couple {
                     if (Sm_at_zero_w > 0){ // man happy to shift some bargaining power
                         for (int i=0; i< num; i++){
                             if (iP==0){
-                                list_start_as_couple_w[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_remain_couple_w[i],power_at_zero_w,Low_w-1); 
-                                list_start_as_couple_m[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_remain_couple_m[i],power_at_zero_w,Low_w-1); 
+                                list_start_as_couple_w[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_remain_couple_w_interp[i],power_at_zero_w,Low_w-1); 
+                                list_start_as_couple_m[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_remain_couple_m_interp[i],power_at_zero_w,Low_w-1); 
                             } else {
                                 list_start_as_couple_w[i][idx] = list_start_as_couple_w[i][idx_couple->idx(0)]; // re-use that the interpolated values are identical
                                 list_start_as_couple_m[i][idx] = list_start_as_couple_m[i][idx_couple->idx(0)]; // re-use that the interpolated values are identical
@@ -358,8 +377,8 @@ namespace couple {
                         
                         for (int i=0; i< num; i++){
                             if (iP==(Low_m+1)){
-                                list_start_as_couple_w[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_remain_couple_w[i],power_at_zero_m,Low_m); 
-                                list_start_as_couple_m[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_remain_couple_m[i],power_at_zero_m,Low_m); 
+                                list_start_as_couple_w[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_remain_couple_w_interp[i],power_at_zero_m,Low_m); 
+                                list_start_as_couple_m[i][idx] = tools::interp_1d_index(par->grid_power,par->num_power,list_remain_couple_m_interp[i],power_at_zero_m,Low_m); 
                             } else {
                                 list_start_as_couple_w[i][idx] = list_start_as_couple_w[i][idx_couple->idx(Low_m+1)]; // re-use that the interpolated values are identical
                                 list_start_as_couple_m[i][idx] = list_start_as_couple_m[i][idx_couple->idx(Low_m+1)]; // re-use that the interpolated values are identical
@@ -385,14 +404,17 @@ namespace couple {
                 else { 
 
                     for (int i=0; i< num; i++){
-                        list_start_as_couple_w[i][idx] = list_remain_couple_w[i][iP];
-                        list_start_as_couple_m[i][idx] = list_remain_couple_m[i][iP];
+                        list_start_as_couple_w[i][idx] = list_remain_couple_w[i][idx];
+                        list_start_as_couple_m[i][idx] = list_remain_couple_m[i][idx];
                     }
 
                     power_idx[idx] = iP;
                     power[idx] = par->grid_power[iP];
                 }
             } // iP
+
+            delete[] list_remain_couple_w_interp;
+            delete[] list_remain_couple_m_interp;
 
         } // outer check
         
@@ -463,20 +485,11 @@ namespace couple {
                     idx_couple->iA = iA;
                     idx_couple->par = par;
 
-                    // setup temporary arrays with the one dimension being power
+                    // setup temporary array of marital surplus with the one dimension being power
                     for (int iP=0; iP<par->num_power; iP++){
                         int idx_tmp = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-
-                        remain_Vw[iP] = sol->Vw_remain_couple[idx_tmp];
-                        remain_Vm[iP] = sol->Vm_remain_couple[idx_tmp];
-                        remain_Cw_priv[iP] = sol->Cw_priv_remain_couple[idx_tmp];
-                        remain_Cm_priv[iP] = sol->Cm_priv_remain_couple[idx_tmp];
-                        remain_C_pub[iP] = sol->C_pub_remain_couple[idx_tmp];
-                        remain_marg_V[iP] = sol->marg_V_remain_couple[idx_tmp];
-
-                        // marital surplus
-                        Sw[iP] = calc_marital_surplus(remain_Vw[iP],sol->Vw_single[idx_single_w],par);
-                        Sm[iP] = calc_marital_surplus(remain_Vm[iP],sol->Vm_single[idx_single_m],par);
+                        Sw[iP] = calc_marital_surplus(sol->Vw_remain_couple[idx_tmp],sol->Vw_single[idx_single_w],par);
+                        Sm[iP] = calc_marital_surplus(sol->Vm_remain_couple[idx_tmp],sol->Vm_single[idx_single_m],par);
                     }
 
                     // setup relevant lists
@@ -492,15 +505,15 @@ namespace couple {
                     list_start_as_couple_m[i] = sol->marg_V_couple; i++;
 
                     i = 0;
-                    list_remain_couple_w[i] = remain_Vw; i++;
-                    list_remain_couple_w[i] = remain_Cw_priv; i++;
-                    list_remain_couple_w[i] = remain_C_pub; i++;
-                    list_remain_couple_w[i] = remain_marg_V; i++;
+                    list_remain_couple_w[i] = sol->Vw_remain_couple; i++;
+                    list_remain_couple_w[i] = sol->Cw_priv_remain_couple; i++;
+                    list_remain_couple_w[i] = sol->C_pub_remain_couple; i++;
+                    list_remain_couple_w[i] = sol->marg_V_remain_couple; i++;
                     i = 0;
-                    list_remain_couple_m[i] = remain_Vm; i++;
-                    list_remain_couple_m[i] = remain_Cm_priv; i++;
-                    list_remain_couple_m[i] = remain_C_pub; i++;
-                    list_remain_couple_m[i] = remain_marg_V; i++;
+                    list_remain_couple_m[i] = sol->Vm_remain_couple; i++;
+                    list_remain_couple_m[i] = sol->Cm_priv_remain_couple; i++;
+                    list_remain_couple_m[i] = sol->C_pub_remain_couple; i++;
+                    list_remain_couple_m[i] = sol->marg_V_remain_couple; i++;
 
                     i = 0;
                     list_trans_to_single_w[i] = sol->Vw_single[idx_single_w]; i++;
@@ -547,13 +560,6 @@ namespace couple {
 
             delete Sw;
             delete Sm;
-
-            delete remain_Vw;
-            delete remain_Vm;
-            delete remain_Cw_priv;
-            delete remain_Cm_priv;
-            delete remain_C_pub;
-            delete remain_marg_V;
 
         } // pragma
     }
