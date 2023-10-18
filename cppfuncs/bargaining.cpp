@@ -20,15 +20,24 @@ namespace bargaining {
    
 
 
-    int find_left(double *S, par_struct *par){
+    int find_left(double *S, int Nx){
 
-        //flip is descending
+        int left_point {};
+
+        //flip if descending
         if (S[0] > S[-1]){
-            for (int i = 0; i < par->num_power; i++){
-                S[i] = -S[i];
+            double* S_copy = new double[Nx];
+            for (int i = 0; i < Nx; i++){
+                S_copy[i] = -S[i];
             }
+            left_point = tools::binary_search(0, Nx, S_copy, 0.0);
+            delete[] S_copy;
         }
-        return tools::binary_search(0, par-> num_power, S, 0.0);
+
+        else{
+            left_point = tools::binary_search(0, Nx, S, 0.0);
+        }
+        return left_point;
 }
 
     // divorce
