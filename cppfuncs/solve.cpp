@@ -141,6 +141,11 @@ EXPORT void simulate(sim_struct *sim, sol_struct *sol, par_struct *par){
 
 }
 
+EXPORT double interpolate_delta(double* grid1,int num1 ,double* value1,double xi1,int j1, int delta_x=1, int delta_y=1, int idx_x=0, int idx_y=0){
+    double val_interp = tools::interp_1d_index_delta(grid1, num1, value1, xi1, j1, delta_x, delta_y, idx_x, idx_y);
+    return val_interp;
+}
+
 
 //Runs but appearantly does not do anything...
 EXPORT void test_divorce(int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol){

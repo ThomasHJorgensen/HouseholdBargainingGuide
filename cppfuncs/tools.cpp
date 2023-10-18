@@ -82,6 +82,44 @@ double interp_1d_index(double* grid1,int num1 ,double* value1,double xi1,int j1)
 
 } // interp_1d
 
+
+double interp_1d_index_delta(double* grid1,int num1 ,double* value1,double xi1,int j1, int delta_y=1, int idx_y=0, int delta_x=1, int idx_x=0){
+    /* 1d interpolation for one point
+        
+    Args:
+        grid1 : 1d grid
+        value : value array (2d)
+        xi1 : input point
+
+        delta_y : delta in y direction
+        idx_y : start index in y direction
+        delta_x : delta in x direction
+        idx_x : start index in x direction
+    Returns:
+        yi : output
+    */
+
+    // a. left/right
+    double nom_left = grid1[idx_x+(j1+1)*delta_x]-xi1;
+    double nom_right = xi1-grid1[idx_x+j1*delta_x];
+
+    // b. interpolation
+    double denom = (grid1[idx_x+(j1+1)*delta_x]-grid1[idx_x+j1*delta_x]);
+    double nom = 0.0;
+
+    for (size_t k1 = 0; k1 < 2; k1++){
+        double nom_1 = nom_left;
+        if (k1==1){
+            nom_1 = nom_right;
+        }
+        nom += nom_1*value1[idx_y + (j1+k1)*delta_y];
+    }
+
+    return nom/denom;
+
+} // interp_1d_delta
+
+
 double interp_1d(double* grid1,int num1 ,double* value1,double xi1){
     /* 1d interpolation for one point
         
