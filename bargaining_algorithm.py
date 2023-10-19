@@ -143,7 +143,7 @@ def remain(iP,power_idx, power,idx_couple, list_start_as_couple,list_remain_coup
     power[idx] = par.grid_power[iP]
 
     for i in range(len(list_start_as_couple)):
-        list_start_as_couple[i][idx] = list_remain_couple[i][iP]
+        list_start_as_couple[i][idx] = list_remain_couple[i][idx]
 
 
 
@@ -151,11 +151,12 @@ def update_to_indifference_point(iP, left_point, power_at_zero, power_idx, power
     idx = idx_couple(iP)
     power_idx[idx] = left_point
     power[idx] = power_at_zero
+    idxgrid_power_couple = idx_couple(np.arange(par.num_power))
 
     # update solution arrays
     if sol_idx is None: # pre-computation not done
         for i,key in enumerate(list_start_as_couple):
-            list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i],power_at_zero,left_point)
+            list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i][idxgrid_power_couple],power_at_zero,left_point)
     else: # pre-computation done - get solution at sol_idx
         for i,key in enumerate(list_start_as_couple):
             list_start_as_couple[i][idx] = list_start_as_couple[i][idx_couple(sol_idx)]

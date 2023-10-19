@@ -126,7 +126,6 @@ class HouseholdModelClass(EconModelClass):
         shape_couple = (par.T,par.num_power,par.num_love,par.num_A)     # states when couple: T, assets, power, love
         sol.Vw_couple = np.nan + np.ones(shape_couple)
         sol.Vm_couple = np.nan + np.ones(shape_couple)
-        
         sol.Cw_priv_couple = np.nan + np.ones(shape_couple)             # private consumption, couple
         sol.Cm_priv_couple = np.nan + np.ones(shape_couple)             
         sol.C_pub_couple = np.nan + np.ones(shape_couple)               # public consumption, couple
@@ -134,13 +133,14 @@ class HouseholdModelClass(EconModelClass):
 
         sol.Vw_remain_couple = np.nan + np.ones(shape_couple)           # value marriage -> marriage
         sol.Vm_remain_couple = np.nan + np.ones(shape_couple)
-        
         sol.Cw_priv_remain_couple = np.nan + np.ones(shape_couple)      # private consumption, marriage -> marriage
         sol.Cm_priv_remain_couple = np.nan + np.ones(shape_couple)      
         sol.C_pub_remain_couple = np.nan + np.ones(shape_couple)        # public consumption, marriage -> marriage
         sol.C_tot_remain_couple = np.nan + np.ones(shape_couple)        # total consumption, marriage -> marriage
                                                                         # different from marriage because this is conditional
                                                                         # on remaining together
+        sol.Sw = np.nan + np.ones(par.num_power)                         # Surplus of mariage
+        sol.Sm = np.nan + np.ones(par.num_power)
 
         sol.power_idx = np.zeros(shape_couple,dtype=np.int_)            # index of bargaining weight (approx)
         sol.power = np.zeros(shape_couple)                              # bargaining weight (interpolated)
@@ -349,11 +349,14 @@ class HouseholdModelClass(EconModelClass):
         par = self.par
         sol = self.sol
 
-        remain_Vw,remain_Vm,remain_Cw_priv,remain_Cm_priv,remain_C_pub = np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power),np.ones(par.num_power)
-        
         # b. loop through state variables
         for iL,love in enumerate(par.grid_love):
             for iA,A in enumerate(par.grid_A):
+                # Construct index function and lists of arrays to be used to detrmine outcomes
+                idx_single = (t,iA)
+                idx_couple = lambda iP: (t,iP,iL,iA)
+                
+                # Calculate resources
                 M_resources = resources_couple(A,par) 
                 
                 starting_val = None # trick :)
@@ -369,42 +372,30 @@ class HouseholdModelClass(EconModelClass):
 
                     # ii. starting value for total consumption. The intra-temporal allocation problem solved conditional on this
                     if iP>0:
-                        C_tot_last = remain_Cw_priv[iP-1] + remain_Cm_priv[iP-1] + remain_C_pub[iP-1]
+                        C_tot_last = sol.Cw_priv_remain_couple[idx_couple(iP-1)] + sol.Cm_priv_remain_couple[idx_couple(iP-1)] + sol.C_pub_remain_couple[idx_couple(iP-1)]
                         starting_val = np.array([C_tot_last])
                     
-                    # iii. solve problem if remining married, m->m
-                    remain_Cw_priv[iP], remain_Cm_priv[iP], remain_C_pub[iP], remain_Vw[iP], remain_Vm[iP] = self.solve_remain_couple(t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val=starting_val)
+                    # iii. solve problem if remaining married, m->m
+                    sol.Cw_priv_remain_couple[idx_couple(iP)], sol.Cm_priv_remain_couple[idx_couple(iP)], sol.C_pub_remain_couple[idx_couple(iP)], sol.Vw_remain_couple[idx_couple(iP)], sol.Vm_remain_couple[idx_couple(iP)] = self.solve_remain_couple(t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val=starting_val)
 
+                    # iv. Calculate marital surplus
+                    sol.Sw[iP] = sol.Vw_remain_couple[idx_couple(iP)] - sol.Vw_single[idx_single]
+                    sol.Sm[iP] = sol.Vm_remain_couple[idx_couple(iP)] - sol.Vm_single[idx_single]
+                    
                 # c. check the participation constraints. 
-                # Construct index function and lists of arrays to be used to detrmine outcomes
-                idx_single = (t,iA)
-                idx_couple = lambda iP: (t,iP,iL,iA)
-
-                list_start_as_couple = (sol.Vw_couple,sol.Vm_couple,sol.Cw_priv_couple,sol.Cm_priv_couple,sol.C_pub_couple)
-                list_remain_couple = (remain_Vw,remain_Vm,remain_Cw_priv,remain_Cm_priv,remain_C_pub)
-                list_trans_to_single = (sol.Vw_single,sol.Vm_single,sol.Cw_priv_single,sol.Cm_priv_single,sol.Cw_pub_single) # last input here not important in case of divorce
+                list_start_as_couple = (sol.Vw_couple, sol.Vm_couple, sol.Cw_priv_couple, sol.Cm_priv_couple, sol.C_pub_couple)
+                list_remain_couple =   (sol.Vw_remain_couple, sol.Vm_remain_couple, sol.Cw_priv_remain_couple, sol.Cm_priv_remain_couple, sol.C_pub_remain_couple)
+                list_trans_to_single = (sol.Vw_single, sol.Vm_single, sol.Cw_priv_single, sol.Cm_priv_single, sol.Cw_pub_single) # last input here not important in case of divorce
                 
-                # marital surplus
-                Sw = remain_Vw - sol.Vw_single[idx_single] 
-                Sm = remain_Vm - sol.Vm_single[idx_single] 
-                
+                # d. check participation constraints and update sol values
                 if par.brg_algo == 0:
-                    ba.check_participation_constraints(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                    ba.check_participation_constraints(sol.power_idx,sol.power,sol.Sw,sol.Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
                 elif par.brg_algo == 1:
-                    check_participation_constraints(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                    check_participation_constraints(sol.power_idx,sol.power,sol.Sw,sol.Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
                 elif par.brg_algo == 2:
-                    check_participation_constraints_old2(sol.power_idx,sol.power,Sw,Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                    check_participation_constraints_old2(sol.power_idx,sol.power,sol.Sw,sol.Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
                 else:
                     raise ValueError('par.brg_algo must be 0, 1 or 2')
-
-                # d. save remain values in sol-struct
-                for iP,power in enumerate(par.grid_power):
-                    idx = (t,iP,iL,iA)
-                    sol.Cw_priv_remain_couple[idx] = remain_Cw_priv[iP] 
-                    sol.Cm_priv_remain_couple[idx] = remain_Cm_priv[iP]
-                    sol.C_pub_remain_couple[idx] = remain_C_pub[iP]
-                    sol.Vw_remain_couple[idx] = remain_Vw[iP]
-                    sol.Vm_remain_couple[idx] = remain_Vm[iP]
 
     def solve_remain_couple(self,t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val = None):
         par = self.par
@@ -682,7 +673,7 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
         for iP in range(par.num_power):
             idx = idx_couple(iP)
             for i,key in enumerate(list_start_as_couple):
-                list_start_as_couple[i][idx] = list_remain_couple[i][iP]
+                list_start_as_couple[i][idx] = list_remain_couple[i][idx]
 
             power_idx[idx] = iP
             power[idx] = par.grid_power[iP]
@@ -703,6 +694,7 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
             # loop through range of bargaining power
             for iP in range(par.num_power): 
                 idx = idx_couple(iP)
+                idxgrid_power_couple = idx_couple(np.arange(par.num_power))
 
                 # update bargaining power
                 if iP<Low_w: # update to woman's indifference point
@@ -718,13 +710,13 @@ def check_participation_constraints(power_idx,power,Sw,Sm,idx_single,idx_couple,
                 # update consumption allocations
                 for i,key in enumerate(list_start_as_couple):
                     if (iP==0): # update to woman's indifference point
-                        list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i],power_at_zero_w,Low_w-1)
+                        list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i][idxgrid_power_couple],power_at_zero_w,Low_w-1)
                     elif iP < Low_w: # bargaining power constant until Low_w
                         list_start_as_couple[i][idx]=list_start_as_couple[i][idx_couple(0)]
                     elif (iP >= Low_w) & (iP <= Low_m): # No change between Low_w and Low_m   
-                        list_start_as_couple[i][idx] = list_remain_couple[i][iP]
+                        list_start_as_couple[i][idx] = list_remain_couple[i][idx]
                     elif iP == Low_m+1: # update to man's indifference point
-                        list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i],power_at_zero_m,Low_m)
+                        list_start_as_couple[i][idx] = linear_interp_1d._interp_1d(par.grid_power,list_remain_couple[i][idxgrid_power_couple],power_at_zero_m,Low_m)
                     else:   # bargaining power constant after Low_m
                         list_start_as_couple[i][idx] = list_start_as_couple[i][idx_couple(Low_m+1)]; # re-use that the interpolated values are identical
 
