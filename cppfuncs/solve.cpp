@@ -142,7 +142,70 @@ EXPORT void simulate(sim_struct *sim, sol_struct *sol, par_struct *par){
 }
 
 
-//Runs but appearantly does not do anything...
+
+/////////////////
+// 6. TESTING  //
+/////////////////
+
+EXPORT void test_bargaining(int iP, int t, int iL, int iA, par_struct* par, sol_struct* sol, bool do_print){
+
+    //recast from Python type data to c++ type data
+    // idx_couple
+    index::index_couple_struct* idx_couple = new index::index_couple_struct;
+    idx_couple->t = t;
+    idx_couple->iL = iL;
+    idx_couple->iA = iA;
+    idx_couple->par = par;
+
+    // idx_single
+    int idx_single = index::index2(t,iA,par->T,par->num_A);
+
+    // power_idx
+    int* power_idx = sol->power_idx;
+
+    // power
+    double* power = sol->power;
+
+    // lists
+    int num = 5;
+    double** list_start_as_couple = new double*[num];
+    double** list_remain_couple = new double*[num];  
+    double* list_trans_to_single = new double[num]; 
+
+    list_start_as_couple[0] = sol->Vw_couple;
+    list_start_as_couple[1] = sol->Vm_couple;
+    list_start_as_couple[2] = sol->Cw_priv_couple;
+    list_start_as_couple[3] = sol->Cm_priv_couple;
+    list_start_as_couple[4] = sol->C_pub_couple;
+
+    list_remain_couple[0] = sol->Vw_remain_couple;
+    list_remain_couple[1] = sol->Vm_remain_couple;
+    list_remain_couple[2] = sol->Cw_priv_remain_couple;
+    list_remain_couple[3] = sol->Cm_priv_remain_couple;
+    list_remain_couple[4] = sol->C_pub_remain_couple;
+
+    list_trans_to_single[0] = sol->Vw_single[idx_single];
+    list_trans_to_single[1] = sol->Vm_single[idx_single];
+    list_trans_to_single[2] = sol->Cw_priv_single[idx_single];
+    list_trans_to_single[3] = sol->Cm_priv_single[idx_single];
+    list_trans_to_single[4] = sol->Cw_pub_single[idx_single];
+
+    double* Sw = new double[par->num_power];
+    double* Sm = new double[par->num_power];
+    
+    for (int iP=0; iP<par->num_power; iP++){
+        int idx_tmp = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+        Sw[iP] = couple::calc_marital_surplus(sol->Vw_remain_couple[idx_tmp],sol->Vw_single[idx_single],par);
+        Sm[iP] = couple::calc_marital_surplus(sol->Vm_remain_couple[idx_tmp],sol->Vm_single[idx_single],par);
+
+
+    }
+
+    bargaining::check_participation_constraints(power_idx, power, Sw, Sm, &idx_single, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, num, par);
+}
+
+
+
 EXPORT void test_divorce(int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol){
     
     //recast from Python type data to c++ type data
@@ -193,7 +256,6 @@ EXPORT void test_divorce(int iP, int t, int iL, int iA, par_struct *par, sol_str
 }
 
 
-//Runs but appearantly does not do anything...
 EXPORT void test_remain(int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol){
     
     //recast from Python type data to c++ type data
@@ -237,7 +299,6 @@ EXPORT void test_remain(int iP, int t, int iL, int iA, par_struct *par, sol_stru
 
 }
 
-// once again, running but not updating...
 EXPORT void test_update_to_indifference(int left_point, double power_at_zero, int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol, int sol_idx){
     
 

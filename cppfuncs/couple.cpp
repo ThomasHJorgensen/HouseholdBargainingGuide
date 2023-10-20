@@ -392,23 +392,10 @@ namespace couple {
     void solve_couple(int t,sol_struct *sol,par_struct *par){
         
         #pragma omp parallel num_threads(par->threads)
-        {
-            // allocate memory to store relevant objects for the participation constraint check
-            int shape_tmp = par->num_power;
-            double* remain_Vw = new double[shape_tmp]; //AMO: creates new object of type double[shape_tmp], and creates a pointer to said object remain_Vw
-            double* remain_Vm = new double[shape_tmp];
-            double* remain_Cw_priv = new double[shape_tmp];
-            double* remain_Cm_priv = new double[shape_tmp];
-            double* remain_C_pub = new double[shape_tmp];
-            double* remain_marg_V = new double[shape_tmp];
-
-            int num = 4;
-            double** list_start_as_couple_w = new double*[num]; //AMO: double asterix creates a pointer to a pointer (this is madness). So list_start_as_couple_w
-            double** list_start_as_couple_m = new double*[num]; // and others each points to arrays of 4 (num) pointers. Essentially creating a matrix of dim 2 (**).
-            double** list_remain_couple_w = new double*[num]; 
-            double** list_remain_couple_m = new double*[num]; 
-            double* list_trans_to_single_w = new double[num]; 
-            double* list_trans_to_single_m = new double[num];             
+        {   int num = 5;
+            double** list_start_as_couple = new double*[num]; 
+            double** list_remain_couple = new double*[num];
+            double* list_trans_to_single = new double[num];             
 
             double* Sw = new double[par->num_power];
             double* Sm = new double[par->num_power];
@@ -447,8 +434,7 @@ namespace couple {
             for (int iL=0; iL<par->num_love; iL++){    
                 for (int iA=0; iA<par->num_A;iA++){
                     // indices
-                    int idx_single_w = index::index2(t,iA,par->T,par->num_A);
-                    int idx_single_m = index::index2(t,iA,par->T,par->num_A);
+                    int idx_single = index::index2(t,iA,par->T,par->num_A);
                     idx_couple->t = t;
                     idx_couple->iL = iL;
                     idx_couple->iA = iA;
@@ -457,46 +443,33 @@ namespace couple {
                     // setup temporary array of marital surplus with the one dimension being power
                     for (int iP=0; iP<par->num_power; iP++){
                         int idx_tmp = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-                        Sw[iP] = calc_marital_surplus(sol->Vw_remain_couple[idx_tmp],sol->Vw_single[idx_single_w],par);
-                        Sm[iP] = calc_marital_surplus(sol->Vm_remain_couple[idx_tmp],sol->Vm_single[idx_single_m],par);
+                        Sw[iP] = calc_marital_surplus(sol->Vw_remain_couple[idx_tmp],sol->Vw_single[idx_single],par);
+                        Sm[iP] = calc_marital_surplus(sol->Vm_remain_couple[idx_tmp],sol->Vm_single[idx_single],par);
                     }
 
                     // setup relevant lists
                     int i = 0;
-                    list_start_as_couple_w[i] = sol->Vw_couple; i++; //AMO: overwrite element in list_start_as_couple[i] and increment i with 1
-                    list_start_as_couple_w[i] = sol->Cw_priv_couple; i++;
-                    list_start_as_couple_w[i] = sol->C_pub_couple; i++;
-                    list_start_as_couple_w[i] = sol->marg_V_couple; i++; //AMO: marg V for EGM 
+                    list_start_as_couple[i] = sol->Vw_couple; i++;
+                    list_start_as_couple[i] = sol->Vm_couple; i++;
+                    list_start_as_couple[i] = sol->Cw_priv_couple; i++;
+                    list_start_as_couple[i] = sol->Cm_priv_couple; i++;
+                    list_start_as_couple[i] = sol->C_pub_couple; i++; //consider having two of these, one for each spouse
                     i = 0;
-                    list_start_as_couple_m[i] = sol->Vm_couple; i++;
-                    list_start_as_couple_m[i] = sol->Cm_priv_couple; i++;
-                    list_start_as_couple_m[i] = sol->C_pub_couple; i++;
-                    list_start_as_couple_m[i] = sol->marg_V_couple; i++;
-
+                    list_remain_couple[i] = sol->Vw_remain_couple; i++;
+                    list_remain_couple[i] = sol->Vm_remain_couple; i++;
+                    list_remain_couple[i] = sol->Cw_priv_remain_couple; i++;
+                    list_remain_couple[i] = sol->Cm_priv_remain_couple; i++;
+                    list_remain_couple[i] = sol->C_pub_remain_couple; i++; //consider having two of these, one for each spouse
                     i = 0;
-                    list_remain_couple_w[i] = sol->Vw_remain_couple; i++;
-                    list_remain_couple_w[i] = sol->Cw_priv_remain_couple; i++;
-                    list_remain_couple_w[i] = sol->C_pub_remain_couple; i++;
-                    list_remain_couple_w[i] = sol->marg_V_remain_couple; i++;
-                    i = 0;
-                    list_remain_couple_m[i] = sol->Vm_remain_couple; i++;
-                    list_remain_couple_m[i] = sol->Cm_priv_remain_couple; i++;
-                    list_remain_couple_m[i] = sol->C_pub_remain_couple; i++;
-                    list_remain_couple_m[i] = sol->marg_V_remain_couple; i++;
-
-                    i = 0;
-                    list_trans_to_single_w[i] = sol->Vw_single[idx_single_w]; i++;
-                    list_trans_to_single_w[i] = sol->Cw_priv_single[idx_single_w]; i++;
-                    list_trans_to_single_w[i] = sol->Cw_pub_single[idx_single_w]; i++; 
-                    list_trans_to_single_w[i] = sol->Cw_pub_single[idx_single_w]; i++; // does not matter here since marg_V calcualted below
-                    i = 0;
-                    list_trans_to_single_m[i] = sol->Vm_single[idx_single_m]; i++;
-                    list_trans_to_single_m[i] = sol->Cm_priv_single[idx_single_m]; i++;
-                    list_trans_to_single_m[i] = sol->Cm_pub_single[idx_single_m]; i++; 
-                    list_trans_to_single_m[i] = sol->Cm_pub_single[idx_single_m]; i++; // does not matter here since marg_V calcualted below
+                    list_trans_to_single[i] = sol->Vw_single[idx_single]; i++;
+                    list_trans_to_single[i] = sol->Vm_single[idx_single]; i++;
+                    list_trans_to_single[i] = sol->Cw_priv_single[idx_single]; i++;
+                    list_trans_to_single[i] = sol->Cm_priv_single[idx_single]; i++;
+                    list_trans_to_single[i] = sol->Cw_pub_single[idx_single]; i++; //consider having two of these, one for each spouse
 
                     // update solution
-                    update_bargaining(sol->power_idx,sol->power,Sw,Sm,idx_couple,list_start_as_couple_w,list_start_as_couple_m,list_remain_couple_w,list_remain_couple_m,list_trans_to_single_w,list_trans_to_single_m,num, par);
+                    //update_bargaining(sol->power_idx,sol->power,Sw,Sm,idx_couple,list_start_as_couple_w,list_start_as_couple_m,list_remain_couple_w,list_remain_couple_m,list_trans_to_single_w,list_trans_to_single_m,num, par);
+                    bargaining::check_participation_constraints(sol->power_idx, sol->power, Sw, Sm, &idx_single, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, num, par);
 
                     // calculate marginal utility in case of singlehood [update after check above] if EGM is implemented for singles, these numbers are stored elsewhere
                     if(par->do_egm){
@@ -506,8 +479,8 @@ namespace couple {
                                 double power = par->grid_power[iP];
                                 double share = par->div_A_share;
 
-                                double Cw = sol->Cw_priv_single[idx_single_w] + sol->Cw_pub_single[idx_single_w];
-                                double Cm = sol->Cm_priv_single[idx_single_m] + sol->Cm_pub_single[idx_single_m];
+                                double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
+                                double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
                                 double margUw = single::marg_util_C(Cw,woman,par); //AMO Q: can we be sure that marg V is just weighted sum of marg U? - I'm not sure if we are conditioning on discrete choice here
                                 double margUm = single::marg_util_C(Cm,man,par);
                                 sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; //AMO Q: what
@@ -520,12 +493,9 @@ namespace couple {
             } // love
             
             // delete pointers
-            delete[] list_start_as_couple_w;
-            delete[] list_start_as_couple_m;
-            delete[] list_remain_couple_w;
-            delete[] list_remain_couple_m;
-            delete list_trans_to_single_w;
-            delete list_trans_to_single_m;
+            delete[] list_start_as_couple;
+            delete[] list_remain_couple;
+            delete list_trans_to_single;
 
             delete Sw;
             delete Sm;
