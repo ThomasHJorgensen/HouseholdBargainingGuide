@@ -141,11 +141,6 @@ EXPORT void simulate(sim_struct *sim, sol_struct *sol, par_struct *par){
 
 }
 
-EXPORT double interpolate_delta(double* grid1,int num1 ,double* value1,double xi1,int j1, int delta_x=1, int delta_y=1, int idx_x=0, int idx_y=0){
-    double val_interp = tools::interp_1d_index_delta(grid1, num1, value1, xi1, j1, delta_x, delta_y, idx_x, idx_y);
-    return val_interp;
-}
-
 
 //Runs but appearantly does not do anything...
 EXPORT void test_divorce(int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol){
@@ -171,7 +166,7 @@ EXPORT void test_divorce(int iP, int t, int iL, int iA, par_struct *par, sol_str
     int num = 5;
     double** list_start_as_couple = new double*[num];
     double** list_remain_couple = new double*[num];  
-    double** list_trans_to_single = new double*[num]; 
+    double* list_trans_to_single = new double[num]; 
 
     list_start_as_couple[0] = sol->Vw_couple;
     list_start_as_couple[1] = sol->Vm_couple;
@@ -179,21 +174,21 @@ EXPORT void test_divorce(int iP, int t, int iL, int iA, par_struct *par, sol_str
     list_start_as_couple[3] = sol->Cm_priv_couple;
     list_start_as_couple[4] = sol->C_pub_couple;
 
-    list_remain_couple[0] = sol->Vw_remain_couple;
-    list_remain_couple[1] = sol->Vm_remain_couple;
-    list_remain_couple[2] = sol->Cw_priv_remain_couple;
-    list_remain_couple[3] = sol->Cm_priv_remain_couple;
-    list_remain_couple[4] = sol->C_pub_remain_couple;
-
-    list_trans_to_single[0] = sol->Vw_single;
-    list_trans_to_single[1] = sol->Vm_single;
-    list_trans_to_single[2] = sol->Cw_priv_single;
-    list_trans_to_single[3] = sol->Cm_priv_single;
-    list_trans_to_single[4] = sol->Cw_pub_single;
+    list_trans_to_single[0] = sol->Vw_single[idx_single];
+    list_trans_to_single[1] = sol->Vm_single[idx_single];
+    list_trans_to_single[2] = sol->Cw_priv_single[idx_single];
+    list_trans_to_single[3] = sol->Cm_priv_single[idx_single];
+    list_trans_to_single[4] = sol->Cw_pub_single[idx_single];
 
 
     // test
-    bargaining::divorce(iP, power_idx, power, idx_single, idx_couple, list_start_as_couple, list_trans_to_single, num, par);
+    bargaining::divorce(iP,power_idx, power, idx_couple, list_start_as_couple, list_trans_to_single, num, par);
+
+
+    delete[] list_start_as_couple;
+    delete[] list_remain_couple;
+    delete[] list_trans_to_single;
+    delete idx_couple;
 
 }
 
@@ -236,10 +231,14 @@ EXPORT void test_remain(int iP, int t, int iL, int iA, par_struct *par, sol_stru
     // test
     bargaining::remain(iP, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
 
+    delete[] list_start_as_couple;
+    delete[] list_remain_couple;
+    delete idx_couple;
+
 }
 
 // once again, running but not updating...
-EXPORT double test_update_to_indifference(int left_point, double power_at_zero, int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol){
+EXPORT void test_update_to_indifference(int left_point, double power_at_zero, int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol, int sol_idx){
     
 
     //recast from Python type data to c++ type data
@@ -277,9 +276,10 @@ EXPORT double test_update_to_indifference(int left_point, double power_at_zero, 
     list_remain_couple[3] = sol->Cm_priv_remain_couple;
     list_remain_couple[4] = sol->C_pub_remain_couple;
 
-    double x = 0.0;
-    bargaining::update_to_indifference(&x, iP, left_point, power_at_zero, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
+    bargaining::update_to_indifference(iP, left_point, power_at_zero, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, sol_idx);
 
-    return x;
+    delete[] list_start_as_couple;
+    delete[] list_remain_couple;
+    delete idx_couple;
 
 }
