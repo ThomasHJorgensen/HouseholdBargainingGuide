@@ -50,9 +50,9 @@ namespace bargaining {
 
 
     // update to indifference point
-    void update_to_indifference(int iP, int left_point, double power_at_zero, int *power_idx, double *power, index::index_couple_struct *idx_couple, double **list_start_as_couple, double **list_remain_couple, int num, par_struct *par, int sol_idx = -1){
+    void update_to_indifference(int iP, int left_point, int low_point, double power_at_zero, int *power_idx, double *power, index::index_couple_struct *idx_couple, double **list_start_as_couple, double **list_remain_couple, int num, par_struct *par, int sol_idx = -1){
         int idx = idx_couple->idx(iP);
-        power_idx[idx] = left_point;
+        power_idx[idx] = low_point;
         power[idx] = power_at_zero;
 
         int delta = idx_couple->idx(1) - idx_couple->idx(0); //difference between the indices of two consecutive values of iP
@@ -116,10 +116,10 @@ namespace bargaining {
             // update case 1c
             for (int iP=0; iP<par->num_power; iP++){
                 if (iP == 0){
-                    update_to_indifference(iP, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                    update_to_indifference(iP, Low_w-1, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
                 }
                 else if (iP < Low_w){
-                    update_to_indifference(iP, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
+                    update_to_indifference(iP, Low_w-1, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
                 }
                 else{
                     remain(iP, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
@@ -139,10 +139,10 @@ namespace bargaining {
                     remain(iP, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
                 }
                 else if (iP==Low_m+1){
-                    update_to_indifference(iP, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                    update_to_indifference(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
                 }
                 else{
-                    update_to_indifference(iP, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
+                    update_to_indifference(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
                 } //if
             } //for
         } //case 1d
@@ -167,19 +167,19 @@ namespace bargaining {
             else {
                 for (int iP=0; iP<par->num_power; iP++){
                     if (iP==0){ //update to woman's indifference point
-                        update_to_indifference(iP, Low_w-1, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                        update_to_indifference(iP, Low_w-1, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
                     }
                     else if (iP<Low_w){ //re-use pre-computed values
-                        update_to_indifference(iP, Low_w-1, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
+                        update_to_indifference(iP, Low_w-1, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
                     }
                     else if (iP>=Low_w && iP <= Low_m) { //no change between Low_w and Low_m
                         remain(iP, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
                     }
                     else if (iP == Low_m+1) { //update to man's indifference point
-                        update_to_indifference(iP, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                        update_to_indifference(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
                     }
                     else { // re-use precomputed values
-                        update_to_indifference(iP, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
+                        update_to_indifference(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
                     } //if (indifference points)
                 }//for
             } //if (bargaining)

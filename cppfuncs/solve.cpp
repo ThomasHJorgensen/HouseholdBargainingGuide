@@ -299,7 +299,7 @@ EXPORT void test_remain(int iP, int t, int iL, int iA, par_struct *par, sol_stru
 
 }
 
-EXPORT void test_update_to_indifference(int left_point, double power_at_zero, int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol, int sol_idx){
+EXPORT void test_update_to_indifference(int left_point, int low_point, double power_at_zero, int iP, int t, int iL, int iA, par_struct *par, sol_struct *sol, int sol_idx){
     
 
     //recast from Python type data to c++ type data
@@ -337,7 +337,7 @@ EXPORT void test_update_to_indifference(int left_point, double power_at_zero, in
     list_remain_couple[3] = sol->Cm_priv_remain_couple;
     list_remain_couple[4] = sol->C_pub_remain_couple;
 
-    bargaining::update_to_indifference(iP, left_point, power_at_zero, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, sol_idx);
+    bargaining::update_to_indifference(iP, left_point, low_point, power_at_zero, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, sol_idx);
 
     delete[] list_start_as_couple;
     delete[] list_remain_couple;
