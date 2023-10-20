@@ -20,18 +20,6 @@ namespace couple {
 
     } solver_couple_struct;
 
-    typedef struct{
-        int t;
-        int iL;
-        int iA;
-        par_struct *par; 
-
-        int idx(int iP){
-                return index::index4(t,iP,iL,iA , par->T,par->num_power,par->num_love,par->num_A); 
-        }
-    
-    } index_couple_struct; //AMO: returns index for iP given t, iL and iA, like lambda function
-
     double calc_marital_surplus(double V_remain_couple,double V_trans_single,par_struct* par){
         return V_remain_couple - V_trans_single;
     }
@@ -249,7 +237,7 @@ namespace couple {
     }
 
 
-    void update_bargaining(int *power_idx,double* power,double* Sw,double* Sm,index_couple_struct *idx_couple,double** list_start_as_couple_w,double** list_start_as_couple_m,double** list_remain_couple_w,double** list_remain_couple_m,double* list_trans_to_single_w,double* list_trans_to_single_m,int num,par_struct* par){
+    void update_bargaining(int *power_idx,double* power,double* Sw,double* Sm,index::index_couple_struct *idx_couple,double** list_start_as_couple_w,double** list_start_as_couple_m,double** list_remain_couple_w,double** list_remain_couple_m,double* list_trans_to_single_w,double* list_trans_to_single_m,int num,par_struct* par){
         
         // check the participation constraints. Array
         double min_Sw =tools::minf(Sw,par->num_power);
@@ -425,7 +413,7 @@ namespace couple {
             double* Sw = new double[par->num_power];
             double* Sm = new double[par->num_power];
 
-            index_couple_struct* idx_couple = new index_couple_struct;
+            index::index_couple_struct* idx_couple = new index::index_couple_struct;
 
             // a. solve for values of reminaing a couple
             #pragma omp for

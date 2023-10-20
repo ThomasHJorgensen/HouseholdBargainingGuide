@@ -147,7 +147,7 @@ EXPORT void test_divorce(int iP, int t, int iL, int iA, par_struct *par, sol_str
     
     //recast from Python type data to c++ type data
     // idx_couple
-    bargaining::index_couple_struct* idx_couple = new bargaining::index_couple_struct;
+    index::index_couple_struct* idx_couple = new index::index_couple_struct;
     idx_couple->t = t;
     idx_couple->iL = iL;
     idx_couple->iA = iA;
@@ -198,7 +198,7 @@ EXPORT void test_remain(int iP, int t, int iL, int iA, par_struct *par, sol_stru
     
     //recast from Python type data to c++ type data
     // idx_couple
-    bargaining::index_couple_struct* idx_couple = new bargaining::index_couple_struct;
+    index::index_couple_struct* idx_couple = new index::index_couple_struct;
     idx_couple->t = t;
     idx_couple->iL = iL;
     idx_couple->iA = iA;
@@ -243,7 +243,7 @@ EXPORT void test_update_to_indifference(int left_point, double power_at_zero, in
 
     //recast from Python type data to c++ type data
     // idx_couple
-    bargaining::index_couple_struct* idx_couple = new bargaining::index_couple_struct;
+    index::index_couple_struct* idx_couple = new index::index_couple_struct;
     idx_couple->t = t;
     idx_couple->iL = iL;
     idx_couple->iA = iA;
