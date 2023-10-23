@@ -30,7 +30,7 @@ double minf(double* vec, int num){
     return min;
 }
 
-int binary_search(int imin, int Nx, double *x, double xi)
+int _min_binary_search(int imin, int Nx, double *x, double xi)
 {
     int imid, half;
 
@@ -50,6 +50,38 @@ int binary_search(int imin, int Nx, double *x, double xi)
 
     return imin;
 
+}
+
+int _max_binary_search(int imax, int Nx, double *x, double xi)
+{
+    int imid, half;
+
+    // a. checks
+    if(xi >= x[0]){
+        return 0;
+    } else if(xi <= x[Nx-2]) {
+        return Nx-2;
+    }
+
+    // b. binary search
+    while((half = Nx/2)){
+        imid = imax + half;
+        imax = (x[imid] >= xi) ? imid:imax;
+        Nx  -= half;
+    }
+
+    return imax;
+
+}
+
+int binary_search(int i, int Nx, double *x, double xi)
+{
+    // check if function is increasing
+    if(x[i] <= x[Nx-1]){
+        return _min_binary_search(i,Nx,x,xi);
+    } else {
+        return _max_binary_search(i,Nx,x,xi);
+    }
 }
 
 double interp_1d_index(double* grid1,int num1 ,double* value1,double xi1,int j1){
