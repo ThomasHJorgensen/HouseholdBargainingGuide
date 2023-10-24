@@ -172,11 +172,52 @@ def find_left_point(S):
     Returns:
     int: The index of the left point of the sequence S.
     """
-    # flip if descending
-    if S[0] > S[-1]:
-        S = -S
-    return linear_interp.binary_search(0,len(S), S, 0.0)
+    return binary_search(0,len(S), S, 0.0)
 
+# Code from consav
+def _min_binary_search(imin,Nx,x,xi):
+        
+    # a. checks
+    if xi <= x[0]:
+        return 0
+    elif xi >= x[Nx-2]:
+        return Nx-2
+    
+    # b. binary search
+    half = Nx//2
+    while half:
+        imid = imin + half
+        if x[imid] <= xi:
+            imin = imid
+        Nx -= half
+        half = Nx//2
+        
+    return imin
 
+def _max_binary_search(imax,Nx,x,xi):
+        
+    # a. checks
+    if xi >= x[0]:
+        return 0
+    elif xi <= x[Nx-2]:
+        return Nx-2
+    
+    # b. binary search
+    half = Nx//2
+    while half:
+        imid = imax + half
+        if x[imid] >= xi:
+            imax = imid
+        Nx -= half
+        half = Nx//2
+        
+    return imax
 
+def binary_search(i,Nx,x,xi):
+        
+    # a. check if x is increasing
+    if x[i] <= x[Nx-1]:
+        return _min_binary_search(i,Nx,x,xi)
+    else:
+        return _max_binary_search(i,Nx,x,xi)
 
