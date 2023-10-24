@@ -188,6 +188,40 @@ def plot_surplus(model, t, iP, iL, iA, title=None, ax=None):
         
     return ax
 
+def plot_var_over_assets(model, vars, idx, grid_points=False, title=None, ax=None):
+    par = model.par
+    sol = model.sol
+    
+    t, iP, iL, iA = idx
+    
+    if grid_points:
+        assets = np.arange(par.num_A)
+    else:
+        assets = par.grid_A
+
+    # If ax is not provided, create a new figure and axis
+    if ax is None:
+        fig, ax = plt.subplots()
+    
+    for var in vars:
+        y = getattr(sol, var)
+        try:
+            y = y[t,iP,iL,:]
+        except:
+            y = y[t,:]
+        
+        ax.plot(assets, y, label=var, alpha=0.5)
+    
+
+    # Layout
+    ax.set_xlabel('Assets')
+    ax.set_ylabel('')
+    if title is not None:
+        ax.set_title(title)
+    ax.legend()
+        
+    return ax
+
               
         
 def plot_life_cycle(model_list, fig_name):
@@ -224,43 +258,5 @@ def plot_life_cycle(model_list, fig_name):
     plt.close()
         
         
-def model_diffs(model1, model2):
-    # Create a new model for differences
-    model_diff = model1.copy(name=f'diffs_{model1.name}_and_{model2.name}')
-    model_diff.spec = model1.spec.copy()
-    
-    # Find differences in sim variables
-    for var_name in model1.sim.__dict__.keys():
-        if hasattr(model2.sim, var_name):
-            var1 = getattr(model1.sim, var_name)
-            var2 = getattr(model2.sim, var_name)
-            
-            # Check if var1 and var2 are boolean arrays
-            if np.issubdtype(var1.dtype, np.bool_) and np.issubdtype(var2.dtype, np.bool_):
-                diff = var1 ^ var2  # Use ^ operator for boolean arrays
-            else:
-                diff = var1 - var2  # Use - operator for other types of arrays
-            
-            setattr(model_diff.sim, var_name, diff)
-        else:
-            print(f"Variable '{var_name}' not found in model2.sim")
 
-    # Find differences in sol variables
-    for var_name in model1.sol.__dict__.keys():
-        if hasattr(model2.sol, var_name):
-            var1 = getattr(model1.sol, var_name)
-            var2 = getattr(model2.sol, var_name)
-            
-            # Check if var1 and var2 are boolean arrays
-            if np.issubdtype(var1.dtype, np.bool_) and np.issubdtype(var2.dtype, np.bool_):
-                diff = var1 ^ var2  # Use ^ operator for boolean arrays
-            else:
-                diff = var1 - var2  # Use - operator for other types of arrays
-            
-            setattr(model_diff.sol, var_name, diff)
-        else:
-            print(f"Variable '{var_name}' not found in model2.sol")
-
-    return model_diff
-        
         
