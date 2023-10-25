@@ -62,15 +62,16 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
     # 1c: check if husband is always happy, wife has indifference point
     elif cross_w & always_happy_m: # husband is always happy, wife has indifference point
         # find wife's indifference point
-        Low_w = find_left_point(Sw) + 1 # lowest point where she has positive surplus
+        left_w = find_left_point(Sw) # index left of indifference point
+        Low_w = left_w + 1 # lowest point where she has positive surplus
         power_at_zero_w = linear_interp_1d._interp_1d(Sw,par.grid_power,0.0,Low_w-1) # interpolated power at indifference point
 
         # update case 1c
         for iP in range(par.num_power):
             if iP == 0:
-                update_to_indifference_point(iP, Low_w-1, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
+                update_to_indifference_point(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
             elif iP < Low_w: # update to wife's indifference point
-                update_to_indifference_point(iP, Low_w-1, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=0)
+                update_to_indifference_point(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=0)
             else:
                 remain(iP, power_idx, power,idx_couple, list_start_as_couple,list_remain_couple, par)         
 
@@ -78,7 +79,8 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
     # 1d: check if wife is always happy, husband has indifference point
     elif cross_m & always_happy_w: # wife is always happy, husband has indifference point
         # find husband's indifference point
-        Low_m = find_left_point(Sm) # lowest point where he has positive surplus
+        left_m = find_left_point(Sm) # index left of indifference point
+        Low_m = left_m # lowest point where he has positive surplus
         power_at_zero_m = linear_interp_1d._interp_1d(Sm,par.grid_power,0.0,Low_m) # interpolated power at indifference point
 
         # update case 1d
@@ -94,10 +96,12 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
     # 1e: Both have indifference points
     else:
         # find indifference points
-        Low_w = find_left_point(Sw) + 1 # lowest point where she has positive surplus
+        left_w = find_left_point(Sw) # index left of indifference point
+        Low_w = left_w + 1 # lowest point where she has positive surplus
         power_at_zero_w = linear_interp_1d._interp_1d(Sw,par.grid_power,0.0,Low_w-1) # interpolated power at indifference point
 
-        Low_m = find_left_point(Sm) # lowest point where he has positive surplus
+        left_m = find_left_point(Sm) # index left of indifference point
+        Low_m = left_m # lowest point where he has positive surplus
         power_at_zero_m = linear_interp_1d._interp_1d(Sm,par.grid_power,0.0,Low_m) # interpolated power at indifference point
 
         # step 3: update bargaining power and consumption allocations
@@ -108,21 +112,21 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
         else: # bargaining
             for iP in range(par.num_power): 
                 if iP == 0: #update to woman's indifference point
-                    update_to_indifference_point(iP, Low_w-1, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
+                    update_to_indifference_point(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
                     power_idx[idx_couple(iP)] += 1
                     
                 elif iP < Low_w: #re-use precomputed values
-                    update_to_indifference_point(iP, Low_w-1, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=0)
+                    update_to_indifference_point(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=0)
                     power_idx[idx_couple(iP)] += 1
                     
                 elif (iP >= Low_w) & (iP <= Low_m): # No change between Low_w and Low_m
                     remain(iP, power_idx, power,idx_couple, list_start_as_couple,list_remain_couple, par)
                     
                 elif iP == Low_m+1: #update to man's indifference point
-                    update_to_indifference_point(iP, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
+                    update_to_indifference_point(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
                 
                 else: # re-use precomputed values
-                    update_to_indifference_point(iP, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=Low_m+1)
+                    update_to_indifference_point(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=Low_m+1)
                
 
 def divorce(iP,power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single):
@@ -147,9 +151,9 @@ def remain(iP,power_idx, power,idx_couple, list_start_as_couple,list_remain_coup
 
 
 
-def update_to_indifference_point(iP, left_point, power_at_zero, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=None):
+def update_to_indifference_point(iP, left_point, low_point, power_at_zero, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=None):
     idx = idx_couple(iP)
-    power_idx[idx] = left_point
+    power_idx[idx] = low_point
     power[idx] = power_at_zero
     idxgrid_power_couple = idx_couple(np.arange(par.num_power))
 
