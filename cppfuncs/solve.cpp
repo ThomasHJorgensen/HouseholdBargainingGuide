@@ -192,16 +192,23 @@ EXPORT void test_bargaining(int iP, int t, int iL, int iA, par_struct* par, sol_
 
     double* Sw = new double[par->num_power];
     double* Sm = new double[par->num_power];
+    if (do_print) {
+        logs::write("barg_log.txt", 0, "Testing case (t, iP, iL, iA) = (%d, %d, %d, %d)", t, iP, iL, iA);
+    }
     
     for (int iP=0; iP<par->num_power; iP++){
         int idx_tmp = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
         Sw[iP] = couple::calc_marital_surplus(sol->Vw_remain_couple[idx_tmp],sol->Vw_single[idx_single],par);
         Sm[iP] = couple::calc_marital_surplus(sol->Vm_remain_couple[idx_tmp],sol->Vm_single[idx_single],par);
+        if (do_print){
+            logs::write("barg_log.txt", 1, "\nSw[%d] = %f       ", iP, Sw[iP]);
+            logs::write("barg_log.txt", 1, "Sm[%d] = %f", iP, Sm[iP]);
+        }
 
 
     }
 
-    bargaining::check_participation_constraints(power_idx, power, Sw, Sm, &idx_single, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, num, par);
+    bargaining::check_participation_constraints(power_idx, power, Sw, Sm, &idx_single, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, num, par, do_print);
 }
 
 

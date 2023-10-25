@@ -43,7 +43,7 @@ namespace bargaining {
         power_idx[idx] = low_point;
         power[idx] = power_at_zero;
 
-        int delta = idx_couple->idx(1) - idx_couple->idx(0); //difference between the indices of two consecutive values of iP
+        int delta = idx_couple->idx(left_point+1) - idx_couple->idx(left_point); //difference between the indices of two consecutive values of iP
 
         // update solution arrays
         if (sol_idx == -1){ // pre-computation not done
