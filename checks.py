@@ -61,10 +61,10 @@ def difference_in_namespace(namespace_1, namespace_2, relative=False, output='')
 
 
 def max_absolute_value(variable: np.ndarray):
-    return np.max(np.abs(variable))
+    return np.nanmax(np.abs(variable))
         
 def index_of_max_absolute_value(variable: np.ndarray):
-    return np.where(variable == max_absolute_value(variable))
+    return np.where(np.abs(variable) == max_absolute_value(variable))
 
 def print_namespace(namespace: SimpleNamespace):
     for name in namespace.__dict__.keys():
