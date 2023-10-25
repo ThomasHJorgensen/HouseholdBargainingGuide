@@ -121,7 +121,8 @@ namespace bargaining {
         // 1c. check if husband is always happy, wife has indifference point
         else if (cross_w && always_happy_m){
             // find wife's indifference point
-            int Low_w = find_left(Sw, par->num_power)+1;
+            int left_w = find_left(Sw, par->num_power);
+            int Low_w = left_w+1;
             double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w-1);
 
             if (do_print) {
@@ -133,13 +134,13 @@ namespace bargaining {
             // update case 1c
             for (int iP=0; iP<par->num_power; iP++){
                 if (iP == 0){
-                    update_to_indifference(iP, Low_w-1, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                    update_to_indifference(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
                     if (do_print) {
                         logs::write("barg_log.txt", 1, "\n       - updating index %d to wife's indifference point %d", iP, Low_w);
                     }
                 }
                 else if (iP < Low_w){
-                    update_to_indifference(iP, Low_w-1, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
+                    update_to_indifference(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
                     if (do_print) {
                         logs::write("barg_log.txt", 1, "\n       - updating index %d to wife's indifference point %d", iP, Low_w);
                     }
@@ -156,7 +157,8 @@ namespace bargaining {
         // 1d: check if wife is always happy, husband has indifference point
         else if (cross_m && always_happy_w){
             //find husband's indifference point
-            int Low_m = find_left(Sm, par->num_power);
+            int left_m = find_left(Sm, par->num_power);
+            int Low_m = left_m;
             double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, Low_m);
 
             if (do_print) {
@@ -174,13 +176,13 @@ namespace bargaining {
                     }
                 }
                 else if (iP==Low_m+1){
-                    update_to_indifference(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                    update_to_indifference(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
                     if (do_print) {
                         logs::write("barg_log.txt", 1, "\n       - updating index %d to husband's indifference point %d", iP, Low_m);
                     }
                 }
                 else{
-                    update_to_indifference(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
+                    update_to_indifference(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
                     if (do_print) {
                         logs::write("barg_log.txt", 1, "\n       - updating index %d to husband's indifference point %d", iP, Low_m);
                     }
@@ -191,10 +193,12 @@ namespace bargaining {
         // 1e: Both have indifference points
         else {
             //find indifference points
-            int Low_w = find_left(Sw, par->num_power)+1;
+            int left_w = find_left(Sw, par->num_power);
+            int Low_w = left_w+1;
             double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w-1);
 
-            int Low_m = find_left(Sm, par->num_power);         
+            int left_m = find_left(Sm, par->num_power);
+            int Low_m = left_m;         
             double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, Low_m);
 
             if (do_print) {
@@ -219,13 +223,13 @@ namespace bargaining {
             else {
                 for (int iP=0; iP<par->num_power; iP++){
                     if (iP==0){ //update to woman's indifference point
-                        update_to_indifference(iP, Low_w-1, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                        update_to_indifference(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
                         if (do_print){
                             logs::write("barg_log.txt", 1, "\n       - updating index %d to wife's indifference point %d", iP, Low_w);
                         }
                     }
                     else if (iP<Low_w){ //re-use pre-computed values
-                        update_to_indifference(iP, Low_w-1, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
+                        update_to_indifference(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
                         if (do_print){
                             logs::write("barg_log.txt", 1, "\n       - updating index %d to wife's indifference point %d", iP, Low_w);
                         }
@@ -237,13 +241,13 @@ namespace bargaining {
                         }
                     }
                     else if (iP == Low_m+1) { //update to man's indifference point
-                        update_to_indifference(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                        update_to_indifference(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
                         if (do_print){
                             logs::write("barg_log.txt", 1, "\n       - updating index %d to husband's indifference point %d", iP, Low_m);
                         }
                     }
                     else { // re-use precomputed values
-                        update_to_indifference(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
+                        update_to_indifference(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
                         if (do_print){
                             logs::write("barg_log.txt", 1, "\n       - updating index %d to husband's indifference point %d", iP, Low_m);
                         }
