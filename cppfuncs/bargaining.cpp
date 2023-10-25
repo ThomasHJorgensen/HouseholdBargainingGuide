@@ -9,7 +9,13 @@ namespace bargaining {
     int find_left(double *S, int Nx){
 
         int left_point {};
-        left_point = tools::binary_search(0, Nx, S, 0.0);
+
+        if (S[0] <= S[Nx-1]){
+            left_point = tools::binary_search(0, Nx, S, 0.0);
+        }
+        else{
+            left_point = tools::binary_search_over_descending_function(0, Nx, S, 0.0);
+        }
 
         return left_point;
 }
@@ -116,7 +122,7 @@ namespace bargaining {
         else if (cross_w && always_happy_m){
             // find wife's indifference point
             int Low_w = find_left(Sw, par->num_power)+1;
-            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w);
+            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w-1);
 
             if (do_print) {
                 logs::write("barg_log.txt", 1, "\nCase 1c: husband is always happy, wife has indifference point");
