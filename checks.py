@@ -64,7 +64,14 @@ def max_absolute_value(variable: np.ndarray):
     return np.nanmax(np.abs(variable))
         
 def index_of_max_absolute_value(variable: np.ndarray):
-    return np.where(np.abs(variable) == max_absolute_value(variable))
+    # get the index of the maximum absolute value. The function should return a tuple of integers
+    # that can be used to index the array
+    # index_in_arrays = np.nanargmax(np.abs(variable))
+    index_in_arrays = np.where(np.abs(variable) == max_absolute_value(variable))
+    index = tuple(i[0] for i in index_in_arrays)
+    return index
+    
+    # return np.where(np.abs(variable) == max_absolute_value(variable))
 
 def print_namespace(namespace: SimpleNamespace):
     for name in namespace.__dict__.keys():
