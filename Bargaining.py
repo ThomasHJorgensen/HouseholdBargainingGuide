@@ -394,8 +394,10 @@ class HouseholdModelClass(EconModelClass):
                     check_participation_constraints(sol.power_idx,sol.power,sol.Sw,sol.Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
                 elif par.brg_algo == 2:
                     check_participation_constraints_old2(sol.power_idx,sol.power,sol.Sw,sol.Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                elif par.brg_algo == 3:
+                    self.cpp.test_check_participation(par, sol, t, iL, iA)
                 else:
-                    raise ValueError('par.brg_algo must be 0, 1 or 2')
+                    raise ValueError('par.brg_algo must be 0, 1, 2 or 3')
 
     def solve_remain_couple(self,t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val = None):
         par = self.par
