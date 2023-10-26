@@ -192,7 +192,10 @@ def plot_var_over_assets(model, vars, idx, grid_points=False, title=None, ax=Non
     par = model.par
     sol = model.sol
     
-    t, iP, iL, iA = idx
+    try:
+        t, iP, iL, iA = idx
+    except:
+        t, iA = idx
     
     if grid_points:
         assets = np.arange(par.num_A)
