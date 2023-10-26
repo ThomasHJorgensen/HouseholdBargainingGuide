@@ -88,9 +88,9 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
             if iP <= Low_m:
                 remain(iP, power_idx, power,idx_couple, list_start_as_couple,list_remain_couple, par)
             elif iP == Low_m+1: # update to husbands indifference point
-                update_to_indifference_point(iP, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
+                update_to_indifference_point(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
             else:
-                update_to_indifference_point(iP, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=Low_m+1)
+                update_to_indifference_point(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=Low_m+1)
 
 
     # 1e: Both have indifference points
@@ -113,20 +113,18 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
             for iP in range(par.num_power): 
                 if iP == 0: #update to woman's indifference point
                     update_to_indifference_point(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
-                    power_idx[idx_couple(iP)] += 1
                     
                 elif iP < Low_w: #re-use precomputed values
                     update_to_indifference_point(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=0)
-                    power_idx[idx_couple(iP)] += 1
                     
                 elif (iP >= Low_w) & (iP <= Low_m): # No change between Low_w and Low_m
                     remain(iP, power_idx, power,idx_couple, list_start_as_couple,list_remain_couple, par)
                     
                 elif iP == Low_m+1: #update to man's indifference point
-                    update_to_indifference_point(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
+                    update_to_indifference_point(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par)
                 
                 else: # re-use precomputed values
-                    update_to_indifference_point(iP, Low_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=Low_m+1)
+                    update_to_indifference_point(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=Low_m+1)
                
 
 def divorce(iP,power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single):
