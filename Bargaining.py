@@ -93,6 +93,8 @@ class HouseholdModelClass(EconModelClass):
         
         # Solution
         par.brg_algo = 0 # 0 = new in module, 1 = new, 2 = old2
+        par.cpp_intraperiod_consumption = False
+        par.cpp_value_of_choice_couple = False
         
     def allocate(self):
         par = self.par
@@ -139,8 +141,6 @@ class HouseholdModelClass(EconModelClass):
         sol.C_tot_remain_couple = np.nan + np.ones(shape_couple)        # total consumption, marriage -> marriage
                                                                         # different from marriage because this is conditional
                                                                         # on remaining together
-        sol.Sw = np.nan + np.ones(par.num_power)                         # Surplus of mariage
-        sol.Sm = np.nan + np.ones(par.num_power)
 
         sol.power_idx = np.zeros(shape_couple,dtype=np.int_)            # index of bargaining weight (approx)
         sol.power = np.zeros(shape_couple)                              # bargaining weight (interpolated)
@@ -255,9 +255,24 @@ class HouseholdModelClass(EconModelClass):
         else:
             
             # precompute the optimal intra-temporal consumption allocation for couples given total consumpotion
-            for iP,power in enumerate(par.grid_power):
-                for i,C_tot in enumerate(par.grid_Ctot):
-                    sol.pre_Ctot_Cw_priv[iP,i], sol.pre_Ctot_Cm_priv[iP,i], sol.pre_Ctot_C_pub[iP,i] = solve_intraperiod_couple(C_tot,power,par)
+            if par.cpp_intraperiod_consumption == False:
+                for iP,power in enumerate(par.grid_power):
+                    for i,C_tot in enumerate(par.grid_Ctot):
+                        sol.pre_Ctot_Cw_priv[iP,i], sol.pre_Ctot_Cm_priv[iP,i], sol.pre_Ctot_C_pub[iP,i] = solve_intraperiod_couple(C_tot,power,par)
+            else:
+                for iP,power in enumerate(par.grid_power):
+                    for i,C_tot in enumerate(par.grid_Ctot):
+                        #print(type(sol.pre_Ctot_Cw_priv[iP,i]))
+                        Cw = np.array([np.nan])
+                        Cm = np.array([np.nan])
+                        C_pub = np.array([np.nan])
+                        
+                        self.cpp.solve_intraperiod_couple(Cw,Cm,C_pub, C_tot, power, par)
+                        
+                        sol.pre_Ctot_Cw_priv[iP,i] = Cw[0]
+                        sol.pre_Ctot_Cm_priv[iP,i] = Cm[0]
+                        sol.pre_Ctot_C_pub[iP,i] = C_pub[0]
+                        #rint(type(sol.pre_Ctot_Cw_priv[iP,i]))
 
             # loop backwards
             for t in reversed(range(par.T)):
@@ -348,6 +363,10 @@ class HouseholdModelClass(EconModelClass):
         # a. unpack and allocate temporary memory
         par = self.par
         sol = self.sol
+        
+        # initialize marriage surplus
+        Sw = np.nan + np.zeros(par.num_power)
+        Sm = np.nan + np.zeros(par.num_power)
 
         # b. loop through state variables
         for iL,love in enumerate(par.grid_love):
@@ -379,8 +398,8 @@ class HouseholdModelClass(EconModelClass):
                     sol.Cw_priv_remain_couple[idx_couple(iP)], sol.Cm_priv_remain_couple[idx_couple(iP)], sol.C_pub_remain_couple[idx_couple(iP)], sol.Vw_remain_couple[idx_couple(iP)], sol.Vm_remain_couple[idx_couple(iP)] = self.solve_remain_couple(t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val=starting_val)
 
                     # iv. Calculate marital surplus
-                    sol.Sw[iP] = sol.Vw_remain_couple[idx_couple(iP)] - sol.Vw_single[idx_single]
-                    sol.Sm[iP] = sol.Vm_remain_couple[idx_couple(iP)] - sol.Vm_single[idx_single]
+                    Sw[iP] = sol.Vw_remain_couple[idx_couple(iP)] - sol.Vw_single[idx_single]
+                    Sm[iP] = sol.Vm_remain_couple[idx_couple(iP)] - sol.Vm_single[idx_single]
                     
                 # c. check the participation constraints. 
                 list_start_as_couple = (sol.Vw_couple, sol.Vm_couple, sol.Cw_priv_couple, sol.Cm_priv_couple, sol.C_pub_couple)
@@ -389,13 +408,13 @@ class HouseholdModelClass(EconModelClass):
                 
                 # d. check participation constraints and update sol values
                 if par.brg_algo == 0:
-                    ba.check_participation_constraints(sol.power_idx,sol.power,sol.Sw,sol.Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                    ba.check_participation_constraints(sol.power_idx,sol.power,Sw, Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
                 elif par.brg_algo == 1:
-                    check_participation_constraints(sol.power_idx,sol.power,sol.Sw,sol.Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                    check_participation_constraints(sol.power_idx,sol.power,Sw, Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
                 elif par.brg_algo == 2:
-                    check_participation_constraints_old2(sol.power_idx,sol.power,sol.Sw,sol.Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
+                    check_participation_constraints_old2(sol.power_idx,sol.power, Sw, Sm,idx_single,idx_couple,list_start_as_couple,list_remain_couple,list_trans_to_single, par)
                 elif par.brg_algo == 3:
-                    self.cpp.test_check_participation(par, sol, t, iL, iA)
+                    self.cpp.test_check_participation(par, sol, t, iL, iA, Sw, Sm)
                 else:
                     raise ValueError('par.brg_algo must be 0, 1, 2 or 3')
 
@@ -408,7 +427,10 @@ class HouseholdModelClass(EconModelClass):
 
         else:
             # i. objective function
-            obj = lambda x: - self.value_of_choice_couple(x[0],t,M_resources,iL,iP,power,Vw_next,Vm_next)[0]
+            if par.cpp_value_of_choice_couple == False:
+                obj = lambda x: - self.value_of_choice_couple(x[0],t,M_resources,iL,iP,power,Vw_next,Vm_next)[0]
+            if par.cpp_value_of_choice_couple == True:
+                obj = lambda x: - self.value_of_choice_couple(x[0],t,M_resources,iL,iP,Vw_next,Vm_next)[0]
             x0 = np.array([M_resources * 0.8]) if starting_val is None else starting_val
 
             # ii. optimize wrt. total consumption
@@ -416,7 +438,10 @@ class HouseholdModelClass(EconModelClass):
             C_tot = res.x[0]
 
         # b. implied intra-temporal consumption allocation (re-calculation)
-        _, Cw_priv, Cm_priv, C_pub, Vw,Vm = self.value_of_choice_couple(C_tot,t,M_resources,iL,iP,power,Vw_next,Vm_next)
+        if par.cpp_value_of_choice_couple == False:
+            _, Cw_priv, Cm_priv, C_pub, Vw,Vm = self.value_of_choice_couple(C_tot,t,M_resources,iL,iP,power,Vw_next,Vm_next)
+        if par.cpp_value_of_choice_couple == True:
+            _, Cw_priv, Cm_priv, C_pub, Vw,Vm = self.value_of_choice_couple(C_tot,t,M_resources,iL,iP,Vw_next,Vm_next)
 
         # c. return objects
         return Cw_priv, Cm_priv, C_pub, Vw, Vm
@@ -454,6 +479,19 @@ class HouseholdModelClass(EconModelClass):
         # c. return weighted household value and other items
         Val = power*Vw + (1.0-power)*Vm
         return Val , Cw_priv, Cm_priv, C_pub, Vw,Vm
+    
+    def value_of_choice_couple_cpp(self,C_tot,t,M_resources,iL,iP,Vw_next,Vm_next):
+        
+        Cw_priv = np.array([np.nan])
+        Cm_priv = np.array([np.nan])
+        C_pub = np.array([np.nan])
+        Vw = np.array([np.nan])
+        Vm = np.array([np.nan])
+        
+        Val=self.cpp.test_value_of_choice_couple(Cw_priv, Cm_priv, C_pub, Vw, Vm, C_tot, t, M_resources, iL, iP, Vw_next, Vm_next, self.sol, self.par)
+        
+        
+        return Val, Cw_priv, Cm_priv, C_pub, Vw,Vm
         
     def value_of_choice_single(self,C_tot,M,gender,V_next):
         par = self.par

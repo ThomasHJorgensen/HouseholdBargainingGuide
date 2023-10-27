@@ -30,7 +30,7 @@ double objfunc_precompute(unsigned n, const double *x, double *grad, void *solve
     return - val;
 }
 
-void solve_intraperiod_couple(double* Cw_priv,double* Cm_priv,double* C_pub , double C_tot,double power,par_struct *par){
+EXPORT void solve_intraperiod_couple(double* Cw_priv,double* Cm_priv,double* C_pub , double C_tot,double power,par_struct *par){
     
     // setup numerical solver
     solver_precompute_struct* solver_data = new solver_precompute_struct;  // AMO: allocates memory for new instance of solver_precompute_struct
@@ -353,7 +353,7 @@ EXPORT void test_update_to_indifference(int left_point, int low_point, double po
 }
 
 
-EXPORT void test_check_participation(par_struct *par, sol_struct *sol, int t, int iL, int iA){
+EXPORT void test_check_participation(par_struct *par, sol_struct *sol, int t, int iL, int iA, double* Sw, double* Sm){
     // idx_couple
     index::index_couple_struct* idx_couple = new index::index_couple_struct;
     idx_couple->t = t;
@@ -367,10 +367,6 @@ EXPORT void test_check_participation(par_struct *par, sol_struct *sol, int t, in
 
     // power_idx
     int* power_idx = sol->power_idx;
-
-    // S
-    double* Sw {sol->Sw};
-    double* Sm {sol->Sm};
 
     // power
     double* power = sol->power;
@@ -402,6 +398,32 @@ EXPORT void test_check_participation(par_struct *par, sol_struct *sol, int t, in
     bargaining::check_participation_constraints(power_idx, power, Sw, Sm, idx_single_ptr, idx_couple, list_start_as_couple,list_remain_couple, list_trans_to_single, num, par, false);
 }
 
-EXPORT int returnNine() {
-    return 9;
-}
+EXPORT double test_value_of_choice_couple(double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm,  double C_tot,int t,double M_resources,int iL,int iP,double* Vw_next,double* Vm_next,sol_struct *sol, par_struct *par){
+    double love = par->grid_love[iL];
+    double power = par->grid_power[iP];
+
+    // current utility from consumption allocation
+    couple::intraperiod_allocation(Cw_priv, Cm_priv, C_pub , C_tot,iP,sol,par);
+    Vw[0] = utils::util(*Cw_priv,*C_pub,woman,par,love); 
+    Vm[0] = utils::util(*Cm_priv,*C_pub,man,par,love);
+
+    // add continuation value [TODO: re-use index would speed this up since only output different!]
+    if (t < (par->T-1)){
+        double savings = M_resources - C_tot ;
+        double EVw_plus = 0.0;
+        double EVm_plus = 0.0;
+        for (int iL_next = 0; iL_next < par->num_shock_love; iL_next++) {
+            double love_next = love + par->grid_shock_love[iL_next];
+
+            EVw_plus += par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, Vw_next, love_next,savings);
+            EVm_plus += par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, Vm_next, love_next,savings);
+        }
+        Vw[0] += par->beta*EVw_plus;
+        Vm[0] += par->beta*EVm_plus;
+    }
+
+    // return
+    return power*Vw[0] + (1.0-power)*Vm[0];
+    }
+
+// a double in cpp can contain 

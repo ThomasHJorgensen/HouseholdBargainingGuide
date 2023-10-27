@@ -9,7 +9,7 @@ for i in range(1,6):
     setattr(par, f'var{i}', i)
     
 
-def difference_in_namespace(namespace_1, namespace_2, relative=False, output=''):
+def difference_in_namespace(namespace_1, namespace_2, relative=False, output='', time=None):
     """
     The function `difference_in_namespace` compares two namespaces and returns a new namespace
     containing the differences between the variables in the two namespaces. Note that the two
@@ -34,10 +34,17 @@ def difference_in_namespace(namespace_1, namespace_2, relative=False, output='')
     # Find differences in sim variables
     for name in namespace_1.__dict__.keys():
         if hasattr(namespace_2, name):
-            var1 = getattr(namespace_1, name)
-            var2 = getattr(namespace_2, name)
+            if time == None:
+                var1 = getattr(namespace_1, name)
+                var2 = getattr(namespace_2, name)
+            else:
+                var1 = getattr(namespace_1, name)[time]
+                var2 = getattr(namespace_2, name)[time]
             
             # Check if var1 and var2 are boolean arrays
+            if np.isnan(var1).any() or np.isnan(var2).any():
+                print(f"Variable '{name}' contains nan values and is skipped")
+                continue
             if np.issubdtype(var1.dtype, np.bool_) and np.issubdtype(var2.dtype, np.bool_):
                 diff = var1 ^ var2  # Use ^ operator for boolean arrays
             if relative:
