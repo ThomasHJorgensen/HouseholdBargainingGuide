@@ -95,6 +95,7 @@ class HouseholdModelClass(EconModelClass):
         par.brg_algo = 0 # 0 = new in module, 1 = new, 2 = old2
         par.cpp_intraperiod_consumption = False
         par.cpp_value_of_choice_couple = False
+        par.cpp_solve_remain_couple = False
         
     def allocate(self):
         par = self.par
@@ -276,6 +277,7 @@ class HouseholdModelClass(EconModelClass):
 
             # loop backwards
             for t in reversed(range(par.T)):
+                print('t=',t)
                 self.solve_single(t)
                 self.solve_couple(t)
 
@@ -386,8 +388,8 @@ class HouseholdModelClass(EconModelClass):
                         Vw_next = self.sol.Vw_couple[t+1,iP]
                         Vm_next = self.sol.Vm_couple[t+1,iP]
                     else:
-                        Vw_next = None
-                        Vm_next = None
+                        Vw_next = np.zeros((par.num_love,par.num_A))
+                        Vm_next = np.zeros((par.num_love,par.num_A))
 
                     # ii. starting value for total consumption. The intra-temporal allocation problem solved conditional on this
                     if iP>0:
@@ -395,7 +397,10 @@ class HouseholdModelClass(EconModelClass):
                         starting_val = np.array([C_tot_last])
                     
                     # iii. solve problem if remaining married, m->m
-                    sol.Cw_priv_remain_couple[idx_couple(iP)], sol.Cm_priv_remain_couple[idx_couple(iP)], sol.C_pub_remain_couple[idx_couple(iP)], sol.Vw_remain_couple[idx_couple(iP)], sol.Vm_remain_couple[idx_couple(iP)] = self.solve_remain_couple(t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val=starting_val)
+                    if par.cpp_solve_remain_couple == False:
+                        sol.Cw_priv_remain_couple[idx_couple(iP)], sol.Cm_priv_remain_couple[idx_couple(iP)], sol.C_pub_remain_couple[idx_couple(iP)], sol.Vw_remain_couple[idx_couple(iP)], sol.Vm_remain_couple[idx_couple(iP)] = self.solve_remain_couple(t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val=starting_val)
+                    else:
+                        sol.Cw_priv_remain_couple[idx_couple(iP)], sol.Cm_priv_remain_couple[idx_couple(iP)], sol.C_pub_remain_couple[idx_couple(iP)], sol.Vw_remain_couple[idx_couple(iP)], sol.Vm_remain_couple[idx_couple(iP)] = self.cpp_solve_remain_couple(t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val=starting_val)
 
                     # iv. Calculate marital surplus
                     Sw[iP] = sol.Vw_remain_couple[idx_couple(iP)] - sol.Vw_single[idx_single]
@@ -430,7 +435,8 @@ class HouseholdModelClass(EconModelClass):
             if par.cpp_value_of_choice_couple == False:
                 obj = lambda x: - self.value_of_choice_couple(x[0],t,M_resources,iL,iP,power,Vw_next,Vm_next)[0]
             if par.cpp_value_of_choice_couple == True:
-                obj = lambda x: - self.value_of_choice_couple(x[0],t,M_resources,iL,iP,Vw_next,Vm_next)[0]
+                # obj = lambda x: - self.value_of_choice_couple(x[0],t,M_resources,iL,iP,power,Vw_next,Vm_next)[0]
+                obj = lambda x: - self.value_of_choice_couple_cpp(x[0],t,M_resources,iL,iP,power,Vw_next,Vm_next)[0]
             x0 = np.array([M_resources * 0.8]) if starting_val is None else starting_val
 
             # ii. optimize wrt. total consumption
@@ -441,8 +447,25 @@ class HouseholdModelClass(EconModelClass):
         if par.cpp_value_of_choice_couple == False:
             _, Cw_priv, Cm_priv, C_pub, Vw,Vm = self.value_of_choice_couple(C_tot,t,M_resources,iL,iP,power,Vw_next,Vm_next)
         if par.cpp_value_of_choice_couple == True:
-            _, Cw_priv, Cm_priv, C_pub, Vw,Vm = self.value_of_choice_couple(C_tot,t,M_resources,iL,iP,Vw_next,Vm_next)
+            _, Cw_priv, Cm_priv, C_pub, Vw,Vm = self.value_of_choice_couple_cpp(C_tot,t,M_resources,iL,iP,power,Vw_next,Vm_next)
+            # _, Cw_priv, Cm_priv, C_pub, Vw,Vm = self.value_of_choice_couple(C_tot,t,M_resources,iL,iP,power,Vw_next,Vm_next)
 
+
+        # c. return objects
+        return Cw_priv, Cm_priv, C_pub, Vw, Vm
+    
+    def cpp_solve_remain_couple(self,t,M_resources,iL,iP,power,Vw_next,Vm_next,starting_val = None):
+        
+        Cw_priv = np.array([np.nan])
+        Cm_priv = np.array([np.nan])
+        C_pub = np.array([np.nan])
+        Vw = np.array([np.nan])
+        Vm = np.array([np.nan])
+        
+        starting_val = M_resources * 0.8 if starting_val is None else starting_val
+        
+        self.cpp.solve_remain_couple(Cw_priv, Cm_priv, C_pub, Vw, Vm, t, M_resources, iL, iP, Vw_next, Vm_next, starting_val, self.sol, self.par)
+        
         # c. return objects
         return Cw_priv, Cm_priv, C_pub, Vw, Vm
 
@@ -480,7 +503,7 @@ class HouseholdModelClass(EconModelClass):
         Val = power*Vw + (1.0-power)*Vm
         return Val , Cw_priv, Cm_priv, C_pub, Vw,Vm
     
-    def value_of_choice_couple_cpp(self,C_tot,t,M_resources,iL,iP,Vw_next,Vm_next):
+    def value_of_choice_couple_cpp(self,C_tot,t,M_resources,iL,iP,power,Vw_next,Vm_next):
         
         Cw_priv = np.array([np.nan])
         Cm_priv = np.array([np.nan])

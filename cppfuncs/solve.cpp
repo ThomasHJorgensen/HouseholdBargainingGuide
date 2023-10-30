@@ -426,4 +426,46 @@ EXPORT double test_value_of_choice_couple(double* Cw_priv,double* Cm_priv,double
     return power*Vw[0] + (1.0-power)*Vm[0];
     }
 
-// a double in cpp can contain 
+EXPORT void solve_remain_couple(double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm , int t,double M_resources,int iL,int iP,double* Vw_next,double *Vm_next,double starting_val,sol_struct *sol,par_struct *par){
+        
+        double C_tot = M_resources;
+        
+        if (t<(par->T-1)){ 
+            // objective function
+            int dim = 1;
+            double lb[1],ub[1],x[1];
+            
+            auto opt = nlopt_create(NLOPT_LN_BOBYQA, dim); // NLOPT_LD_MMA NLOPT_LD_LBFGS NLOPT_GN_ORIG_DIRECT
+            double minf=0.0;
+
+            couple::solver_couple_struct* solver_data = new couple::solver_couple_struct;
+            solver_data->t = t;
+            solver_data->iL = iL;
+            solver_data->iP = iP;
+            solver_data->M = M_resources;
+            solver_data->Vw_next = Vw_next;
+            solver_data->Vm_next = Vm_next;
+
+            solver_data->sol = sol;
+            solver_data->par = par;
+            nlopt_set_min_objective(opt, couple::objfunc_couple, solver_data);
+                
+            // bounds
+            lb[0] = 1.0e-6;
+            ub[0] = solver_data->M - 1.0e-6;
+            nlopt_set_lower_bounds(opt, lb);
+            nlopt_set_upper_bounds(opt, ub);
+
+            // optimize
+            x[0] = starting_val;
+            nlopt_optimize(opt, x, &minf);
+            nlopt_destroy(opt);
+
+            C_tot = x[0];
+        }
+
+        // implied consumption allocation (re-calculation)
+        couple::value_of_choice_couple(Cw_priv,Cm_priv,C_pub,Vw,Vm, C_tot,t,M_resources,iL,iP,Vw_next,Vm_next,sol,par);
+
+    }
+    
