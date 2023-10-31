@@ -46,11 +46,11 @@ def difference_in_namespace(namespace_1, namespace_2, relative=False, output='',
                 print(f"Variable '{name}' contains nan values and is skipped")
                 continue
             if np.issubdtype(var1.dtype, np.bool_) and np.issubdtype(var2.dtype, np.bool_):
-                diff = var1 ^ var2  # Use ^ operator for boolean arrays
+                diff = var2 ^ var1  # Use ^ operator for boolean arrays
             if relative:
-                diff = np.where(var1 == 0, np.nan, (var1 - var2)/var1)
+                diff = np.where(var1 == 0, np.nan, (var2 - var1)/var1)
             else:
-                diff = var1 - var2  # Use - operator for other types of arrays
+                diff = var2 - var1  # Use - operator for other types of arrays
             
             if output == '':
                 diff = diff
