@@ -31,7 +31,8 @@ namespace couple {
 
         Cw_priv[0] = tools::interp_1d_index(par->grid_Ctot,par->num_Ctot,&sol->pre_Ctot_Cw_priv[idx],C_tot,j1);
         Cm_priv[0] = tools::interp_1d_index(par->grid_Ctot,par->num_Ctot,&sol->pre_Ctot_Cm_priv[idx],C_tot,j1);
-        C_pub[0] = tools::interp_1d_index(par->grid_Ctot,par->num_Ctot,&sol->pre_Ctot_C_pub[idx],C_tot,j1);
+        // C_pub[0] = tools::interp_1d_index(par->grid_Ctot,par->num_Ctot,&sol->pre_Ctot_C_pub[idx],C_tot,j1);
+        C_pub[0] = C_tot - Cw_priv[0] - Cm_priv[0];
 
     }
 
