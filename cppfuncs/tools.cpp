@@ -52,42 +52,6 @@ int binary_search(int imin, int Nx, double *x, double xi)
 
 }
 
-int binary_search_over_descending_function(int idx, int Nx, double *x, double target)
-{
-/**
- * The function performs a binary search over a descending array to find the index of the element
- * closest to a given target value.
- * 
- * Args:
- *   idx (int): The current index to start the binary search from.
- *   Nx (int): The parameter Nx represents the size of the array x.
- *   x (double): An array of double values in descending order.
- *   target (double): The target is the value that we are searching for in the array x.
- * 
- * Returns:
- *   the index of the element in the array `x` that is closest to the target value.
- */
-    int imid, half;
-
-    // a. checks
-    if(target >= x[0]){
-        return 0;
-    } else if(target <= x[Nx-2]) {
-        return Nx-2;
-    }
-
-    // b. binary search
-    while((half = Nx/2)){
-        imid = idx + half;
-        idx = (x[imid] >= target) ? imid:idx;
-        Nx  -= half;
-    }
-
-    return idx;
-
-}
-
-
 double interp_1d_index(double* grid1,int num1 ,double* value1,double xi1,int j1){
     /* 1d interpolation for one point
         
@@ -117,44 +81,6 @@ double interp_1d_index(double* grid1,int num1 ,double* value1,double xi1,int j1)
     return nom/denom;
 
 } // interp_1d
-
-
-double interp_1d_index_delta(double* grid1,int num1 ,double* value1,double xi1,int j1, int delta_y=1, int idx_y=0, int delta_x=1, int idx_x=0){
-    /* 1d interpolation for one point
-        
-    Args:
-        grid1 : 1d grid
-        value : value array (2d)
-        xi1 : input point
-
-        delta_y : delta in y direction
-        idx_y : start index in y direction
-        delta_x : delta in x direction
-        idx_x : start index in x direction
-    Returns:
-        yi : output
-    */
-
-    // a. left/right
-    double nom_left = grid1[idx_x+(j1+1)*delta_x]-xi1;
-    double nom_right = xi1-grid1[idx_x+j1*delta_x];
-
-    // b. interpolation
-    double denom = (grid1[idx_x+(j1+1)*delta_x]-grid1[idx_x+j1*delta_x]);
-    double nom = 0.0;
-
-    for (size_t k1 = 0; k1 < 2; k1++){
-        double nom_1 = nom_left;
-        if (k1==1){
-            nom_1 = nom_right;
-        }
-        nom += nom_1*value1[idx_y + (j1+k1)*delta_y];
-    }
-
-    return nom/denom;
-
-} // interp_1d_delta
-
 
 double interp_1d(double* grid1,int num1 ,double* value1,double xi1){
     /* 1d interpolation for one point

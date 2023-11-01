@@ -30,7 +30,6 @@ typedef struct par_struct
  int simN;
  bool do_cpp;
  int threads;
- bool old_bargaining;
  double* grid_A;
  double* grid_Aw;
  double* grid_Am;
@@ -92,7 +91,6 @@ bool get_bool_par_struct(par_struct* x, char* name){
 
  if( strcmp(name,"do_egm") == 0 ){ return x->do_egm; }
  else if( strcmp(name,"do_cpp") == 0 ){ return x->do_cpp; }
- else if( strcmp(name,"old_bargaining") == 0 ){ return x->old_bargaining; }
  else {return false;}
 
 }

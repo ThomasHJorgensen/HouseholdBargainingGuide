@@ -29,13 +29,8 @@
 #define woman 1
 #define man 2
 
-////////////////
-// 5. Logs    //
-////////////////
-#include "logs.cpp"
-
 /////////////////
-// 6. includes //
+// 5. includes //
 /////////////////
 #ifndef INDEX
 #include "index.cpp"
@@ -48,9 +43,6 @@
 #endif
 #ifndef SINGLE
 #include "single.cpp"
-#endif
-#ifndef BARGAINING
-#include "bargaining.cpp"
 #endif
 #ifndef COUPLE
 #include "couple.cpp"
