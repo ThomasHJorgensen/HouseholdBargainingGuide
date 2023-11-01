@@ -9,7 +9,7 @@ from consav import quadrature
 
 import time
 
-def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, par):
+def check_participation_constraints(power_idx, power, Sw, Sm, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, par):
     """
     Checks the participation constraints for each couple and updates the couple status, bargaining power, and consumption allocations accordingly.
 
@@ -18,7 +18,6 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
     - power (list): list of power values for each couple
     - Sw (list): list of wife's surplus values for each power index
     - Sm (list): list of husband's surplus values for each power index
-    - idx_single (list): list of indices for single individuals
     - idx_couple (list): list of indices for coupled individuals
     - list_start_as_couple (list): list of indices for individuals who start as a couple
     - list_remain_couple (list): list of indices for individuals who remain as a couple
@@ -57,7 +56,7 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
     # 1b: check if all values are consistent with divorce
     elif never_happy_w | never_happy_m: # no value is consistent with marriage
         for iP in range(par.num_power):
-            divorce(iP, power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single)
+            divorce(iP, power_idx, power,idx_couple, list_start_as_couple,list_trans_to_single)
 
     # 1c: check if husband is always happy, wife has indifference point
     elif cross_w & always_happy_m: # husband is always happy, wife has indifference point
@@ -107,7 +106,7 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
         # step 3: update bargaining power and consumption allocations
         if power_at_zero_w>power_at_zero_m: # no room for bargaining
             for iP in range(par.num_power):
-                divorce(iP,power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single)
+                divorce(iP,power_idx, power,idx_couple, list_start_as_couple,list_trans_to_single)
         
         else: # bargaining
             for iP in range(par.num_power): 
@@ -127,13 +126,13 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_single, idx_co
                     update_to_indifference_point(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, par, sol_idx=Low_m+1)
                
 
-def divorce(iP,power_idx, power,idx_single,idx_couple, list_start_as_couple,list_trans_to_single):
+def divorce(iP,power_idx, power,idx_couple, list_start_as_couple,list_trans_to_single):
     idx = idx_couple(iP)
     power_idx[idx] = -1
     power[idx] = -1.0
 
     for i in range(len(list_start_as_couple)):
-        list_start_as_couple[i][idx] = list_trans_to_single[i][idx_single]
+        list_start_as_couple[i][idx] = list_trans_to_single[i]
 
     power_idx[idx] = -1
     power[idx] = -1.0
@@ -174,52 +173,26 @@ def find_left_point(S):
     Returns:
     int: The index of the left point of the sequence S.
     """
-    return binary_search(0,len(S), S, 0.0)
-
-# Code from consav
-def _min_binary_search(imin,Nx,x,xi):
-        
-    # a. checks
-    if xi <= x[0]:
-        return 0
-    elif xi >= x[Nx-2]:
-        return Nx-2
-    
-    # b. binary search
-    half = Nx//2
-    while half:
-        imid = imin + half
-        if x[imid] <= xi:
-            imin = imid
-        Nx -= half
-        half = Nx//2
-        
-    return imin
-
-def _max_binary_search(imax,Nx,x,xi):
-        
-    # a. checks
-    if xi >= x[0]:
-        return 0
-    elif xi <= x[Nx-2]:
-        return Nx-2
-    
-    # b. binary search
-    half = Nx//2
-    while half:
-        imid = imax + half
-        if x[imid] >= xi:
-            imax = imid
-        Nx -= half
-        half = Nx//2
-        
-    return imax
-
-def binary_search(i,Nx,x,xi):
-        
-    # a. check if x is increasing
-    if x[i] <= x[Nx-1]:
-        return _min_binary_search(i,Nx,x,xi)
+    if S[0] <= S[-1]:
+        return linear_interp.binary_search(0,len(S), S, 0.0)
     else:
-        return _max_binary_search(i,Nx,x,xi)
+        return binary_search_over_descending_function(0,len(S), S, 0.0)
 
+def binary_search_over_descending_function(idx,Nx,x,target):
+        
+    # a. checks
+    if target >= x[0]:
+        return 0
+    elif target <= x[Nx-2]:
+        return Nx-2
+    
+    # b. binary search
+    half = Nx//2
+    while half:
+        imid = idx + half
+        if x[imid] >= target:
+            idx = imid
+        Nx -= half
+        half = Nx//2
+        
+    return idx

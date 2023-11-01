@@ -65,7 +65,128 @@ namespace bargaining {
     } // end of update_to_indifference
 
 
-    void check_participation_constraints(int* power_idx, double* power, double* Sw, double* Sm, int* idx_single, index::index_couple_struct* idx_couple, double** list_start_as_couple, double** list_remain_couple, double* list_trans_to_single, int num, par_struct* par, bool do_print=false){
+    void check_participation_constraints(int* power_idx, double* power, double* Sw, double* Sm, index::index_couple_struct* idx_couple, double** list_start_as_couple, double** list_remain_couple, double* list_trans_to_single, int num, par_struct* par){
+
+        // step 0: identify key indicators for each spouse
+        // 0a: min and max surplus for each spouse
+        double min_w = Sw[0];
+        double max_w = Sw[par->num_power-1];
+        double min_m = Sm[par->num_power-1];
+        double max_m = Sm[0];
+
+        // 0b: check if wife and husband have indifference points
+        bool cross_w = (min_w < 0.0) && (max_w > 0.0);
+        bool cross_m = (min_m < 0.0) && (max_m > 0.0);
+
+        // 0b: check if wife and husband are always happy
+        bool always_happy_w = (min_w > 0.0);
+        bool always_happy_m = (min_m > 0.0);
+
+        // 0c: check if wife and husband are never happy
+        bool never_happy_w = (max_w < 0.0);
+        bool never_happy_m = (max_m < 0.0);
+
+        // step 1: check endpoints
+        // 1a. check if all values are consistent with marriage
+        if (always_happy_w && always_happy_m){
+            for(int iP=0; iP<par->num_power; iP++){
+                remain(iP, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
+            }
+        } //case 1a
+
+        // 1b. check if all values are consistent with divorce
+        else if (never_happy_w || never_happy_m){
+
+            for (int iP=0; iP<par->num_power; iP++){
+                divorce(iP, power_idx, power, idx_couple, list_start_as_couple, list_trans_to_single, num, par);
+            }
+        } //case 1b
+
+        // 1c. check if husband is always happy, wife has indifference point
+        else if (cross_w && always_happy_m){
+            // find wife's indifference point
+            int left_w = find_left(Sw, par->num_power);
+            int Low_w = left_w+1;
+            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w-1);
+
+            // update case 1c
+            for (int iP=0; iP<par->num_power; iP++){
+                if (iP == 0){
+                    update_to_indifference(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                }
+                else if (iP < Low_w){
+                    update_to_indifference(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
+                }
+                else{
+                    remain(iP, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
+                } //if
+            } //for
+        } //case 1c
+
+        // 1d: check if wife is always happy, husband has indifference point
+        else if (cross_m && always_happy_w){
+            //find husband's indifference point
+            int left_m = find_left(Sm, par->num_power);
+            int Low_m = left_m;
+            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, Low_m);
+
+            // update case 1d
+            for (int iP=0; iP<par->num_power; iP++){
+                if (iP<=Low_m){
+                    remain(iP, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
+                }
+                else if (iP==Low_m+1){
+                    update_to_indifference(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                }
+                else{
+                    update_to_indifference(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
+                } //if
+            } //for
+        } //case 1d
+
+        // 1e: Both have indifference points
+        else {
+            //find indifference points
+            int left_w = find_left(Sw, par->num_power);
+            int Low_w = left_w+1;
+            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w-1);
+
+            int left_m = find_left(Sm, par->num_power);
+            int Low_m = left_m;         
+            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, Low_m);
+
+            // update case 1e
+            // no room for bargaining
+            if (power_at_zero_w>power_at_zero_m) {
+                for (int iP=0; iP<par->num_power; iP++){
+                    divorce(iP, power_idx, power, idx_couple, list_start_as_couple, list_trans_to_single, num, par);
+                }
+            }
+            //bargaining
+            else {
+                for (int iP=0; iP<par->num_power; iP++){
+                    if (iP==0){ //update to woman's indifference point
+                        update_to_indifference(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                    }
+                    else if (iP<Low_w){ //re-use pre-computed values
+                        update_to_indifference(iP, left_w, Low_w, power_at_zero_w, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, 0);
+                    }
+                    else if (iP>=Low_w && iP <= Low_m) { //no change between Low_w and Low_m
+                        remain(iP, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par);
+                    }
+                    else if (iP == Low_m+1) { //update to man's indifference point
+                        update_to_indifference(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, -1);
+                    }
+                    else { // re-use precomputed values
+                        update_to_indifference(iP, left_m, Low_m, power_at_zero_m, power_idx, power, idx_couple, list_start_as_couple, list_remain_couple, num, par, Low_m+1);
+                    } //if (indifference points)
+                }//for
+            } //if (bargaining)
+        } //case 1e
+    } //end of check_participation_constraints
+
+
+    void check_participation_constraints_verbose(int* power_idx, double* power, double* Sw, double* Sm, index::index_couple_struct* idx_couple, double** list_start_as_couple, double** list_remain_couple, double* list_trans_to_single, int num, par_struct* par, bool do_print=false){
 
         // step 0: identify key indicators for each spouse
         // 0a: min and max surplus for each spouse
