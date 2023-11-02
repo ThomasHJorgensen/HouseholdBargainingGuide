@@ -225,7 +225,39 @@ def plot_var_over_assets(model, vars, idx, grid_points=False, title=None, ax=Non
         
     return ax
 
-              
+def plot_var_over_time(model, vars, idx, title=None, ax=None):
+    par = model.par
+    sol = model.sol
+    
+    try:
+        t, iP, iL, iA = idx
+    except:
+        t, iA = idx
+
+    time = np.arange(par.T)
+
+    # If ax is not provided, create a new figure and axis
+    if ax is None:
+        fig, ax = plt.subplots()
+    
+    for var in vars:
+        y = getattr(sol, var)
+        try:
+            y = y[:,iP,iL,iA]
+        except:
+            y = y[:,iA]
+        
+        ax.plot(time, y, label=var, alpha=0.5)
+    
+
+    # Layout
+    ax.set_xlabel('Time')
+    ax.set_ylabel('')
+    if title is not None:
+        ax.set_title(title)
+    ax.legend()
+        
+    return ax              
         
 def plot_life_cycle(model_list, fig_name):
 
