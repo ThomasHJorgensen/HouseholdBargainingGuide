@@ -28,6 +28,8 @@ typedef struct sol_struct
  double* Cm_priv_remain_couple;
  double* C_pub_remain_couple;
  double* C_tot_remain_couple;
+ double* Sw;
+ double* Sm;
  int* power_idx;
  double* power;
  double* savings_vec;
@@ -41,6 +43,7 @@ typedef struct sol_struct
  double* pre_Ctot_Cw_priv;
  double* pre_Ctot_Cm_priv;
  double* pre_Ctot_C_pub;
+ double* solution_time;
 } sol_struct;
 
 double* get_double_p_sol_struct(sol_struct* x, char* name){
@@ -73,6 +76,8 @@ double* get_double_p_sol_struct(sol_struct* x, char* name){
  else if( strcmp(name,"Cm_priv_remain_couple") == 0 ){ return x->Cm_priv_remain_couple; }
  else if( strcmp(name,"C_pub_remain_couple") == 0 ){ return x->C_pub_remain_couple; }
  else if( strcmp(name,"C_tot_remain_couple") == 0 ){ return x->C_tot_remain_couple; }
+ else if( strcmp(name,"Sw") == 0 ){ return x->Sw; }
+ else if( strcmp(name,"Sm") == 0 ){ return x->Sm; }
  else if( strcmp(name,"power") == 0 ){ return x->power; }
  else if( strcmp(name,"savings_vec") == 0 ){ return x->savings_vec; }
  else if( strcmp(name,"Vw_plus_vec") == 0 ){ return x->Vw_plus_vec; }
@@ -85,6 +90,7 @@ double* get_double_p_sol_struct(sol_struct* x, char* name){
  else if( strcmp(name,"pre_Ctot_Cw_priv") == 0 ){ return x->pre_Ctot_Cw_priv; }
  else if( strcmp(name,"pre_Ctot_Cm_priv") == 0 ){ return x->pre_Ctot_Cm_priv; }
  else if( strcmp(name,"pre_Ctot_C_pub") == 0 ){ return x->pre_Ctot_C_pub; }
+ else if( strcmp(name,"solution_time") == 0 ){ return x->solution_time; }
  else {return NULL;}
 
 }

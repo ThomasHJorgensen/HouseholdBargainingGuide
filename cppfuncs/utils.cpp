@@ -10,7 +10,7 @@ namespace utils {
         double phi = par->phi_w;
         double alpha1 = par->alpha1_w;
         double alpha2 = par->alpha2_w;
-        if (gender == man) {
+        if (gender == man) { 
             rho = par->rho_m;
             phi = par->phi_m;
             alpha1 = par->alpha1_m;

@@ -6,10 +6,10 @@
 namespace single {
     typedef struct {
         
-        double M;
-        double *V_next;
-        int gender;
-        par_struct *par;
+        double M;             
+        double *V_next;      
+        int gender;          
+        par_struct *par;      
 
     } solver_single_struct;
 
@@ -58,7 +58,7 @@ namespace single {
         }  
         
         double share = 1.0/(1.0 + pow(alpha2/alpha1,1.0/(1.0-phi) ));
-        double constant = alpha1*pow(share,phi) + alpha2*pow(1.0-constant,phi);
+        double constant = alpha1*pow(share,phi) + alpha2*pow(1.0-share,phi);
         return phi * pow(C_tot,(1.0-rho)*phi -1.0 ) * pow(constant,1.0 - rho);
 
     }
@@ -76,7 +76,7 @@ namespace single {
         double Util = util_C(C_tot,gender,par);
         
         // continuation value
-        double *grid_A = par->grid_Aw;
+        double *grid_A = par->grid_Aw; 
         if (gender==man){
             grid_A = par->grid_Am;
         }
@@ -92,7 +92,7 @@ namespace single {
         double love = 0.0;
 
         // unpack
-        solver_single_struct *solver_data = (solver_single_struct *) solver_data_in;
+        solver_single_struct *solver_data = (solver_single_struct *) solver_data_in;  
         
         double C_tot = x[0];
         int gender = solver_data->gender;
@@ -104,7 +104,7 @@ namespace single {
     }
 
     void solve_single(int t,sol_struct *sol,par_struct *par){
-        double love = 0.0; // no love for singles
+        double love = 0.0; // no love for singles 
 
         // terminal period
         if (t == (par->T-1)){
@@ -156,8 +156,8 @@ namespace single {
                     solver_data->V_next = &sol->Vw_single[index::index2(t+1,0,par->T,par->num_A)];
                     solver_data->gender = woman;
                     solver_data->par = par;
-                    nlopt_set_min_objective(opt, objfunc_single, solver_data);
-                        
+                    nlopt_set_min_objective(opt, objfunc_single, solver_data); 
+
                     // bounds
                     lb[0] = 1.0e-8;
                     ub[0] = solver_data->M;
@@ -165,8 +165,8 @@ namespace single {
                     nlopt_set_upper_bounds(opt, ub);
 
                     // optimize
-                    x[0] = solver_data->M/2.0;
-                    nlopt_optimize(opt, x, &minf);
+                    x[0] = solver_data->M/2.0; 
+                    nlopt_optimize(opt, x, &minf); 
 
                     // store results
                     double Cw = x[0];
