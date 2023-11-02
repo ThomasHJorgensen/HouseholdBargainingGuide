@@ -107,7 +107,7 @@ namespace bargaining {
             // find wife's indifference point
             int left_w = find_left(Sw, par->num_power);
             int Low_w = left_w+1;
-            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w-1);
+            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, left_w);
 
             // update case 1c
             for (int iP=0; iP<par->num_power; iP++){
@@ -128,7 +128,7 @@ namespace bargaining {
             //find husband's indifference point
             int left_m = find_left(Sm, par->num_power);
             int Low_m = left_m;
-            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, Low_m);
+            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, left_m);
 
             // update case 1d
             for (int iP=0; iP<par->num_power; iP++){
@@ -149,11 +149,11 @@ namespace bargaining {
             //find indifference points
             int left_w = find_left(Sw, par->num_power);
             int Low_w = left_w+1;
-            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w-1);
+            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, left_w);
 
             int left_m = find_left(Sm, par->num_power);
             int Low_m = left_m;         
-            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, Low_m);
+            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, left_m);
 
             // update case 1e
             // no room for bargaining
@@ -244,7 +244,7 @@ namespace bargaining {
             // find wife's indifference point
             int left_w = find_left(Sw, par->num_power);
             int Low_w = left_w+1;
-            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w-1);
+            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, left_w);
 
             if (do_print) {
                 logs::write("barg_log.txt", 1, "\nCase 1c: husband is always happy, wife has indifference point");
@@ -280,7 +280,7 @@ namespace bargaining {
             //find husband's indifference point
             int left_m = find_left(Sm, par->num_power);
             int Low_m = left_m;
-            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, Low_m);
+            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, left_m);
 
             if (do_print) {
                 logs::write("barg_log.txt", 1, "\nCase 1d: wife is always happy, husband has indifference point");
@@ -316,11 +316,11 @@ namespace bargaining {
             //find indifference points
             int left_w = find_left(Sw, par->num_power);
             int Low_w = left_w+1;
-            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, Low_w-1);
+            double power_at_zero_w = tools::interp_1d_index(Sw, par->num_power, par->grid_power, 0.0, left_w);
 
             int left_m = find_left(Sm, par->num_power);
             int Low_m = left_m;         
-            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, Low_m);
+            double power_at_zero_m = tools::interp_1d_index(Sm, par->num_power, par->grid_power, 0.0, left_m);
 
             if (do_print) {
                 logs::write("barg_log.txt", 1, "\nCase 1e: Both have indifference points");

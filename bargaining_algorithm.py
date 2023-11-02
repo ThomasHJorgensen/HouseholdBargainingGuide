@@ -63,7 +63,7 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_couple, list_s
         # find wife's indifference point
         left_w = find_left_point(Sw) # index left of indifference point
         Low_w = left_w + 1 # lowest point where she has positive surplus
-        power_at_zero_w = linear_interp_1d._interp_1d(Sw,par.grid_power,0.0,Low_w-1) # interpolated power at indifference point
+        power_at_zero_w = linear_interp_1d._interp_1d(Sw,par.grid_power,0.0,left_w) # interpolated power at indifference point
 
         # update case 1c
         for iP in range(par.num_power):
@@ -80,7 +80,7 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_couple, list_s
         # find husband's indifference point
         left_m = find_left_point(Sm) # index left of indifference point
         Low_m = left_m # lowest point where he has positive surplus
-        power_at_zero_m = linear_interp_1d._interp_1d(Sm,par.grid_power,0.0,Low_m) # interpolated power at indifference point
+        power_at_zero_m = linear_interp_1d._interp_1d(Sm,par.grid_power,0.0,left_m) # interpolated power at indifference point
 
         # update case 1d
         for iP in range(par.num_power):
@@ -97,11 +97,11 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_couple, list_s
         # find indifference points
         left_w = find_left_point(Sw) # index left of indifference point
         Low_w = left_w + 1 # lowest point where she has positive surplus
-        power_at_zero_w = linear_interp_1d._interp_1d(Sw,par.grid_power,0.0,Low_w-1) # interpolated power at indifference point
+        power_at_zero_w = linear_interp_1d._interp_1d(Sw,par.grid_power,0.0,left_w) # interpolated power at indifference point
 
         left_m = find_left_point(Sm) # index left of indifference point
         Low_m = left_m # lowest point where he has positive surplus
-        power_at_zero_m = linear_interp_1d._interp_1d(Sm,par.grid_power,0.0,Low_m) # interpolated power at indifference point
+        power_at_zero_m = linear_interp_1d._interp_1d(Sm,par.grid_power,0.0,left_m) # interpolated power at indifference point
 
         # step 3: update bargaining power and consumption allocations
         if power_at_zero_w>power_at_zero_m: # no room for bargaining
