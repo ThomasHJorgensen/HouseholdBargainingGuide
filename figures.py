@@ -137,7 +137,7 @@ def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim
     if save:
         if figname == None:
             figname = plot_function.__name__
-        plt.savefig(path + fig_name + filetype, dpi=300)
+        plt.savefig(path + figname + filetype, dpi=300)
     
     # e. Display the figure
     if display:
