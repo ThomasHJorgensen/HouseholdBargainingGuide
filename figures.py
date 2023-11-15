@@ -7,7 +7,7 @@ from matplotlib.ticker import StrMethodFormatter
 linestyles = ['-','--','-.',':',':']
 markers = ['o','s','D','*','P']
 linewidth = 1.5
-font_size = 17
+font_size = 18
 font = {'size':font_size}
 matplotlib.rc('font', **font)
 plt.rcParams.update({'figure.max_open_warning': 0,'text.usetex': False})
@@ -36,6 +36,7 @@ colors = {
     'cyan_dark'   : '#00CCCC',
     'magenta'     : '#FF33FF',
     'magenta_dark': '#FF00CC',
+    'black'       : '#000000',
 }
 
 # To do. 
@@ -60,7 +61,6 @@ def make_fig(num_plots: int, dimensions: tuple):
 
     # Calculate font size
     # font_size = 20 * (subplot_width / 8.27)  # Adjust font size
-    font_size = 10
     
     # Apply style and font size
     plt.style.use('default')  # Use default style (no grid lines)
@@ -91,7 +91,7 @@ def make_fig(num_plots: int, dimensions: tuple):
     return fig, axes
        
     
-def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim=None, save=False, figname=None, display=True, **kwargs):
+def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim=None, save=False, figname=None, display=False, **kwargs):
     ### 1. Setup
     # a. Place models in a list if they are not already
     if type(models) is dict:
@@ -144,8 +144,10 @@ def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim
         plt.show()
     plt.close()
     
+    return fig
     
-def plot_surplus(model, t, iP, iL, iA, title=None, ax=None):
+    
+def plot_surplus(model, t, iP, iL, iA, add_lines=True, title=None, ax=None):
     par = model.par
     sol = model.sol
     power = sol.power
@@ -168,16 +170,17 @@ def plot_surplus(model, t, iP, iL, iA, title=None, ax=None):
     ax.plot(par.grid_power,np.zeros(par.num_power), color='black',linestyle='--') # add zero line
     
     #add vertical line at start_power
-    start_power = par.grid_power[iP]
-    ax.axvline(x=start_power, color=colors['gray'],linestyle='--', label='$\mu_{t-1}$')
+    if add_lines:
+        start_power = par.grid_power[iP]
+        ax.axvline(x=start_power, color=colors['gray'],linestyle='--', label='$\mu_{t-1}$')
 
-    #add vertical line at end_power if it exists
-    end_power = power[idx_couple(iP)]
-    if end_power >= 0:
-        ax.axvline(x=end_power, color=colors['gray_dark'],linestyle=':')
+        #add vertical line at end_power if it exists
+        end_power = power[idx_couple(iP)]
+        if end_power >= 0:
+            ax.axvline(x=end_power, color=colors['gray_dark'],linestyle=':', label='$\mu_{t}$')
 
-        # make a one directional arrow from start_power to end_power lower than the x axis
-        ax.annotate("", xy=(end_power, -0.1), xytext=(start_power, -0.1), arrowprops=dict(arrowstyle="->"))
+            # make a one directional arrow from start_power to end_power lower than the x axis
+            ax.annotate("", xy=(end_power, -0.1), xytext=(start_power, -0.1), arrowprops=dict(arrowstyle="->"))
     
     # Layout
     ax.set_xlabel('Power of woman')
