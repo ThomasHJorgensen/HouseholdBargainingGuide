@@ -87,9 +87,9 @@ namespace precompute{
         
         return C_tot/(1.0 + pow(alpha2/alpha1,1.0/(1.0-phi) ));
     }
-    
 
-    void precompute_margu_single(int i, int gender, par_struct* par, bool analytic=true){
+
+    void precompute_margu_single(int i, int gender, par_struct* par){
         double* grid_util_single = par->grid_util_single_w;
         double* grid_marg_u_single = par->grid_marg_u_single_w;
         double* grid_marg_u_single_for_inv = par->grid_marg_u_single_w_for_inv;
@@ -103,7 +103,7 @@ namespace precompute{
         // utility at current allocation
         grid_util_single[i] = utils::util_C_single(par->grid_Ctot[i],gender,par);
 
-        if (analytic){
+        if (par->analytic_single_marg_u){
             grid_marg_u_single[i] = utils::marg_util_C(par->grid_Ctot[i], gender, par);
         }
         else {
@@ -155,26 +155,29 @@ namespace precompute{
 
 
     void precompute(sol_struct* sol, par_struct* par){
+
+        // pre-compute optimal allocation for couple
         #pragma omp parallel num_threads(par->threads)      
         {
             #pragma omp for         
             for (int i=0; i<par->num_Ctot; i++){  
-                if (par->do_egm){
-                    precompute_margu_single(i, woman, par);
-                    precompute_margu_single(i, man, par);
-                }
-
                 for (int iP=0; iP < par->num_power; iP++){
                     double C_tot = par->grid_Ctot[i];
                     int idx = index::index2(iP,i,par->num_power,par->num_Ctot);         
                     solve_intraperiod_couple(&sol->pre_Ctot_Cw_priv[idx], &sol->pre_Ctot_Cm_priv[idx], &sol->pre_Ctot_C_pub[idx] , C_tot,par->grid_power[iP],par);
-                    
-                    // calculate marginal utility and inverse marginal utility for EGM
-                    if(par->do_egm){
-                        precompute_margu_couple(i, iP, par, sol);
-                    } // EGM 
                 } // power
             } // Ctot
         } // parallel
+
+        // pre-compute marginal utilities for EGM
+        if (par->do_egm){
+            for (int i=0; i<par->num_Ctot; i++){  
+                precompute_margu_single(i, woman, par);
+                precompute_margu_single(i, man, par);
+                for (int iP=0; iP < par->num_power; iP++){
+                    precompute_margu_couple(i, iP, par, sol);
+                } // power
+            } //Ctot
+        } // do_egm
     } // precompute func
 }

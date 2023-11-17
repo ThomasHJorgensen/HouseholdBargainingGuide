@@ -82,6 +82,8 @@ class HouseholdModelClass(EconModelClass):
         par.do_egm = False
         par.num_A_pd = par.num_A * 2
 
+        par.analytic_single_marg_u = True
+
         # simulation
         par.seed = 9210
         par.simT = par.T
