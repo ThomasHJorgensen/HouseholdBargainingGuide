@@ -324,8 +324,8 @@ namespace couple {
 
                                 double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
                                 double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
-                                double margUw = single::marg_util_C(Cw,woman,par); 
-                                double margUm = single::marg_util_C(Cm,man,par);
+                                double margUw = utils::marg_util_C(Cw,woman,par); 
+                                double margUm = utils::marg_util_C(Cm,man,par);
                                 sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; 
                             
                             } 

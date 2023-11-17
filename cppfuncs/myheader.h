@@ -46,6 +46,9 @@
 #ifndef TOOLS
 #include "tools.cpp"
 #endif
+#ifndef PRECOMPUTE
+#include "precompute.cpp"
+#endif
 #ifndef SINGLE
 #include "single.cpp"
 #endif

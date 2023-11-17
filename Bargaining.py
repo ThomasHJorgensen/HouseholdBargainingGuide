@@ -232,6 +232,14 @@ class HouseholdModelClass(EconModelClass):
         par.grid_inv_marg_u = np.flip(par.grid_Ctot)                        # Flipped to make interpolation possible
         par.grid_marg_u_for_inv = np.nan + np.ones(par.grid_util.shape)
 
+        par.grid_util_single_w = np.nan + np.ones((par.num_Ctot))
+        par.grid_marg_u_single_w = np.nan + np.ones((par.num_Ctot))
+        par.grid_marg_u_single_w_for_inv = np.nan + np.ones((par.num_Ctot))
+
+        par.grid_util_single_m = np.nan + np.ones((par.num_Ctot))
+        par.grid_marg_u_single_m = np.nan + np.ones((par.num_Ctot))
+        par.grid_marg_u_single_m_for_inv = np.nan + np.ones((par.num_Ctot))
+
         par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)         # maybe for endogenous grid
 
     def solve(self):
