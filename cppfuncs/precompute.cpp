@@ -105,20 +105,22 @@ namespace precompute{
 
         if (par->analytic_single_marg_u){
             grid_marg_u_single[i] = utils::marg_util_C(par->grid_Ctot[i], gender, par);
+
+            // inverse marginal utility: flip the grid of marginal util (such that ascending) and store as new "x-axis" grid
+            grid_marg_u_single_for_inv[par->num_Ctot-1 -i] = grid_marg_u_single[i];
         }
         else {
             if (i>0) {
             // marginal utility. Use finite difference but closed form could be used.
                 grid_marg_u_single[i-1] = (grid_util_single[i] - grid_util_single[i-1])/(par->grid_Ctot[i] - par->grid_Ctot[i-1]);
+                grid_marg_u_single_for_inv[par->num_Ctot-1 - (i-1)] = grid_marg_u_single[i-1];
 
                 if (i==(par->num_Ctot-1)){
                     grid_marg_u_single[i] = grid_marg_u_single[i-1]; // impose constant slope at last grid-point
+                    grid_marg_u_single_for_inv[par->num_Ctot-1 -i] = grid_marg_u_single[i-1];
                 } // last grid point
             } 
-        } //finite difference
-
-        // inverse marginal utility: flip the grid of marginal util (such that ascending) and store as new "x-axis" grid
-        grid_marg_u_single_for_inv[par->num_Ctot-1 -i] = grid_marg_u_single[i];
+        } //finite difference        
     }
 
 
