@@ -198,7 +198,7 @@ class HouseholdModelClass(EconModelClass):
         sim.draw_love = np.random.normal(size=shape_sim)
 
         # initial distribution
-        sim.init_A = par.grid_A[0] + np.zeros(par.simN)
+        sim.init_A = par.grid_A[10] + np.zeros(par.simN)
         sim.init_Aw = np.zeros(par.simN)
         sim.init_Am = np.zeros(par.simN)
         sim.init_couple = np.ones(par.simN,dtype=np.bool_)

@@ -66,7 +66,7 @@ namespace single {
             // resources next period
             double A_next = par->grid_A_pd[iA_pd];
 
-            // interpolate next period marginal value
+            // interpolate next period marginal value/consumption
             int idx = index::index2(t+1,0,par->T,par->num_A);
             sol->EmargUw_single_pd[iA_pd] = tools::interp_1d(par->grid_Aw,par->num_A,&marg_Vw_next[idx],A_next);
             sol->EmargUm_single_pd[iA_pd] = tools::interp_1d(par->grid_Am,par->num_A,&marg_Vm_next[idx],A_next);
@@ -94,15 +94,33 @@ namespace single {
             double Cw_tot = tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->C_totw_single_pd, Mw_now);
             double Cm_tot = tools::interp_1d(sol->Mm_single_pd, par->num_A_pd, sol->C_totm_single_pd, Mm_now);
 
+            // woman: if credit constrained
+            if (Cw_tot > Mw_now) {
+                Cw_tot = Mw_now;
+
+                // marginal value of constrained consumption
+                marg_Vw_next[idx] = utils::marg_util_C(Cw_tot, woman, par);
+            }
+            else{ // if not credit constrained
+                // marginal value of unconstrained consumption
+                marg_Vw_next[idx] = par->beta*par->R*tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->EmargUw_single_pd, Mw_now);
+            }
+
+            // man: if credit constrained
+            if (Cm_tot > Mm_now) {
+                Cm_tot = Mm_now;
+
+                // marginal value of constrained consumption
+                marg_Vm_next[idx] = utils::marg_util_C(Cw_tot, man, par);
+            }
+            else{ // if not credit constrained
+                // marginal value of unconstrained consumption
+                marg_Vm_next[idx] = par->beta*par->R*tools::interp_1d(sol->Mm_single_pd, par->num_A_pd, sol->EmargUm_single_pd, Mm_now);
+            }
+
             // allocate
             intraperiod_allocation(&sol->Cw_priv_single[idx], &sol->Cw_pub_single[idx], Cw_tot, woman, par);
             intraperiod_allocation(&sol->Cm_priv_single[idx], &sol->Cm_pub_single[idx], Cm_tot, man, par);
-
-            // Store marginal value
-            idx = index::index2(t,iA,par->T,par->num_A);
-            marg_Vw_next[idx] = par->beta*par->R*tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->EmargUw_single_pd, Mw_now);
-            marg_Vm_next[idx] = par->beta*par->R*tools::interp_1d(sol->Mm_single_pd, par->num_A_pd, sol->EmargUm_single_pd, Mm_now);
-
         }
     }
 
