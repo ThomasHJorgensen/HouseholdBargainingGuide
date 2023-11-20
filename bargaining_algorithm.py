@@ -35,10 +35,6 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_couple, list_s
     min_m = Sm[-1]
     max_m = Sm[0]
 
-    # 0b: check if wife and husband have indifference points
-    cross_w = (min_w < 0.0) & (max_w > 0.0)
-    cross_m = (min_m < 0.0) & (max_m > 0.0)
-
     # 0c: check if wife and husband are always happy
     always_happy_w = (min_w > 0.0)
     always_happy_m = (min_m > 0.0)
@@ -46,7 +42,21 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_couple, list_s
     # 0d: check if wife and husband are never happy
     never_happy_w = (max_w < 0.0)
     never_happy_m = (max_m < 0.0)
-
+    
+    # 0b: check if wife and husband have indifference points
+    cross_w = (min_w < 0.0) & (max_w > 0.0)
+    cross_m = (min_m < 0.0) & (max_m > 0.0)
+    
+    if cross_w: # find wife's indifference point
+        left_w = find_left_point(Sw) # index left of indifference point
+        Low_w = left_w + 1 # lowest point where she has positive surplus
+        power_at_zero_w = linear_interp_1d._interp_1d(Sw,par.grid_power,0.0,left_w) # interpolated power at indifference point
+        
+    if cross_m: # find husband's indifference point
+        left_m = find_left_point(Sm) # index left of indifference point
+        Low_m = left_m # lowest point where he has positive surplus
+        power_at_zero_m = linear_interp_1d._interp_1d(Sm,par.grid_power,0.0,left_m) # interpolated power at indifference point
+    
     # step 1: check end points
     # 1a: check if all values are consistent with marriage
     if always_happy_w & always_happy_m: # all values are consistent with marriage
@@ -61,9 +71,6 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_couple, list_s
     # 1c: check if husband is always happy, wife has indifference point
     elif cross_w & always_happy_m: # husband is always happy, wife has indifference point
         # find wife's indifference point
-        left_w = find_left_point(Sw) # index left of indifference point
-        Low_w = left_w + 1 # lowest point where she has positive surplus
-        power_at_zero_w = linear_interp_1d._interp_1d(Sw,par.grid_power,0.0,left_w) # interpolated power at indifference point
 
         # update case 1c
         for iP in range(par.num_power):
@@ -77,10 +84,6 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_couple, list_s
 
     # 1d: check if wife is always happy, husband has indifference point
     elif cross_m & always_happy_w: # wife is always happy, husband has indifference point
-        # find husband's indifference point
-        left_m = find_left_point(Sm) # index left of indifference point
-        Low_m = left_m # lowest point where he has positive surplus
-        power_at_zero_m = linear_interp_1d._interp_1d(Sm,par.grid_power,0.0,left_m) # interpolated power at indifference point
 
         # update case 1d
         for iP in range(par.num_power):
@@ -94,15 +97,6 @@ def check_participation_constraints(power_idx, power, Sw, Sm, idx_couple, list_s
 
     # 1e: Both have indifference points
     else:
-        # find indifference points
-        left_w = find_left_point(Sw) # index left of indifference point
-        Low_w = left_w + 1 # lowest point where she has positive surplus
-        power_at_zero_w = linear_interp_1d._interp_1d(Sw,par.grid_power,0.0,left_w) # interpolated power at indifference point
-
-        left_m = find_left_point(Sm) # index left of indifference point
-        Low_m = left_m # lowest point where he has positive surplus
-        power_at_zero_m = linear_interp_1d._interp_1d(Sm,par.grid_power,0.0,left_m) # interpolated power at indifference point
-
         # step 3: update bargaining power and consumption allocations
         if power_at_zero_w>power_at_zero_m: # no room for bargaining
             for iP in range(par.num_power):
