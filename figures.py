@@ -3,11 +3,14 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
+from matplotlib.ticker import FormatStrFormatter
+from matplotlib.transforms import Bbox
+
 
 linestyles = ['-','--','-.',':',':']
 markers = ['o','s','D','*','P']
 linewidth = 1.5
-font_size = 18
+font_size = 12
 font = {'size':font_size}
 matplotlib.rc('font', **font)
 plt.rcParams.update({'figure.max_open_warning': 0,'text.usetex': False})
@@ -39,6 +42,14 @@ colors = {
     'black'       : '#000000',
 }
 
+formats = {
+    -2: {'font_size': 24},
+    1: {'font_size': 16},
+    2: {'font_size': 12},
+    3: {'font_size': 8},
+}
+
+
 # To do. 
 # Format scientific notation in top of y axis to 10^x instead of 1e^x in make_fig
 # Make make_fig able to fit to landscape view
@@ -47,30 +58,37 @@ colors = {
 
 
 def make_fig(num_plots: int, dimensions: tuple):
+    
+    # 1. Setup
+    ## a. Set figure size
+    ### Unpack dimensions
     rows, columns = dimensions
 
-    # Calculate subplot size and figure size
+    ### Calculate subplot size and figure size
     subplot_width = (8.27-2*0.75) / columns  # Width of an A4 paper
+    if num_plots == 1: subplot_width = 8.27-2*1.5  # If there is only one plot, use bigger margins
     subplot_height = subplot_width / 1.414  # Height adjusted to fit width
     fig_width = subplot_width * columns
     fig_height = subplot_height * rows
 
-    # Create a figure with the specified size
+    ## b. Set format
+    ### Set format based on number of subplot columns
+    # format = columns
+    # font_size = formats[format]['font_size']
+    plt.style.use('default')  # Use default style (no grid lines)
+    plt.rcParams.update({'font.size': font_size, 'font.family': 'STIXGeneral', 'mathtext.fontset': 'stix'})  # Set font size and family for all text in figure
+    
+    
+    # 2. Make figure
+    ## a. Make figure and axes
     fig, axes = plt.subplots(rows, columns, figsize=(fig_width, fig_height), squeeze=False)
     axes = axes.flatten()
 
-    # Calculate font size
-    # font_size = 20 * (subplot_width / 8.27)  # Adjust font size
-    
-    # Apply style and font size
-    plt.style.use('default')  # Use default style (no grid lines)
-    plt.rcParams.update({'font.size': font_size, 'font.family': 'serif', 'font.serif': 'Times New Roman'})
-
-    # Remove ticks and labels from extra subplots
+    ## b. Remove subplots that are not used
     for i in range(num_plots, rows * columns):
         axes[i].axis('off')
-        
-    # Remove ticks and labels from all subplots
+
+    ## c. Apply format to all subplots
     for ax in axes:
         # Apply font size to tick labels on both axes
         ax.tick_params(axis='both', labelsize=font_size)
@@ -85,21 +103,22 @@ def make_fig(num_plots: int, dimensions: tuple):
         # Change the font size of y-axis tick labels (including scientific notation)
         ax.yaxis.get_offset_text().set_fontsize(font_size - 2)  # Adjust the labelsize as needed
         
-        # # Change the format of scientific notation on the y-axis to show only 4 digits
+        # Change the format of the y-axis
         # ax.yaxis.set_major_formatter(StrMethodFormatter("{x:.4g}"))
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%5.2f'))
 
     return fig, axes
        
     
-def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim=None, save=False, figname=None, display=False, **kwargs):
-    ### 1. Setup
-    # a. Place models in a list if they are not already
+def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim=None, save=False, figname=None, display=False, shared_legend=False, **kwargs):
+    # 1. Setup
+    ## a. Place models in a list if they are not already
     if type(models) is dict:
         models = [*models.values()]
     if type(models) is not list:
         models = [models]
         
-    # b. Set default values for num_plots and dim
+    ## b. Set default values for num_plots and dim
     if num_plots is None:
         num_plots = len(models)
     if dim is None:
@@ -110,7 +129,7 @@ def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim
         if num_plots > 10:
             print('Warning: more than 10 plots. Specify dimensions manually.')
             
-    # c. Handle subtitles
+    ## c. Handle subtitles
     if subtitles is None:
         subtitles = [None] * len(models)
     elif subtitles == 'model_names':
@@ -121,30 +140,82 @@ def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim
     else:
         subtitles = subtitles
     
-    ### 2. Create figure
-    # a. initiate figure
+    # 2. Create figure
+    ## a. initiate figure
     fig, ax = make_fig(num_plots, dim)
     
-    # b. Create subplots
+    ## b. Create subplots
     for i, model in enumerate(models):
         subtitle = subtitles[i]
         plot_function(model, *args, ax = ax[i], title=subtitle, **kwargs)
         
-    # c. Set tight layout
+    ## c. Set layout
+    ### Shared legends
+    if shared_legend:
+        #### Get common legend
+        lines, labels = ax[0].get_legend_handles_labels()
+        fig.legend(lines, labels, loc='upper center', bbox_to_anchor=(0.5, 0.05), bbox_transform=fig.transFigure, ncol=3)
+        
+        #### Remove old legends
+        for i in range(len(ax)):
+            ax[i].get_legend().remove()
+
+    
+    ### tight layout
     plt.tight_layout() 
     
-    # d. Save the figure
+    ## d. Save the figure
     if save:
+        ### Save full figure
         if figname == None:
             figname = plot_function.__name__
         plt.savefig(path + figname + filetype, dpi=300)
-    
-    # e. Display the figure
+        
+        ### Save individual subplots
+        # for i, model in enumerate(models):
+        #     subtitle = subtitles[i]
+        #     if subtitle is None:
+        #         subtitle = str(i)
+        #     fig.savefig(path + figname + '_' + subtitle + filetype, dpi=300, bbox_inches=full_extent(ax[i], 0.03).transformed(fig.dpi_scale_trans.inverted()))
+        save_subplots(fig, figname)
+        
+    ## e. Display the figure
     if display:
         plt.show()
     plt.close()
     
     return fig
+
+def full_extent(ax, pad=0.0):
+    """Get the full extent of an axes, including axes labels, tick labels, and
+    titles."""
+    # For text objects, we need to draw the figure first, otherwise the extents
+    # are undefined.
+    ax.figure.canvas.draw()
+    items = []
+    # items += ax.get_xticklabels() + ax.get_yticklabels() 
+    items += [ax, ax.xaxis.label, ax.yaxis.label]
+    # items += [ax, ax.title]
+    
+    # items += [ax.get_xaxis().get_label(), ax.get_yaxis().get_label()]
+    bbox = Bbox.union([item.get_window_extent() for item in items])
+
+    return bbox.expanded(1.0 + pad, 1.0 + pad)
+    # return bbox.padded(4)
+
+def save_subplots(fig, figname):
+    # get axes from fig
+    axes = fig.get_axes()
+    
+    #get subtitles from axes
+    subtitles = [ax.get_title() for ax in axes]
+    
+    ### Save individual subplots
+    for i, ax in enumerate(axes):
+        subtitle = subtitles[i]
+        if subtitle == '':
+            subtitle = str(i)
+        fig.savefig(path + figname + '_' + subtitle + filetype, dpi=300, bbox_inches=full_extent(ax, 0.04).transformed(fig.dpi_scale_trans.inverted()))
     
     
 def plot_surplus(model, t, iP, iL, iA, add_lines=True, title=None, ax=None):
