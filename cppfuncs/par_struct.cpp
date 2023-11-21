@@ -25,6 +25,7 @@ typedef struct par_struct
  double max_Ctot;
  bool do_egm;
  int num_A_pd;
+ bool analytic_single_marg_u;
  int seed;
  int simT;
  int simN;
@@ -42,6 +43,12 @@ typedef struct par_struct
  double* grid_marg_u;
  double* grid_inv_marg_u;
  double* grid_marg_u_for_inv;
+ double* grid_util_single_w;
+ double* grid_marg_u_single_w;
+ double* grid_marg_u_single_w_for_inv;
+ double* grid_util_single_m;
+ double* grid_marg_u_single_m;
+ double* grid_marg_u_single_m_for_inv;
  double* grid_A_pd;
 } par_struct;
 
@@ -90,6 +97,7 @@ int get_int_par_struct(par_struct* x, char* name){
 bool get_bool_par_struct(par_struct* x, char* name){
 
  if( strcmp(name,"do_egm") == 0 ){ return x->do_egm; }
+ else if( strcmp(name,"analytic_single_marg_u") == 0 ){ return x->analytic_single_marg_u; }
  else if( strcmp(name,"do_cpp") == 0 ){ return x->do_cpp; }
  else {return false;}
 
@@ -110,6 +118,12 @@ double* get_double_p_par_struct(par_struct* x, char* name){
  else if( strcmp(name,"grid_marg_u") == 0 ){ return x->grid_marg_u; }
  else if( strcmp(name,"grid_inv_marg_u") == 0 ){ return x->grid_inv_marg_u; }
  else if( strcmp(name,"grid_marg_u_for_inv") == 0 ){ return x->grid_marg_u_for_inv; }
+ else if( strcmp(name,"grid_util_single_w") == 0 ){ return x->grid_util_single_w; }
+ else if( strcmp(name,"grid_marg_u_single_w") == 0 ){ return x->grid_marg_u_single_w; }
+ else if( strcmp(name,"grid_marg_u_single_w_for_inv") == 0 ){ return x->grid_marg_u_single_w_for_inv; }
+ else if( strcmp(name,"grid_util_single_m") == 0 ){ return x->grid_util_single_m; }
+ else if( strcmp(name,"grid_marg_u_single_m") == 0 ){ return x->grid_marg_u_single_m; }
+ else if( strcmp(name,"grid_marg_u_single_m_for_inv") == 0 ){ return x->grid_marg_u_single_m_for_inv; }
  else if( strcmp(name,"grid_A_pd") == 0 ){ return x->grid_A_pd; }
  else {return NULL;}
 

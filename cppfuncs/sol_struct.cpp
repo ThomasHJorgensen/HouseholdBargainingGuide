@@ -40,6 +40,14 @@ typedef struct sol_struct
  double* EmargU_pd;
  double* C_tot_pd;
  double* M_pd;
+ double* marg_Vw_single;
+ double* marg_Vm_single;
+ double* EmargUw_single_pd;
+ double* C_totw_single_pd;
+ double* Mw_single_pd;
+ double* EmargUm_single_pd;
+ double* C_totm_single_pd;
+ double* Mm_single_pd;
  double* pre_Ctot_Cw_priv;
  double* pre_Ctot_Cm_priv;
  double* pre_Ctot_C_pub;
@@ -87,6 +95,14 @@ double* get_double_p_sol_struct(sol_struct* x, char* name){
  else if( strcmp(name,"EmargU_pd") == 0 ){ return x->EmargU_pd; }
  else if( strcmp(name,"C_tot_pd") == 0 ){ return x->C_tot_pd; }
  else if( strcmp(name,"M_pd") == 0 ){ return x->M_pd; }
+ else if( strcmp(name,"marg_Vw_single") == 0 ){ return x->marg_Vw_single; }
+ else if( strcmp(name,"marg_Vm_single") == 0 ){ return x->marg_Vm_single; }
+ else if( strcmp(name,"EmargUw_single_pd") == 0 ){ return x->EmargUw_single_pd; }
+ else if( strcmp(name,"C_totw_single_pd") == 0 ){ return x->C_totw_single_pd; }
+ else if( strcmp(name,"Mw_single_pd") == 0 ){ return x->Mw_single_pd; }
+ else if( strcmp(name,"EmargUm_single_pd") == 0 ){ return x->EmargUm_single_pd; }
+ else if( strcmp(name,"C_totm_single_pd") == 0 ){ return x->C_totm_single_pd; }
+ else if( strcmp(name,"Mm_single_pd") == 0 ){ return x->Mm_single_pd; }
  else if( strcmp(name,"pre_Ctot_Cw_priv") == 0 ){ return x->pre_Ctot_Cw_priv; }
  else if( strcmp(name,"pre_Ctot_Cm_priv") == 0 ){ return x->pre_Ctot_Cm_priv; }
  else if( strcmp(name,"pre_Ctot_C_pub") == 0 ){ return x->pre_Ctot_C_pub; }
