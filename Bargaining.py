@@ -82,6 +82,8 @@ class HouseholdModelClass(EconModelClass):
         par.do_egm = False
         par.num_A_pd = par.num_A * 2
 
+        par.analytic_single_marg_u = True
+
         # simulation
         par.seed = 9210
         par.simT = par.T
@@ -152,9 +154,20 @@ class HouseholdModelClass(EconModelClass):
         sol.marg_V_remain_couple = np.zeros(shape_couple)       # marginal value (wrt c total) of remaining couple
 
         shape_egm = (par.num_power,par.num_love,par.num_A_pd)
-        sol.EmargU_pd = np.zeros(shape_egm)                     # not sure
-        sol.C_tot_pd = np.zeros(shape_egm)                      # endogenous grid C?
-        sol.M_pd = np.zeros(shape_egm)                          # endogenous grid M? 
+        sol.EmargU_pd = np.zeros(shape_egm)                     # Expected marginal utility post-decision
+        sol.C_tot_pd = np.zeros(shape_egm)                      # C for EGM
+        sol.M_pd = np.zeros(shape_egm)                          # Endogenous grid
+
+        sol.marg_Vw_single = np.zeros(shape_single)
+        sol.marg_Vm_single = np.zeros(shape_single)
+
+        sol.EmargUw_single_pd = np.zeros(shape_single)           # Expected marginal utility post-decision, woman single
+        sol.C_totw_single_pd = np.zeros(par.num_A_pd)            # C for EGM, woman single 
+        sol.Mw_single_pd = np.zeros(par.num_A_pd)                # Endogenous grid, woman single
+
+        sol.EmargUm_single_pd = np.zeros(shape_single)          # Expected marginal utility post-decision, man single
+        sol.C_totm_single_pd = np.zeros(par.num_A_pd)           # C for EGM, man single
+        sol.Mm_single_pd = np.zeros(par.num_A_pd)               # Endogenous grid, man single
 
         # pre-compute optimal consumption allocation
         shape_pre = (par.num_power,par.num_Ctot)
@@ -185,7 +198,7 @@ class HouseholdModelClass(EconModelClass):
         sim.draw_love = np.random.normal(size=shape_sim)
 
         # initial distribution
-        sim.init_A = par.grid_A[0] + np.zeros(par.simN)
+        sim.init_A = par.grid_A[10] + np.zeros(par.simN)
         sim.init_Aw = np.zeros(par.simN)
         sim.init_Am = np.zeros(par.simN)
         sim.init_couple = np.ones(par.simN,dtype=np.bool_)
@@ -231,6 +244,14 @@ class HouseholdModelClass(EconModelClass):
         par.grid_marg_u = np.nan + np.ones(par.grid_util.shape)
         par.grid_inv_marg_u = np.flip(par.grid_Ctot)                        # Flipped to make interpolation possible
         par.grid_marg_u_for_inv = np.nan + np.ones(par.grid_util.shape)
+
+        par.grid_util_single_w = np.nan + np.ones((par.num_Ctot))
+        par.grid_marg_u_single_w = np.nan + np.ones((par.num_Ctot))
+        par.grid_marg_u_single_w_for_inv = np.nan + np.ones((par.num_Ctot))
+
+        par.grid_util_single_m = np.nan + np.ones((par.num_Ctot))
+        par.grid_marg_u_single_m = np.nan + np.ones((par.num_Ctot))
+        par.grid_marg_u_single_m_for_inv = np.nan + np.ones((par.num_Ctot))
 
         par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)         # maybe for endogenous grid
 
