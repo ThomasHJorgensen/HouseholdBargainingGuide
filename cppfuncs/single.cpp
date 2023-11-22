@@ -147,8 +147,8 @@ namespace single {
             sol->Mm_single_pd[iA] = M_now_m;
             // logs::write("egm_singles.txt",1,"M_now_w = %f, M_now_m = %f\n",A_now_w,A_now_m);
 
-            sol->EmargUw_single_pd[iA] = par->beta*par->R*EmargUw;
-            sol->EmargUm_single_pd[iA] = par->beta*par->R*EmargUm;
+            sol->EmargUw_single_pd[iA] = EmargUw;
+            sol->EmargUm_single_pd[iA] = EmargUm;
 
         }
 
@@ -162,8 +162,8 @@ namespace single {
             logs::write("egm_singles.txt",1,"Mw = %f, Mm = %f\n",Mw,Mm);
 
             // marginal values
-            sol->marg_Vw_single[idx] = tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->EmargUw_single_pd, Mw);
-            sol->marg_Vm_single[idx] = tools::interp_1d(sol->Mm_single_pd, par->num_A_pd, sol->EmargUm_single_pd, Mm);
+            sol->marg_Vw_single[idx] = par->beta*par->R*tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->EmargUw_single_pd, Mw);
+            sol->marg_Vm_single[idx] = par->beta*par->R*tools::interp_1d(sol->Mm_single_pd, par->num_A_pd, sol->EmargUm_single_pd, Mm);
 
             // interp back to exogenous grid
             sol->Cw_tot_single[idx] = tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->C_totw_single_pd, Mw);
@@ -209,8 +209,8 @@ namespace single {
                 intraperiod_allocation(&sol->Cm_priv_single[idx],&sol->Cm_pub_single[idx],Cm,man,par);
                 sol->Vm_single[idx] = utils::util(sol->Cm_priv_single[idx],sol->Cm_pub_single[idx],man,par,love);
 
-                sol->marg_Vw_single[idx] = marg_util_C(Cw, woman, par);
-                sol->marg_Vm_single[idx] = marg_util_C(Cw, woman, par);
+                sol->marg_Vw_single[idx] = par->beta*par->R*marg_util_C(Cw, woman, par);
+                sol->marg_Vm_single[idx] = par->beta*par->R*marg_util_C(Cw, woman, par);
             }
         } else {
             
