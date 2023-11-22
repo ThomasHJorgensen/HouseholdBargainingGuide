@@ -130,7 +130,7 @@ namespace single {
                 Cm_tot = Mm_now; // consume all resources
 
                 // marginal value of constrained consumption
-                sol->marg_Vm_single[idx] = par->beta*par->R*utils::marg_util_C(Cw_tot, man, par);
+                sol->marg_Vm_single[idx] = par->beta*par->R*utils::marg_util_C(Cm_tot, man, par);
             }
             else{ // if not credit constrained
                 // marginal value of unconstrained consumption
@@ -163,14 +163,14 @@ namespace single {
                 sol->Cw_tot_single[idx] = resources(Aw,woman,par); 
                 sol->Cm_tot_single[idx] = resources(Am,man,par); 
                 
-                intraperiod_allocation(&sol->Cw_priv_single[idx],&sol->Cw_pub_single[idx],sol->Cm_tot_single[idx],woman,par);
+                intraperiod_allocation(&sol->Cw_priv_single[idx],&sol->Cw_pub_single[idx],sol->Cw_tot_single[idx],woman,par);
                 sol->Vw_single[idx] = utils::util(sol->Cw_priv_single[idx],sol->Cw_pub_single[idx],woman,par,love);
                 
                 intraperiod_allocation(&sol->Cm_priv_single[idx],&sol->Cm_pub_single[idx],sol->Cm_tot_single[idx],man,par);
                 sol->Vm_single[idx] = utils::util(sol->Cm_priv_single[idx],sol->Cm_pub_single[idx],man,par,love);
 
                 if (par->do_egm) {
-                    sol->marg_Vw_single[idx] = par->beta*par->R*utils::marg_util_C(sol->Cm_tot_single[idx], woman, par);
+                    sol->marg_Vw_single[idx] = par->beta*par->R*utils::marg_util_C(sol->Cw_tot_single[idx], woman, par);
                     sol->marg_Vm_single[idx] = par->beta*par->R*utils::marg_util_C(sol->Cm_tot_single[idx], man, par);
                 }
             }
