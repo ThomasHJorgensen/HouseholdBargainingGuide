@@ -263,7 +263,8 @@ namespace couple {
 
                     // solve for all values in grid_A.
                     if (par->do_egm){
-                        solve_remain_Agrid_egm(t,iP,iL,Vw_next,Vm_next,marg_V_next,sol,par); 
+                        // solve_remain_Agrid_egm(t,iP,iL,Vw_next,Vm_next,marg_V_next,sol,par); 
+                        solve_remain_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par); 
 
                     } else {
                         solve_remain_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par); 
