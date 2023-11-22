@@ -72,10 +72,10 @@ namespace single {
             sol->EmargUm_single_pd[iA_pd] = tools::interp_1d(par->grid_Am,par->num_A,&marg_Vm_next[idx],A_next);
 
             // invert marginal utility by interpolation from pre-computed grid
-            double EmargUw = par->beta*par->R*sol->EmargUw_single_pd[iA_pd];
+            double EmargUw = sol->EmargUw_single_pd[iA_pd];
             sol->C_totw_single_pd[iA_pd] = tools::interp_1d(par->grid_marg_u_single_w_for_inv, par->num_Ctot, par->grid_inv_marg_u, EmargUw);
 
-            double EmargUm = par->beta*par->R*sol->EmargUm_single_pd[iA_pd];
+            double EmargUm = sol->EmargUm_single_pd[iA_pd];
             sol->C_totm_single_pd[iA_pd] = tools::interp_1d(par->grid_marg_u_single_m_for_inv, par->num_Ctot, par->grid_inv_marg_u, EmargUm);
 
             // endogenous grid
@@ -99,7 +99,7 @@ namespace single {
                 Cw_tot = Mw_now;
 
                 // marginal value of constrained consumption
-                marg_Vw_next[idx] = utils::marg_util_C(Cw_tot, woman, par);
+                marg_Vw_next[idx] = par->beta*par->R*utils::marg_util_C(Cw_tot, woman, par);
             }
             else{ // if not credit constrained
                 // marginal value of unconstrained consumption
@@ -111,7 +111,7 @@ namespace single {
                 Cm_tot = Mm_now;
 
                 // marginal value of constrained consumption
-                marg_Vm_next[idx] = utils::marg_util_C(Cw_tot, man, par);
+                marg_Vm_next[idx] = par->beta*par->R*utils::marg_util_C(Cw_tot, man, par);
             }
             else{ // if not credit constrained
                 // marginal value of unconstrained consumption
@@ -147,8 +147,8 @@ namespace single {
                 sol->Vm_single[idx] = utils::util(sol->Cm_priv_single[idx],sol->Cm_pub_single[idx],man,par,love);
 
                 if (par->do_egm) {
-                    sol->marg_Vw_single[idx] = utils::marg_util_C(Cw, woman, par);
-                    sol->marg_Vm_single[idx] = utils::marg_util_C(Cm, man, par);
+                    sol->marg_Vw_single[idx] = par->beta*par->R*utils::marg_util_C(Cw, woman, par);
+                    sol->marg_Vm_single[idx] = par->beta*par->R*utils::marg_util_C(Cm, man, par);
                 }
             }
         } else {
