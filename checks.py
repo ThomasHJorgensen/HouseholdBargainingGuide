@@ -2,6 +2,8 @@ import numpy as np
 # import simplenamespace
 from types import SimpleNamespace
 
+import Bargaining as brg
+
 #make a simple namespace called par
 par = SimpleNamespace()
 # Make a loop and add one=1, two=2, three=3, four=4, five=5 to par
@@ -121,7 +123,7 @@ def print_specs_table(modelspecs):
             if p in modelspecs[name]['par'].keys(): # use value from modelspecs
                 par_value = modelspecs[name]['par'][p]
             else: # use default value
-                model = model = brg.HouseholdModelClass()
+                model = brg.HouseholdModelClass()
                 par_value = getattr(model.par,p)
             
             print(f"{str(par_value).center(max_length)}|",end='')
