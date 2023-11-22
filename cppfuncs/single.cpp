@@ -114,25 +114,21 @@ namespace single {
             double love = 0.0;
             const double A = par->grid_A_pd[iA];
 
-
-            // // Marginal value of next period wealth
-            // double w = par->beta * sol->
-
-            // Next period consumption - Note: can change index to just t+1
-            double C_next_w = tools::interp_1d(par->grid_Aw, par->num_A,&sol->Cw_tot_single[index::index2(t+1,0,par->T,par->num_A)], A);
-            double C_next_m = tools::interp_1d(par->grid_Am, par->num_A,&sol->Cm_tot_single[index::index2(t+1,0,par->T,par->num_A)], A);
-
-            // logs::write("egm_singles.txt",1,"C_next_w = %f, C_next_m = %f\n",C_next_w,C_next_m);
-
-            // Marginal utility of next period consumption
-            // I need expectation around here
-            double EmargUw = par->beta * par->R * marg_util_C(C_next_w, woman, par);
-            double EmargUm = par->beta * par->R * marg_util_C(C_next_m, man,   par);
-            // logs::write("egm_singles.txt",1,"EmargUw = %f, EmargUm = %f\n",EmargUw,EmargUm);
-
-            // // alternative
-            // double EmargUw = sol->EmargUw_single_pd[index::index2(t+1,iA,par->T,par->num_A)];
-            // double EmargUm = sol->EmargUm_single_pd[index::index2(t+1,iA,par->T,par->num_A)];
+            double EmargUw;
+            double EmargUm;
+            if (par->do_egm_c==1){
+                // Next period consumption - Note: can change index to just t+1
+                double C_next_w = tools::interp_1d(par->grid_Aw, par->num_A,&sol->Cw_tot_single[index::index2(t+1,0,par->T,par->num_A)], A);
+                double C_next_m = tools::interp_1d(par->grid_Am, par->num_A,&sol->Cm_tot_single[index::index2(t+1,0,par->T,par->num_A)], A);
+                // Marginal utility of next period consumption
+                // I need expectation around here
+                EmargUw = par->beta * par->R * marg_util_C(C_next_w, woman, par);
+                EmargUm = par->beta * par->R * marg_util_C(C_next_m, man,   par);
+            } else{
+                // Next period marginal value
+                EmargUw = tools::interp_1d(par->grid_Aw, par->num_A,&sol->marg_Vw_single[index::index2(t+1,0,par->T,par->num_A)], A);
+                EmargUm = tools::interp_1d(par->grid_Am, par->num_A,&sol->marg_Vm_single[index::index2(t+1,0,par->T,par->num_A)], A);
+            }
 
             // Consumption today
             double C_now_w = tools::interp_1d(par->grid_marg_u_single_w_for_inv, par->num_Ctot, par->grid_inv_marg_u, EmargUw);
@@ -151,6 +147,8 @@ namespace single {
             sol->Mm_single_pd[iA] = M_now_m;
             // logs::write("egm_singles.txt",1,"M_now_w = %f, M_now_m = %f\n",A_now_w,A_now_m);
 
+            sol->EmargUw_single_pd[iA] = par->beta*par->R*EmargUw;
+            sol->EmargUm_single_pd[iA] = par->beta*par->R*EmargUm;
 
         }
 
@@ -162,6 +160,10 @@ namespace single {
             double Mw = resources(par->grid_Aw[iA], woman, par);
             double Mm = resources(par->grid_Am[iA],   man, par);
             logs::write("egm_singles.txt",1,"Mw = %f, Mm = %f\n",Mw,Mm);
+
+            // marginal values
+            sol->marg_Vw_single[idx] = tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->EmargUw_single_pd, Mw);
+            sol->marg_Vm_single[idx] = tools::interp_1d(sol->Mm_single_pd, par->num_A_pd, sol->EmargUm_single_pd, Mm);
 
             // interp back to exogenous grid
             sol->Cw_tot_single[idx] = tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->C_totw_single_pd, Mw);
@@ -206,6 +208,9 @@ namespace single {
                 
                 intraperiod_allocation(&sol->Cm_priv_single[idx],&sol->Cm_pub_single[idx],Cm,man,par);
                 sol->Vm_single[idx] = utils::util(sol->Cm_priv_single[idx],sol->Cm_pub_single[idx],man,par,love);
+
+                sol->marg_Vw_single[idx] = marg_util_C(Cw, woman, par);
+                sol->marg_Vm_single[idx] = marg_util_C(Cw, woman, par);
             }
         } else {
             
