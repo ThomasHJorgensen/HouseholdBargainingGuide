@@ -316,22 +316,22 @@ namespace couple {
                     bargaining::check_participation_constraints(sol->power_idx, sol->power, Sw, Sm, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, num, par);
 
                     // calculate marginal utility in case of singlehood [update after check above] if EGM is implemented for singles, these numbers are stored elsewhere
-                    if(par->do_egm){
-                        for (int iP=0; iP<par->num_power; iP++){
-                            int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-                            if (sol->power[idx] < 0.0){ // single
-                                double power = par->grid_power[iP];
-                                double share = par->div_A_share;
+                    // if(par->do_egm){
+                    //     for (int iP=0; iP<par->num_power; iP++){
+                    //         int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                    //         if (sol->power[idx] < 0.0){ // single
+                    //             double power = par->grid_power[iP];
+                    //             double share = par->div_A_share;
 
-                                double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
-                                double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
-                                double margUw = utils::marg_util_C(Cw,woman,par); 
-                                double margUm = utils::marg_util_C(Cm,man,par);
-                                sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; 
+                    //             double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
+                    //             double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
+                    //             double margUw = utils::marg_util_C(Cw,woman,par); 
+                    //             double margUm = utils::marg_util_C(Cm,man,par);
+                    //             sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; 
                             
-                            } 
-                        }
-                    }
+                    //         } 
+                    //     }
+                    // }
                     
                 } // wealth
             } // love

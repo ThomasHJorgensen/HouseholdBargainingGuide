@@ -157,7 +157,7 @@ def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim
         fig.legend(lines, labels, loc='upper center', bbox_to_anchor=(0.5, 0.05), bbox_transform=fig.transFigure, ncol=3)
         
         #### Remove old legends
-        for i in range(len(ax)):
+        for i in range(num_plots):
             ax[i].get_legend().remove()
 
     
