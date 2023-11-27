@@ -136,6 +136,100 @@ namespace single {
         }
     }
 
+    void EGM_single(int t, int gender, sol_struct* sol, par_struct* par){
+
+        // 1. Setup
+        /// a. unpack
+        int const &T {par->T};
+        int const &num_Ctot {par->num_Ctot};
+        int const &num_A {par->num_A};
+        int const &num_A_pd {par->num_A_pd};
+        double const &beta {par->beta};
+        double const &R {par->R};
+        double* const &grid_inv_marg_u {par->grid_inv_marg_u};
+        double* const &grid_A_pd {par->grid_A_pd};
+
+        /// b. gender specific variables
+        //// o. man
+        double* grid_A {par->grid_Am};
+        double* grid_marg_u_single_for_inv {par->grid_marg_u_single_m_for_inv};
+        double* V {sol->Vm_single};
+        double* marg_V {sol->marg_Vm_single};
+        double* C_tot {sol->Cm_tot_single};
+        double* C_priv {sol->Cm_priv_single};
+        double* C_pub {sol->Cm_pub_single};
+        ///// oo. woman
+        if (gender == woman){
+            grid_A = par->grid_Aw;
+            grid_marg_u_single_for_inv = par->grid_marg_u_single_w_for_inv;
+            V = sol->Vw_single;
+            marg_V = sol->marg_Vw_single;
+            C_tot = sol->Cw_tot_single;
+            C_priv = sol->Cw_priv_single;
+            C_pub = sol->Cw_pub_single;
+        }
+
+        /// c. Allocate memory
+        double* EmargU_pd {new double[num_A_pd]};
+        double* C_tot_pd {new double[num_A_pd]};
+        double* M_pd {new double[num_A_pd]};
+
+        // 2. EGM step
+        int idx_next = index::index2(t+1,0, T, num_A);
+       
+        for (int iA_pd=0; iA_pd<num_A_pd; iA_pd++){
+
+            /// a. unpack
+            double &A_next = grid_A_pd[iA_pd];
+
+            /// b. calculate expected marginal utility
+            EmargU_pd[iA_pd] = tools::interp_1d(grid_A, num_A, &marg_V[idx_next],A_next);
+
+            /// c. invert marginal utility by interpolation from pre-computed grid
+            C_tot_pd[iA_pd] = tools::interp_1d(grid_marg_u_single_for_inv, num_Ctot, grid_inv_marg_u, EmargU_pd[iA_pd]);
+            
+            /// d. endogenous grid over resources
+            M_pd[iA_pd] = C_tot_pd[iA_pd] + A_next;
+        }
+
+        // 3. interpolate to common grid
+        for (int iA=0; iA<num_A; iA++){
+            int idx = index::index2(t,iA, T, num_A);
+
+            /// a. calculate resources
+            double M_now = resources(grid_A[iA], gender, par);
+
+            /// b. find total consumption
+            C_tot[idx] = tools::interp_1d(M_pd, num_A_pd, C_tot_pd, M_now);
+
+            /// c. handle credit constraint 
+            //// if credit constrained
+            if (C_tot[idx] > M_now) {
+                ///// o. consume all resources
+                C_tot[idx] = M_now; 
+
+                ///// oo. calculate marginal value of constrained consumption
+                marg_V[idx] = beta * R * utils::marg_util_C(C_tot[idx], gender, par);
+            }
+            //// if not credit constrained
+            else{
+                // o. calculate marginal value of unconstrained consumption
+                marg_V[idx] = beta * R * tools::interp_1d(M_pd, num_A_pd, EmargU_pd, M_now);
+            }
+
+            /// d. calculate private and public consumption
+            intraperiod_allocation(&C_priv[idx], &C_pub[idx], C_tot[idx], gender, par);
+            
+            /// e. calculate values (not used in EGM step)
+            V[idx] = value_of_choice(C_tot[idx], M_now, gender, &V[idx_next], par);
+        }
+
+        // 4. clean up
+        delete[] EmargU_pd;
+        delete[] C_tot_pd;
+        delete[] M_pd;
+    }
+
 
 
     void solve_single(int t,sol_struct *sol,par_struct *par){
@@ -165,7 +259,9 @@ namespace single {
             }
         } else {
             if (par->do_egm) {
-                EGM_step_single(t, sol, par);
+                // EGM_step_single(t, sol, par);
+                EGM_single(t, woman, sol, par);
+                EGM_single(t, man,   sol, par);
             }
             else {
                 #pragma omp parallel num_threads(par->threads)
