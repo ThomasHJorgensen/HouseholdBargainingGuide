@@ -60,82 +60,6 @@ namespace single {
 
     }
 
-    void EGM_step_single(int t, sol_struct* sol, par_struct* par){
-        // set index for next period (first asset point)
-        int idx_next = index::index2(t+1,0,par->T,par->num_A);
-
-        // allocate 
-        
-
-        // EGM
-        for (int iA_pd=0; iA_pd<par->num_A_pd;iA_pd++){
-
-            // Unpack
-            double A_next = par->grid_A_pd[iA_pd];
-
-            // Calculate expected marginal utility
-            sol->EmargUw_single_pd[iA_pd] = tools::interp_1d(par->grid_Aw,par->num_A,&sol->marg_Vw_single[idx_next],A_next);
-            sol->EmargUm_single_pd[iA_pd] = tools::interp_1d(par->grid_Am,par->num_A,&sol->marg_Vm_single[idx_next],A_next);
-
-            // invert marginal utility by interpolation from pre-computed grid
-            sol->C_totw_single_pd[iA_pd] = tools::interp_1d(par->grid_marg_u_single_w_for_inv, par->num_Ctot, par->grid_inv_marg_u, sol->EmargUw_single_pd[iA_pd]);
-            sol->C_totm_single_pd[iA_pd] = tools::interp_1d(par->grid_marg_u_single_m_for_inv, par->num_Ctot, par->grid_inv_marg_u, sol->EmargUm_single_pd[iA_pd]);
-            
-            // endogenous grid over resources
-            sol->Mw_single_pd[iA_pd] = sol->C_totw_single_pd[iA_pd] + A_next;
-            sol->Mm_single_pd[iA_pd] = sol->C_totm_single_pd[iA_pd] + A_next;
-        }
-
-        // interpolate to common grid
-        for (int iA=0; iA<par->num_A;iA++){
-            int idx = index::index2(t,iA,par->T,par->num_A);
-
-            // create alias for consumption
-            double &Cw_tot = sol->Cw_tot_single[idx];
-            double &Cm_tot = sol->Cm_tot_single[idx];
-
-            // resources
-            double Mw_now = resources(par->grid_Aw[iA], woman, par);
-            double Mm_now = resources(par->grid_Am[iA], man, par);
-
-            // total consumption
-            Cw_tot = tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->C_totw_single_pd, Mw_now);
-            Cm_tot = tools::interp_1d(sol->Mm_single_pd, par->num_A_pd, sol->C_totm_single_pd, Mm_now);
-
-            // woman: if credit constrained
-            if (Cw_tot > Mw_now) {
-                Cw_tot = Mw_now; // consume all resources
-
-                // marginal value of constrained consumption
-                sol->marg_Vw_single[idx] = par->beta*par->R*utils::marg_util_C(Cw_tot, woman, par);
-            }
-            else{ // if not credit constrained
-                // marginal value of unconstrained consumption
-                sol->marg_Vw_single[idx] = par->beta*par->R*tools::interp_1d(sol->Mw_single_pd, par->num_A_pd, sol->EmargUw_single_pd, Mw_now);
-            }
-
-            // man: if credit constrained
-            if (Cm_tot > Mm_now) {
-                Cm_tot = Mm_now; // consume all resources
-
-                // marginal value of constrained consumption
-                sol->marg_Vm_single[idx] = par->beta*par->R*utils::marg_util_C(Cm_tot, man, par);
-            }
-            else{ // if not credit constrained
-                // marginal value of unconstrained consumption
-                sol->marg_Vm_single[idx] = par->beta*par->R*tools::interp_1d(sol->Mm_single_pd, par->num_A_pd, sol->EmargUm_single_pd, Mm_now);
-            }
-
-            // allcoate consumption
-            intraperiod_allocation(&sol->Cw_priv_single[idx], &sol->Cw_pub_single[idx], Cw_tot, woman, par);
-            intraperiod_allocation(&sol->Cm_priv_single[idx], &sol->Cm_pub_single[idx], Cm_tot, man, par);
-            
-            // calculate values (not used in EGM)
-            sol->Vw_single[idx] = value_of_choice(Cw_tot, Mw_now, woman, &sol->Vw_single[idx_next], par);
-            sol->Vm_single[idx] = value_of_choice(Cm_tot, Mm_now,   man, &sol->Vm_single[idx_next], par);
-        }
-    }
-
     void EGM_single(int t, int gender, sol_struct* sol, par_struct* par){
 
         // 1. Setup
@@ -259,7 +183,6 @@ namespace single {
             }
         } else {
             if (par->do_egm) {
-                // EGM_step_single(t, sol, par);
                 EGM_single(t, woman, sol, par);
                 EGM_single(t, man,   sol, par);
             }
