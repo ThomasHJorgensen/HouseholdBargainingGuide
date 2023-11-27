@@ -308,8 +308,8 @@ namespace single {
                         nlopt_optimize(opt, x, &minf); 
 
                         // store results
-                        double Cw = x[0];
-                        intraperiod_allocation(&sol->Cw_priv_single[idx],&sol->Cw_pub_single[idx],Cw,woman,par);
+                        sol->Cw_tot_single[idx] = x[0];
+                        intraperiod_allocation(&sol->Cw_priv_single[idx],&sol->Cw_pub_single[idx],sol->Cw_tot_single[idx],woman,par);
                         sol->Vw_single[idx] = -minf;
 
                         // MEN
@@ -330,9 +330,9 @@ namespace single {
                         x[0] = solver_data->M/2.0;
                         nlopt_optimize(opt, x, &minf);
 
-                        double Cm = x[0];
-                        intraperiod_allocation(&sol->Cm_priv_single[idx],&sol->Cm_pub_single[idx],Cm,man,par);
-                        sol->Vm_single[idx] = -minf;            
+                        sol->Cm_tot_single[idx] = x[0];
+                        intraperiod_allocation(&sol->Cm_priv_single[idx],&sol->Cm_pub_single[idx],sol->Cm_tot_single[idx],man,par);
+                        sol->Vm_single[idx] = -minf;       
                         
                     } // iA
 

@@ -149,6 +149,7 @@ namespace couple {
             // solve unconstrained problem
             solve_remain_couple(&sol->Cw_priv_remain_couple[idx], &sol->Cm_priv_remain_couple[idx], &sol->C_pub_remain_couple[idx], &sol->Vw_remain_couple[idx], &sol->Vm_remain_couple[idx]
             , t,M_resources,iL,iP,Vw_next,Vm_next,starting_val,sol,par);
+            sol->C_tot_couple[idx] = sol->Cw_priv_remain_couple[idx] + sol->Cm_priv_remain_couple[idx] + sol->C_pub_remain_couple[idx];
 
         } // wealth   
     }
