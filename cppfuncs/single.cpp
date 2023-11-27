@@ -74,19 +74,8 @@ namespace single {
             double A_next = par->grid_A_pd[iA_pd];
 
             // Calculate expected marginal utility
-            if (par->do_egm_normal==1){
-                // find optimal consumption in next period by interpolation
-                double C_next_w = tools::interp_1d(par->grid_Aw, par->num_A,&sol->Cw_tot_single[idx_next], A_next);
-                double C_next_m = tools::interp_1d(par->grid_Am, par->num_A,&sol->Cm_tot_single[idx_next], A_next);
-                
-                // marginal utility of optimal consumption
-                sol->EmargUw_single_pd[iA_pd] = par->beta * par->R * utils::marg_util_C(C_next_w, woman, par);
-                sol->EmargUm_single_pd[iA_pd] = par->beta * par->R * utils::marg_util_C(C_next_m, man,   par);
-            } else{
-                // interpolate next period marginal value/consumption
-                sol->EmargUw_single_pd[iA_pd] = tools::interp_1d(par->grid_Aw,par->num_A,&sol->marg_Vw_single[idx_next],A_next);
-                sol->EmargUm_single_pd[iA_pd] = tools::interp_1d(par->grid_Am,par->num_A,&sol->marg_Vm_single[idx_next],A_next);
-            }
+            sol->EmargUw_single_pd[iA_pd] = tools::interp_1d(par->grid_Aw,par->num_A,&sol->marg_Vw_single[idx_next],A_next);
+            sol->EmargUm_single_pd[iA_pd] = tools::interp_1d(par->grid_Am,par->num_A,&sol->marg_Vm_single[idx_next],A_next);
 
             // invert marginal utility by interpolation from pre-computed grid
             sol->C_totw_single_pd[iA_pd] = tools::interp_1d(par->grid_marg_u_single_w_for_inv, par->num_Ctot, par->grid_inv_marg_u, sol->EmargUw_single_pd[iA_pd]);
