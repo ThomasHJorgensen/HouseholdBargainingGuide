@@ -253,7 +253,9 @@ class HouseholdModelClass(EconModelClass):
         par.grid_marg_u_single_m = np.nan + np.ones((par.num_Ctot))
         par.grid_marg_u_single_m_for_inv = np.nan + np.ones((par.num_Ctot))
 
-        par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)         # maybe for endogenous grid
+        par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)
+        par.grid_Aw_pd = par.div_A_share * par.grid_A_pd
+        par.grid_Am_pd = (1.0 - par.div_A_share) * par.grid_A_pd
 
     def solve(self):
         

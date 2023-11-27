@@ -71,20 +71,21 @@ namespace single {
         double const &beta {par->beta};
         double const &R {par->R};
         double* const &grid_inv_marg_u {par->grid_inv_marg_u};
-        double* const &grid_A_pd {par->grid_A_pd};
 
         /// b. gender specific variables
         //// o. man
         double* grid_A {par->grid_Am};
+        double* grid_A_pd {par->grid_Am_pd};
         double* grid_marg_u_single_for_inv {par->grid_marg_u_single_m_for_inv};
         double* V {sol->Vm_single};
         double* marg_V {sol->marg_Vm_single};
         double* C_tot {sol->Cm_tot_single};
         double* C_priv {sol->Cm_priv_single};
         double* C_pub {sol->Cm_pub_single};
-        ///// oo. woman
+        //// oo. woman
         if (gender == woman){
             grid_A = par->grid_Aw;
+            grid_A_pd = par->grid_Aw_pd;
             grid_marg_u_single_for_inv = par->grid_marg_u_single_w_for_inv;
             V = sol->Vw_single;
             marg_V = sol->marg_Vw_single;
@@ -103,7 +104,7 @@ namespace single {
        
         for (int iA_pd=0; iA_pd<num_A_pd; iA_pd++){
 
-            /// a. unpack
+            /// a. get next period assets
             double &A_next = grid_A_pd[iA_pd];
 
             /// b. calculate expected marginal utility
