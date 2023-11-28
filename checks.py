@@ -100,9 +100,10 @@ def print_specs_table(modelspecs):
     for key in modelspecs.keys():
         if len(key)>max_length:
             max_length = len(key)
-    for key in list(modelspecs.values())[0]['par'].keys():
-        if len(key)>max_length:
-            max_length = len(key)
+    for num in range(len(modelspecs)):
+        for key in list(modelspecs.values())[num]['par'].keys():
+            if len(key)>max_length:
+                max_length = len(key)
             
     # get all keys in par dictionaries
     all_keys = set()
