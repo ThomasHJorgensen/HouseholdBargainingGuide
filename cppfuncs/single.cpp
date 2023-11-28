@@ -61,7 +61,6 @@ namespace single {
     }
 
     void EGM_single(int t, int gender, sol_struct* sol, par_struct* par){
-
         // 1. Setup
         /// a. unpack
         int const &T {par->T};
@@ -101,35 +100,44 @@ namespace single {
         double* M_pd {new double[num_A_pd]};
 
         // 2. EGM step
+        /// setup
         int idx_next = index::index2(t+1,0, T, num_A);
-       
+        int min_point_A {0};
+        int max_point_C {num_Ctot-2};
+
         for (int iA_pd=0; iA_pd<num_A_pd; iA_pd++){
 
             /// a. get next period assets
             double &A_next = grid_A_pd[iA_pd];
 
             /// b. calculate expected marginal utility
-            EmargU_pd[iA_pd] = tools::interp_1d(grid_A, num_A, &marg_V[idx_next],A_next);
+            min_point_A += tools::binary_search(0,num_A - min_point_A, &grid_A[min_point_A], A_next);
+            EmargU_pd[iA_pd] = tools::interp_1d_index(grid_A, num_A, &marg_V[idx_next],A_next, min_point_A);
 
             /// c. invert marginal utility by interpolation from pre-computed grid
             if (analytic_inv_marg_u_single == 1){
                 C_tot_pd[iA_pd] = utils::inv_marg_util_C(EmargU_pd[iA_pd], gender, par);
             } else {
-                C_tot_pd[iA_pd] = tools::interp_1d(grid_marg_u_single_for_inv, num_Ctot, grid_inv_marg_u, EmargU_pd[iA_pd]);
+                max_point_C = tools::binary_search(0,max_point_C+2, grid_marg_u_single_for_inv, EmargU_pd[iA_pd]);
+                C_tot_pd[iA_pd] = tools::interp_1d_index(grid_marg_u_single_for_inv, num_Ctot, grid_inv_marg_u, EmargU_pd[iA_pd], max_point_C);
             }
             /// d. endogenous grid over resources
             M_pd[iA_pd] = C_tot_pd[iA_pd] + A_next;
         }
 
         // 3. interpolate to common grid
+        ///setup
+        int idx = index::index2(t,0, T, num_A);
+        min_point_A = 0;
+
         for (int iA=0; iA<num_A; iA++){
-            int idx = index::index2(t,iA, T, num_A);
 
             /// a. calculate resources
             double M_now = resources(grid_A[iA], gender, par);
 
             /// b. find total consumption
-            C_tot[idx] = tools::interp_1d(M_pd, num_A_pd, C_tot_pd, M_now);
+            min_point_A += tools::binary_search(0,num_A_pd - min_point_A, &M_pd[min_point_A], M_now);
+            C_tot[idx] = tools::interp_1d_index(M_pd, num_A_pd, C_tot_pd, M_now, min_point_A);
 
             /// c. handle credit constraint 
             //// if credit constrained
@@ -143,7 +151,7 @@ namespace single {
             //// if not credit constrained
             else{
                 // o. calculate marginal value of unconstrained consumption
-                marg_V[idx] = beta * R * tools::interp_1d(M_pd, num_A_pd, EmargU_pd, M_now);
+                marg_V[idx] = beta * R * tools::interp_1d_index(M_pd, num_A_pd, EmargU_pd, M_now, min_point_A);
             }
 
             /// d. calculate private and public consumption
@@ -151,6 +159,9 @@ namespace single {
             
             /// e. calculate values (not used in EGM step)
             V[idx] = value_of_choice(C_tot[idx], M_now, gender, &V[idx_next], par);
+
+            /// f. update index
+            idx++;
         }
 
         // 4. clean up
@@ -188,8 +199,20 @@ namespace single {
             }
         } else {
             if (par->do_egm) {
-                EGM_single(t, woman, sol, par);
-                EGM_single(t, man,   sol, par);
+                #pragma omp parallel num_threads(par->threads)
+                    {
+                        #pragma omp sections
+                        {
+                            #pragma omp section
+                            {
+                                EGM_single(t, woman, sol, par);
+                            }
+                            #pragma omp section
+                            {
+                                EGM_single(t, man, sol, par);
+                            }
+                        }
+                    }
             }
             else {
                 #pragma omp parallel num_threads(par->threads)
