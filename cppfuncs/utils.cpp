@@ -73,4 +73,21 @@ namespace utils {
         double constant = alpha1*pow(share,phi) + alpha2*pow(1.0-share,phi);
         return phi * pow(C_tot,(1.0-rho)*phi -1.0 ) * pow(constant,1.0 - rho);
     }
+
+    double inv_marg_util_C(double marg_U, int gender, par_struct* par){
+        double rho = par->rho_w;
+        double phi = par->phi_w;
+        double alpha1 = par->alpha1_w;
+        double alpha2 = par->alpha2_w;
+        if (gender == man) {
+            rho = par->rho_m;
+            phi = par->phi_m;
+            alpha1 = par->alpha1_m;
+            alpha2 = par->alpha2_m;
+        }  
+        
+        double share = 1.0/(1.0 + pow(alpha2/alpha1,1.0/(1.0-phi) ));
+        double constant = alpha1*pow(share,phi) + alpha2*pow(1.0-share,phi);
+        return pow(marg_U / (phi * pow(constant,(1.0-rho))), 1 / ((1-rho)*phi - 1.0));
+    }
 }

@@ -68,6 +68,7 @@ namespace single {
         int const &num_Ctot {par->num_Ctot};
         int const &num_A {par->num_A};
         int const &num_A_pd {par->num_A_pd};
+        bool const &analytic_inv_marg_u_single {par->analytic_inv_marg_u_single};
         double const &beta {par->beta};
         double const &R {par->R};
         double* const &grid_inv_marg_u {par->grid_inv_marg_u};
@@ -111,8 +112,11 @@ namespace single {
             EmargU_pd[iA_pd] = tools::interp_1d(grid_A, num_A, &marg_V[idx_next],A_next);
 
             /// c. invert marginal utility by interpolation from pre-computed grid
-            C_tot_pd[iA_pd] = tools::interp_1d(grid_marg_u_single_for_inv, num_Ctot, grid_inv_marg_u, EmargU_pd[iA_pd]);
-            
+            if (analytic_inv_marg_u_single == 1){
+                C_tot_pd[iA_pd] = utils::inv_marg_util_C(EmargU_pd[iA_pd], gender, par);
+            } else {
+                C_tot_pd[iA_pd] = tools::interp_1d(grid_marg_u_single_for_inv, num_Ctot, grid_inv_marg_u, EmargU_pd[iA_pd]);
+            }
             /// d. endogenous grid over resources
             M_pd[iA_pd] = C_tot_pd[iA_pd] + A_next;
         }

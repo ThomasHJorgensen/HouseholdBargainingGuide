@@ -80,9 +80,9 @@ class HouseholdModelClass(EconModelClass):
         par.max_Ctot = par.max_A*2
 
         par.do_egm = False
+        par.analytic_marg_u_single = False
+        par.analytic_inv_marg_u_single = False
         par.num_A_pd = par.num_A * 2
-
-        par.analytic_single_marg_u = True
 
         # simulation
         par.seed = 9210

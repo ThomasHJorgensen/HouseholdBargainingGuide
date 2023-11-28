@@ -103,7 +103,7 @@ namespace precompute{
         // utility at current allocation
         grid_util_single[i] = utils::util_C_single(par->grid_Ctot[i],gender,par);
 
-        if (par->analytic_single_marg_u){
+        if (par->analytic_marg_u_single){
             grid_marg_u_single[i] = utils::marg_util_C(par->grid_Ctot[i], gender, par);
 
             // inverse marginal utility: flip the grid of marginal util (such that ascending) and store as new "x-axis" grid
