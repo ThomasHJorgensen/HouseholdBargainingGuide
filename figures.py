@@ -110,7 +110,7 @@ def make_fig(num_plots: int, dimensions: tuple):
     return fig, axes
        
     
-def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim=None, save=False, figname=None, display=False, shared_legend=False, **kwargs):
+def model_plot(models, plot_function, vars, *args, subtitles=None, num_plots=None, dim=None, save=False, figname=None, display=False, shared_legend=False, **kwargs):
     # 1. Setup
     ## a. Place models in a list if they are not already
     if type(models) is dict:
@@ -146,8 +146,9 @@ def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim
     
     ## b. Create subplots
     for i, model in enumerate(models):
-        subtitle = subtitles[i]
-        plot_function(model, *args, ax = ax[i], title=subtitle, **kwargs)
+        for var in vars:
+            subtitle = subtitles[i]
+            plot_function(model, var, *args, label='var_names', ax = ax[i], title=subtitle, **kwargs)
         
     ## c. Set layout
     ### Shared legends
@@ -171,12 +172,77 @@ def model_plot(models, plot_function, *args, subtitles=None, num_plots=None, dim
             figname = plot_function.__name__
         plt.savefig(path + figname + filetype, dpi=300)
         
-        ### Save individual subplots
-        # for i, model in enumerate(models):
-        #     subtitle = subtitles[i]
-        #     if subtitle is None:
-        #         subtitle = str(i)
-        #     fig.savefig(path + figname + '_' + subtitle + filetype, dpi=300, bbox_inches=full_extent(ax[i], 0.03).transformed(fig.dpi_scale_trans.inverted()))
+        save_subplots(fig, figname)
+        
+    ## e. Display the figure
+    if display:
+        plt.show()
+    plt.close()
+    
+    return fig
+
+def var_plot(models, plot_function, vars, *args, subtitles=None, num_plots=None, dim=None, save=False, figname=None, display=False, shared_legend=False, **kwargs):
+    # 1. Setup
+    ## a. Place models in a list if they are not already
+    if type(models) is dict:
+        models = [*models.values()]
+    if type(models) is not list:
+        models = [models]
+        
+    ## b. Set default values for num_plots and dim
+    if num_plots is None:
+        num_plots = len(vars)
+    if dim is None:
+        if num_plots == 1: # If there are less than 3 plots, make a single row
+            dim = (1, 1)
+        else:
+            dim = ((num_plots+1)//2, 2)
+        if num_plots > 10:
+            print('Warning: more than 10 plots. Specify dimensions manually.')
+            
+    ## c. Handle subtitles
+    if subtitles is None:
+        subtitles = [None] * len(vars)
+    elif subtitles == 'var_names':
+        subtitles = vars
+    elif len(subtitles) != len(vars):
+        print('Warning: number of subtitles does not match number of models. Subtitles set to None.')
+        subtitles = [None] * len(vars)
+    else:
+        subtitles = subtitles
+    
+    # 2. Create figure
+    ## a. initiate figure
+    fig, ax = make_fig(num_plots, dim)
+    
+    ## b. Create subplots
+    for model in models:
+        for i, var in enumerate(vars):
+            subtitle = subtitles[i]
+            plot_function(model, var, *args, label='model_names', ax = ax[i], title=subtitle, **kwargs)
+         
+    ## c. Set layout
+    ### Shared legends
+    if shared_legend:
+        #### Get common legend
+        lines, labels = ax[0].get_legend_handles_labels()
+        fig.legend(lines, labels, loc='upper center', bbox_to_anchor=(0.5, 0.05), bbox_transform=fig.transFigure, ncol=3)
+        
+        #### Remove old legends
+        for i in range(num_plots):
+            ax[i].get_legend().remove()
+
+    
+    ### tight layout
+    plt.tight_layout() 
+    
+    ## d. Save the figure
+    if save:
+        ### Save full figure
+        if figname == None:
+            figname = plot_function.__name__
+        plt.savefig(path + figname + filetype, dpi=300)
+        
         save_subplots(fig, figname)
         
     ## e. Display the figure
@@ -218,7 +284,7 @@ def save_subplots(fig, figname):
         fig.savefig(path + figname + '_' + subtitle + filetype, dpi=300, bbox_inches=full_extent(ax, 0.04).transformed(fig.dpi_scale_trans.inverted()))
     
     
-def plot_surplus(model, t, iP, iL, iA, add_lines=True, title=None, ax=None):
+def plot_surplus(model, vars, t, iP, iL, iA, label='', add_lines=True, title=None, ax=None):
     par = model.par
     sol = model.sol
     power = sol.power
@@ -262,17 +328,27 @@ def plot_surplus(model, t, iP, iL, iA, add_lines=True, title=None, ax=None):
         
     return ax
 
-def plot_var_over_assets(model, vars, idx, grid_points=False, title=None, ax=None):
+def plot_var_over_assets(model, var, idx, label='', asset_grid='grid_points', title=None, ax=None):
     par = model.par
     sol = model.sol
+    
+    # handle labels
+    if label == 'model_names':
+        label = model.name
+    if label == 'var_names':
+        label = var
     
     try:
         t, iP, iL, iA = idx
     except:
         t, iA = idx
     
-    if grid_points:
+    if asset_grid=='grid_points':
         assets = np.arange(par.num_A)
+    elif asset_grid=='grid_Aw':
+        assets = par.grid_Aw
+    elif asset_grid=='grid_Am':
+        assets = par.grid_Am
     else:
         assets = par.grid_A
 
@@ -280,14 +356,13 @@ def plot_var_over_assets(model, vars, idx, grid_points=False, title=None, ax=Non
     if ax is None:
         fig, ax = plt.subplots()
     
-    for var in vars:
-        y = getattr(sol, var)
-        try:
-            y = y[t,iP,iL,:]
-        except:
-            y = y[t,:]
-        
-        ax.plot(assets, y, label=var, alpha=0.5)
+    y = getattr(sol, var)
+    try:
+        y = y[t,iP,iL,:]
+    except:
+        y = y[t,:]
+    
+    ax.plot(assets, y, label=label, alpha=0.5)
     
 
     # Layout
@@ -299,9 +374,15 @@ def plot_var_over_assets(model, vars, idx, grid_points=False, title=None, ax=Non
         
     return ax
 
-def plot_var_over_time(model, vars, idx, title=None, ax=None):
+def plot_var_over_time(model, var, idx, label = "", title=None, ax=None):
     par = model.par
     sol = model.sol
+    
+    # handle labels
+    if label == 'model_names':
+        label = model.name
+    if label == 'var_names':
+        label = var
     
     try:
         t, iP, iL, iA = idx
@@ -314,14 +395,13 @@ def plot_var_over_time(model, vars, idx, title=None, ax=None):
     if ax is None:
         fig, ax = plt.subplots()
     
-    for var in vars:
-        y = getattr(sol, var)
-        try:
-            y = y[:,iP,iL,iA]
-        except:
-            y = y[:,iA]
-        
-        ax.plot(time, y, label=var, alpha=0.5)
+    y = getattr(sol, var)
+    try:
+        y = y[:,iP,iL,iA]
+    except:
+        y = y[:,iA]
+    
+    ax.plot(time, y, label=label, alpha=0.5)
     
 
     # Layout
