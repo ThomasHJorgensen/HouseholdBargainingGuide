@@ -78,11 +78,12 @@ class HouseholdModelClass(EconModelClass):
         # pre-computation
         par.num_Ctot = 100
         par.max_Ctot = par.max_A*2
-
+        
         par.do_egm = False
         par.analytic_marg_u_single = False
         par.analytic_inv_marg_u_single = False
         par.num_A_pd = par.num_A * 2
+        par.num_marg_u = 200
 
         # simulation
         par.seed = 9210
@@ -240,18 +241,18 @@ class HouseholdModelClass(EconModelClass):
         par.grid_Ctot = nonlinspace(1.0e-6,par.max_Ctot,par.num_Ctot,1.1)   
 
         # EGM
-        par.grid_util = np.nan + np.ones((par.num_power,par.num_Ctot))
+        par.grid_util = np.nan + np.ones((par.num_power,par.num_marg_u))
         par.grid_marg_u = np.nan + np.ones(par.grid_util.shape)
-        par.grid_inv_marg_u = np.flip(par.grid_Ctot)                        # Flipped to make interpolation possible
         par.grid_marg_u_for_inv = np.nan + np.ones(par.grid_util.shape)
 
-        par.grid_util_single_w = np.nan + np.ones((par.num_Ctot))
-        par.grid_marg_u_single_w = np.nan + np.ones((par.num_Ctot))
-        par.grid_marg_u_single_w_for_inv = np.nan + np.ones((par.num_Ctot))
+        par.grid_C_for_marg_u = nonlinspace(1.0e-6,par.max_Ctot,par.num_marg_u,1.1)
+        par.grid_inv_marg_u = np.flip(par.grid_C_for_marg_u) # Flipped to make interpolation possible
 
-        par.grid_util_single_m = np.nan + np.ones((par.num_Ctot))
-        par.grid_marg_u_single_m = np.nan + np.ones((par.num_Ctot))
-        par.grid_marg_u_single_m_for_inv = np.nan + np.ones((par.num_Ctot))
+        par.grid_marg_u_single_w = np.nan + np.ones((par.num_marg_u))
+        par.grid_marg_u_single_w_for_inv = np.nan + np.ones((par.num_marg_u))
+
+        par.grid_marg_u_single_m = np.nan + np.ones((par.num_marg_u))
+        par.grid_marg_u_single_m_for_inv = np.nan + np.ones((par.num_marg_u))
 
         par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)
         par.grid_Aw_pd = par.div_A_share * par.grid_A_pd

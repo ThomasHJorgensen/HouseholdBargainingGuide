@@ -90,39 +90,30 @@ namespace precompute{
 
 
     void precompute_margu_single(int i, int gender, par_struct* par){
-        double* grid_util_single = par->grid_util_single_w;
         double* grid_marg_u_single = par->grid_marg_u_single_w;
         double* grid_marg_u_single_for_inv = par->grid_marg_u_single_w_for_inv;
         if (gender==man){
-            grid_util_single = par->grid_util_single_m;
             grid_marg_u_single = par->grid_marg_u_single_m;
             grid_marg_u_single_for_inv = par->grid_marg_u_single_m_for_inv;
         }
 
         // calculate marginal utility and inverse marginal utility for EGM
         // utility at current allocation
-        grid_util_single[i] = utils::util_C_single(par->grid_Ctot[i],gender,par);
 
         if (par->analytic_marg_u_single){
-            grid_marg_u_single[i] = utils::marg_util_C(par->grid_Ctot[i], gender, par);
+            grid_marg_u_single[i] = utils::marg_util_C(par->grid_C_for_marg_u[i], gender, par);
 
             // inverse marginal utility: flip the grid of marginal util (such that ascending) and store as new "x-axis" grid
-            grid_marg_u_single_for_inv[par->num_Ctot-1 -i] = grid_marg_u_single[i];
+            grid_marg_u_single_for_inv[par->num_marg_u-1 -i] = grid_marg_u_single[i];
         }
         else {
-            if (i>0) {
-            // marginal utility. Use finite difference but closed form could be used.
-                grid_marg_u_single[i-1] = (grid_util_single[i] - grid_util_single[i-1])/(par->grid_Ctot[i] - par->grid_Ctot[i-1]);
-                grid_marg_u_single_for_inv[par->num_Ctot-1 - (i-1)] = grid_marg_u_single[i-1];
-
-                if (i==(par->num_Ctot-1)){
-                    grid_marg_u_single[i] = grid_marg_u_single[i-1]; // impose constant slope at last grid-point
-                    grid_marg_u_single_for_inv[par->num_Ctot-1 -i] = grid_marg_u_single[i-1];
-                } // last grid point
-            } 
+            double delta = 0.0001;
+            double util_delta = utils::util_C_single(par->grid_C_for_marg_u[i] + delta,gender,par);
+            double util = utils::util_C_single(par->grid_C_for_marg_u[i],gender,par);
+            grid_marg_u_single[i] = (util_delta - util)/(delta);
+            grid_marg_u_single_for_inv[par->num_marg_u-1 -  i] = grid_marg_u_single[i];
         } //finite difference        
     }
-
 
     void precompute_margu_couple(int i, int iP, par_struct *par, sol_struct *sol){
         double C_tot = par->grid_Ctot[i];
@@ -173,12 +164,12 @@ namespace precompute{
 
         // pre-compute marginal utilities for EGM
         if (par->do_egm){
-            for (int i=0; i<par->num_Ctot; i++){  
+            for (int i=0; i<par->num_marg_u; i++){  
                 precompute_margu_single(i, woman, par);
                 precompute_margu_single(i, man, par);
-                for (int iP=0; iP < par->num_power; iP++){
-                    precompute_margu_couple(i, iP, par, sol);
-                } // power
+                // for (int iP=0; iP < par->num_power; iP++){
+                //     precompute_margu_couple(i, iP, par, sol);
+                // } // power
             } //Ctot
         } // do_egm
     } // precompute func

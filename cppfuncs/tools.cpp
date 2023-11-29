@@ -42,6 +42,7 @@ int binary_search(int imin, int Nx, double *x, double xi)
     }
 
     // b. binary search
+    Nx = Nx-imin;
     while((half = Nx/2)){
         imid = imin + half;
         imin = (x[imid] <= xi) ? imid:imin;

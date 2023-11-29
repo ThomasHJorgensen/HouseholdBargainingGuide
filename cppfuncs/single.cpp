@@ -64,7 +64,7 @@ namespace single {
         // 1. Setup
         /// a. unpack
         int const &T {par->T};
-        int const &num_Ctot {par->num_Ctot};
+        int const &num_marg_u {par->num_marg_u};
         int const &num_A {par->num_A};
         int const &num_A_pd {par->num_A_pd};
         bool const &analytic_inv_marg_u_single {par->analytic_inv_marg_u_single};
@@ -73,25 +73,25 @@ namespace single {
         double* const &grid_inv_marg_u {par->grid_inv_marg_u};
 
         /// b. gender specific variables
-        //// o. man
-        double* grid_A {par->grid_Am};
-        double* grid_A_pd {par->grid_Am_pd};
-        double* grid_marg_u_single_for_inv {par->grid_marg_u_single_m_for_inv};
-        double* V {sol->Vm_single};
-        double* marg_V {sol->marg_Vm_single};
-        double* C_tot {sol->Cm_tot_single};
-        double* C_priv {sol->Cm_priv_single};
-        double* C_pub {sol->Cm_pub_single};
-        //// oo. woman
-        if (gender == woman){
-            grid_A = par->grid_Aw;
-            grid_A_pd = par->grid_Aw_pd;
-            grid_marg_u_single_for_inv = par->grid_marg_u_single_w_for_inv;
-            V = sol->Vw_single;
-            marg_V = sol->marg_Vw_single;
-            C_tot = sol->Cw_tot_single;
-            C_priv = sol->Cw_priv_single;
-            C_pub = sol->Cw_pub_single;
+        //// o. woman
+        double* grid_A {par->grid_Aw};
+        double* grid_A_pd {par->grid_Aw_pd};
+        double* grid_marg_u_single_for_inv {par->grid_marg_u_single_w_for_inv};
+        double* V {sol->Vw_single};
+        double* marg_V {sol->marg_Vw_single};
+        double* C_tot {sol->Cw_tot_single};
+        double* C_priv {sol->Cw_priv_single};
+        double* C_pub {sol->Cw_pub_single};
+        //// oo. man
+        if (gender == man){
+            grid_A = par->grid_Am;
+            grid_A_pd = par->grid_Am_pd;
+            grid_marg_u_single_for_inv = par->grid_marg_u_single_m_for_inv;
+            V = sol->Vm_single;
+            marg_V = sol->marg_Vm_single;
+            C_tot = sol->Cm_tot_single;
+            C_priv = sol->Cm_priv_single;
+            C_pub = sol->Cm_pub_single;
         }
 
         /// c. Allocate memory
@@ -103,7 +103,6 @@ namespace single {
         /// setup
         int idx_next = index::index2(t+1,0, T, num_A);
         int min_point_A {0};
-        int max_point_C {num_Ctot-2};
 
         for (int iA_pd=0; iA_pd<num_A_pd; iA_pd++){
 
@@ -111,15 +110,14 @@ namespace single {
             double &A_next = grid_A_pd[iA_pd];
 
             /// b. calculate expected marginal utility
-            min_point_A += tools::binary_search(0,num_A - min_point_A, &grid_A[min_point_A], A_next);
+            min_point_A = tools::binary_search(min_point_A, num_A, grid_A, A_next);
             EmargU_pd[iA_pd] = tools::interp_1d_index(grid_A, num_A, &marg_V[idx_next],A_next, min_point_A);
 
             /// c. invert marginal utility by interpolation from pre-computed grid
             if (analytic_inv_marg_u_single == 1){
                 C_tot_pd[iA_pd] = utils::inv_marg_util_C(EmargU_pd[iA_pd], gender, par);
             } else {
-                max_point_C = tools::binary_search(0,max_point_C+2, grid_marg_u_single_for_inv, EmargU_pd[iA_pd]);
-                C_tot_pd[iA_pd] = tools::interp_1d_index(grid_marg_u_single_for_inv, num_Ctot, grid_inv_marg_u, EmargU_pd[iA_pd], max_point_C);
+                C_tot_pd[iA_pd] = tools::interp_1d(grid_marg_u_single_for_inv, num_marg_u, grid_inv_marg_u, EmargU_pd[iA_pd]);
             }
             /// d. endogenous grid over resources
             M_pd[iA_pd] = C_tot_pd[iA_pd] + A_next;
@@ -136,7 +134,7 @@ namespace single {
             double M_now = resources(grid_A[iA], gender, par);
 
             /// b. find total consumption
-            min_point_A += tools::binary_search(0,num_A_pd - min_point_A, &M_pd[min_point_A], M_now);
+            min_point_A = tools::binary_search(min_point_A,num_A_pd, M_pd, M_now);
             C_tot[idx] = tools::interp_1d_index(M_pd, num_A_pd, C_tot_pd, M_now, min_point_A);
 
             /// c. handle credit constraint 
@@ -199,20 +197,8 @@ namespace single {
             }
         } else {
             if (par->do_egm) {
-                #pragma omp parallel num_threads(par->threads)
-                    {
-                        #pragma omp sections
-                        {
-                            #pragma omp section
-                            {
-                                EGM_single(t, woman, sol, par);
-                            }
-                            #pragma omp section
-                            {
-                                EGM_single(t, man, sol, par);
-                            }
-                        }
-                    }
+                EGM_single(t, woman, sol, par);
+                EGM_single(t, man, sol, par);
             }
             else {
                 #pragma omp parallel num_threads(par->threads)
