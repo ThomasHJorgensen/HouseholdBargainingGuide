@@ -144,7 +144,12 @@ namespace single {
                 C_tot[idx] = M_now; 
 
                 ///// oo. calculate marginal value of constrained consumption
-                marg_V[idx] = beta * R * utils::marg_util_C(C_tot[idx], gender, par);
+                if (par->analytic_marg_u_single){
+                    marg_V[idx] = beta * R * utils::marg_util_C(C_tot[idx], gender, par);
+                }
+                else{
+                    marg_V[idx] = beta * R * tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot[idx]);
+                }
             }
             //// if not credit constrained
             else{

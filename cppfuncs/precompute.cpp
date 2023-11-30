@@ -137,7 +137,7 @@ namespace precompute{
 
         // utility at current allocation 
         double util = util_C_couple(C_tot,iP,iL,par);
-        par->grid_util[idx] =1.0; // util;
+        par->grid_util[idx] = util; //<-------------- AMO: delete if unnecessary
 
         // marginal utility
         double delta = 0.0001;

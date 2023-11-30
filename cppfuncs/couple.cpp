@@ -156,7 +156,6 @@ namespace couple {
 
     //////////////////
     // EGM solution //
-    // TODO: credit contstraint/m-grid
     void solve_remain_Agrid_egm(int t, int iP, int iL, double* Vw_next, double* Vm_next, double* marg_V_next,sol_struct* sol, par_struct* par){
         
         if(t==(par->T-1)){
@@ -166,10 +165,10 @@ namespace couple {
             // store marginal utility by interpolating pre-computed values
             for (int iA=0; iA<par->num_A;iA++){
                 int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-                int idx_interp = index::index2(iP,0,par->num_power,par->num_Ctot);
+                int idx_interp = index::index2(iP,0,par->num_power,par->num_marg_u);
 
                 double C_tot = sol->Cw_priv_remain_couple[idx] + sol->Cm_priv_remain_couple[idx] + sol->C_pub_remain_couple[idx];
-                sol->marg_V_remain_couple[idx] = tools::interp_1d(par->grid_Ctot,par->num_Ctot,&par->grid_marg_u[idx_interp],C_tot);
+                sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u,par->num_marg_u,&par->grid_marg_u[idx_interp],C_tot);
             }
 
         } else {
@@ -190,11 +189,10 @@ namespace couple {
                 }
 
                 // invert FOC to get consumption. Using interpolation of pre-computed inverse marginal utility
-                // TODO: check if this makes sense with par.R. this is when everything is in relation to M. I do not think it should now..
-                double EmargU = par->beta*par->R*sol->EmargU_pd[idx_pd];
-                int idx_interp = index::index2(iP,0,par->num_power,par->num_Ctot);
+                double EmargU = sol->EmargU_pd[idx_pd]; 
+                int idx_interp = index::index2(iP,0,par->num_power,par->num_marg_u);
                 
-                sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_Ctot,par->grid_inv_marg_u,EmargU);
+                sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,EmargU);
 
                 // endogenous grid
                 sol->M_pd[idx_pd] = A_next + sol->C_tot_pd[idx_pd];
@@ -216,17 +214,22 @@ namespace couple {
                 // total consumption
                 double C_tot = tools::interp_1d(M_grid,par->num_A_pd,C_grid,M_now);
 
-                // value of choice
+                // check credit constraint
+                if (C_tot > M_now){
+                    C_tot = M_now;
+
+                    // marginal value when constrained
+                    sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot); 
+                }
+                else{
+                    // marginal value when unconstrained
+                    sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(M_grid,par->num_A_pd,EmargU_grid,M_now);
+                }
+
+                // value of choice (allocate consumption)
                 double _ = value_of_choice_couple(&sol->Cw_priv_remain_couple[idx] ,&sol->Cm_priv_remain_couple[idx],&sol->C_pub_remain_couple[idx],&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],C_tot,t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
 
-                // marginal utility TODO: should this then not be without discounting and everything!? At least not the expected value.. MAybe that is where it went wrong..
-                sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(M_grid,par->num_A_pd,EmargU_grid,M_now);
-                // sol->marg_V_remain_couple[idx] = tools::interp_1d(M_grid,par->num_A_pd,EmargU_grid,M_now);
-
-                // int idx_interp_marg = index::index2(iP,0,par->num_power,par->num_Ctot);
-                // sol->marg_V_remain_couple[idx] = tools::interp_1d(par->grid_Ctot,par->num_Ctot,&par->grid_marg_u[idx_interp_marg],C_tot);
-
-            }
+            } //common grid
 
         } // period check
         
@@ -237,7 +240,7 @@ namespace couple {
     void solve_couple(int t,sol_struct *sol,par_struct *par){
         
         #pragma omp parallel num_threads(par->threads)
-        {   int num = 5;
+        {   int num = 6;
             double** list_start_as_couple = new double*[num]; 
             double** list_remain_couple = new double*[num];
             double* list_trans_to_single = new double[num];             
@@ -265,7 +268,7 @@ namespace couple {
                     // solve for all values in grid_A.
                     if (par->do_egm){
                         // solve_remain_Agrid_egm(t,iP,iL,Vw_next,Vm_next,marg_V_next,sol,par); 
-                        solve_remain_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par); 
+                        solve_remain_Agrid_egm(t,iP,iL,Vw_next,Vm_next, marg_V_next,sol,par); 
 
                     } else {
                         solve_remain_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par); 
@@ -300,39 +303,42 @@ namespace couple {
                     list_start_as_couple[i] = sol->Cw_priv_couple; i++;
                     list_start_as_couple[i] = sol->Cm_priv_couple; i++;
                     list_start_as_couple[i] = sol->C_pub_couple; i++; //consider having two of these, one for each spouse
+                    list_start_as_couple[i] = sol->marg_V_couple; 
                     i = 0;
                     list_remain_couple[i] = sol->Vw_remain_couple; i++;
                     list_remain_couple[i] = sol->Vm_remain_couple; i++;
                     list_remain_couple[i] = sol->Cw_priv_remain_couple; i++;
                     list_remain_couple[i] = sol->Cm_priv_remain_couple; i++;
                     list_remain_couple[i] = sol->C_pub_remain_couple; i++; //consider having two of these, one for each spouse
+                    list_remain_couple[i] = sol->marg_V_remain_couple; 
                     i = 0;
                     list_trans_to_single[i] = sol->Vw_single[idx_single]; i++;
                     list_trans_to_single[i] = sol->Vm_single[idx_single]; i++;
                     list_trans_to_single[i] = sol->Cw_priv_single[idx_single]; i++;
                     list_trans_to_single[i] = sol->Cm_priv_single[idx_single]; i++;
                     list_trans_to_single[i] = sol->Cw_pub_single[idx_single]; i++; //consider having two of these, one for each spouse
+                    list_trans_to_single[i] = sol->marg_Vw_single[idx_single]; // doesn't matter because not used in EGM
 
                     // update solution
                     bargaining::check_participation_constraints(sol->power_idx, sol->power, Sw, Sm, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, num, par);
 
                     // calculate marginal utility in case of singlehood [update after check above] if EGM is implemented for singles, these numbers are stored elsewhere
-                    // if(par->do_egm){
-                    //     for (int iP=0; iP<par->num_power; iP++){
-                    //         int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-                    //         if (sol->power[idx] < 0.0){ // single
-                    //             double power = par->grid_power[iP];
-                    //             double share = par->div_A_share;
+                    if(par->do_egm){
+                        for (int iP=0; iP<par->num_power; iP++){
+                            int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                            if (sol->power[idx] < 0.0){ // single
+                                double power = par->grid_power[iP];
+                                double share = par->div_A_share;
 
-                    //             double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
-                    //             double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
-                    //             double margUw = utils::marg_util_C(Cw,woman,par); 
-                    //             double margUm = utils::marg_util_C(Cm,man,par);
-                    //             sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; 
+                                double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
+                                double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
+                                double margUw = utils::marg_util_C(Cw,woman,par); 
+                                double margUm = utils::marg_util_C(Cm,man,par);
+                                sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; 
                             
-                    //         } 
-                    //     }
-                    // }
+                            } 
+                        }
+                    }
                     
                 } // wealth
             } // love
