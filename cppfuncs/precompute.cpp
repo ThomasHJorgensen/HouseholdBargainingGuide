@@ -115,43 +115,44 @@ namespace precompute{
         } //finite difference        
     }
 
+
+    double util_C_couple(double C_tot, int iP, int iL, par_struct* par){
+        double love = par->grid_love[iL];
+        double power = par->grid_power[iP];
+        double Cw_priv {};
+        double Cm_priv {};
+        double C_pub {};
+
+        solve_intraperiod_couple(&Cw_priv, &Cm_priv, &C_pub , C_tot,power,par);
+
+        return utils::util_couple(Cw_priv,Cm_priv,C_pub,iP,iL,par);
+    }
+
     void precompute_margu_couple(int i, int iP, par_struct *par, sol_struct *sol){
-        double C_tot = par->grid_Ctot[i];
-        int idx = index::index2(iP,i,par->num_power,par->num_Ctot);         
-        solve_intraperiod_couple(&sol->pre_Ctot_Cw_priv[idx], &sol->pre_Ctot_Cm_priv[idx], &sol->pre_Ctot_C_pub[idx] , C_tot,par->grid_power[iP],par);
-        
+        double C_tot = par->grid_C_for_marg_u[i];
+        int idx = index::index2(iP,i,par->num_power,par->num_marg_u);   
+
         // calculate marginal utility and inverse marginal utility for EGM
-        int iL = 0; // does not matter for the marginal utility 
-        int idx_lag = index::index2(iP,i-1,par->num_power,par->num_Ctot);       
+        int iL = 0; // does not matter for the marginal utility     
 
-        // utility at current allocation
-        par->grid_util[idx] = utils::util_couple(sol->pre_Ctot_Cw_priv[idx],sol->pre_Ctot_Cm_priv[idx],sol->pre_Ctot_C_pub[idx],iP,iL,par);
-        
-        if (i>0) {
+        // utility at current allocation 
+        double util = util_C_couple(C_tot,iP,iL,par);
+        par->grid_util[idx] =1.0; // util;
 
-            // marginal utility. Use finite difference but closed form could be used.
-            par->grid_marg_u[idx_lag] = (par->grid_util[idx] - par->grid_util[idx_lag])/(C_tot - par->grid_Ctot[i-1]);
-            
-            // inverse marginal utility: flip the grid of marginal util (such that ascending) and store as new "x-axis" grid
-            int idx_flip_lag = index::index2(iP,par->num_Ctot-1 - (i-1),par->num_power,par->num_Ctot);
-            par->grid_marg_u_for_inv[idx_flip_lag] = par->grid_marg_u[idx_lag];
+        // marginal utility
+        double delta = 0.0001;
+        double util_delta = util_C_couple(C_tot + delta,iP,iL,par);
+        par->grid_marg_u[idx] = (util_delta- util)/(delta);
 
-            if (i==(par->num_Ctot-1)){
-                par->grid_marg_u[idx] = par->grid_marg_u[idx_lag]; // impose constant slope at last grid-point
-
-                int idx_flip = index::index2(iP,par->num_Ctot-1 - i,par->num_power,par->num_Ctot);
-                par->grid_marg_u_for_inv[idx_flip] = par->grid_marg_u[idx_lag];
-
-            } // last grid point
-        } //finite difference
+        int idx_flip = index::index2(iP,par->num_marg_u-1 - i,par->num_power,par->num_marg_u);
+        par->grid_marg_u_for_inv[idx_flip] = par->grid_marg_u[idx];
     } // precompute func
 
 
     void precompute(sol_struct* sol, par_struct* par){
-
-        // pre-compute optimal allocation for couple
         #pragma omp parallel num_threads(par->threads)      
-        {
+        {   
+            // pre-compute optimal allocation for couple
             #pragma omp for         
             for (int i=0; i<par->num_Ctot; i++){  
                 for (int iP=0; iP < par->num_power; iP++){
@@ -160,17 +161,19 @@ namespace precompute{
                     solve_intraperiod_couple(&sol->pre_Ctot_Cw_priv[idx], &sol->pre_Ctot_Cm_priv[idx], &sol->pre_Ctot_C_pub[idx] , C_tot,par->grid_power[iP],par);
                 } // power
             } // Ctot
+        
+            // pre-compute marginal utilities for EGM
+            if (par->do_egm){
+                #pragma omp for
+                for (int i=0; i<par->num_marg_u; i++){  
+                    precompute_margu_single(i, woman, par);
+                    precompute_margu_single(i, man, par);
+                    for (int iP=0; iP < par->num_power; iP++){
+                        precompute_margu_couple(i, iP, par, sol);
+                    } // power
+                } //Ctot
+            } // do_egm
         } // parallel
-
-        // pre-compute marginal utilities for EGM
-        if (par->do_egm){
-            for (int i=0; i<par->num_marg_u; i++){  
-                precompute_margu_single(i, woman, par);
-                precompute_margu_single(i, man, par);
-                // for (int iP=0; iP < par->num_power; iP++){
-                //     precompute_margu_couple(i, iP, par, sol);
-                // } // power
-            } //Ctot
-        } // do_egm
     } // precompute func
 }
+
