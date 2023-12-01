@@ -84,6 +84,7 @@ class HouseholdModelClass(EconModelClass):
         par.analytic_inv_marg_u_single = False
         par.num_A_pd = par.num_A * 2
         par.num_marg_u = 200
+        par.do_upper_env = False
 
         # simulation
         par.seed = 9210
@@ -129,10 +130,13 @@ class HouseholdModelClass(EconModelClass):
         sol.Cw_priv_couple = np.nan + np.ones(shape_couple)             # private consumption, couple
         sol.Cm_priv_couple = np.nan + np.ones(shape_couple)             
         sol.C_pub_couple = np.nan + np.ones(shape_couple)               # public consumption, couple
-        sol.C_tot_couple = np.nan + np.ones(shape_couple)               # total consumption, couple
+        sol.C_tot_couple = np.zeros(shape_couple)                       # total consumption, couple
+                                                                        # AMO: initialized at zero which is useful in upper envelope
 
         sol.Vw_remain_couple = np.nan + np.ones(shape_couple)           # value marriage -> marriage
         sol.Vm_remain_couple = np.nan + np.ones(shape_couple)
+        sol.V_remain_couple = -np.inf + np.ones(shape_couple)           # value marriage -> marriage, weighted by bargaining power (for DC-EGM)
+                                                                        # AMO: initialized at -inf which is useful in upper envelope
         sol.Cw_priv_remain_couple = np.nan + np.ones(shape_couple)      # private consumption, marriage -> marriage
         sol.Cm_priv_remain_couple = np.nan + np.ones(shape_couple)      
         sol.C_pub_remain_couple = np.nan + np.ones(shape_couple)        # public consumption, marriage -> marriage
@@ -158,6 +162,7 @@ class HouseholdModelClass(EconModelClass):
         sol.EmargU_pd = np.zeros(shape_egm)                     # Expected marginal utility post-decision
         sol.C_tot_pd = np.zeros(shape_egm)                      # C for EGM
         sol.M_pd = np.zeros(shape_egm)                          # Endogenous grid
+        sol.V_couple_pd = np.zeros(shape_egm)                   # Value of being couple, post-decision
 
         sol.marg_Vw_single = np.zeros(shape_single)
         sol.marg_Vm_single = np.zeros(shape_single)

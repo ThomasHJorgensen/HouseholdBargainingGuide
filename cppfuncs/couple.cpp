@@ -197,39 +197,145 @@ namespace couple {
                 // endogenous grid
                 sol->M_pd[idx_pd] = A_next + sol->C_tot_pd[idx_pd];
 
+                // joint value
+                double Cw_priv {};
+                double Cm_priv {};
+                double C_pub {};
+                double Vw {};
+                double Vm {};
+
+                value_of_choice_couple(&Cw_priv, &Cm_priv, &C_pub, &Vw, &Vm, sol->C_tot_pd[idx_pd],t,sol->M_pd[idx_pd],iL,iP,Vw_next,Vm_next,sol,par);
+
+                double power = par->grid_power[iP];
+                sol->V_couple_pd[idx_pd] = power*Vw + (1-power)*Vm;
+
             }
 
             // interpolate onto common beginning-of-period asset grid 
-            // TODO: upper envelope! Not really working either
-            for (int iA=0; iA<par->num_A;iA++){
-                int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-                double M_now = resources(par->grid_A[iA],par); 
-                
-                // grids
+            // First draft of an upper envelope which definitly does not work
+            if (par->do_upper_env){
+
+                // endogenous grids
                 int idx_interp = index::index3(iP,iL,0,par->num_power,par->num_love,par->num_A_pd);
-                double *M_grid = &sol->M_pd[idx_interp];
-                double *C_grid = &sol->C_tot_pd[idx_interp];
-                double *EmargU_grid = &sol->EmargU_pd[idx_interp];
+                double* m_vec = &sol->M_pd[idx_interp];
+                double* c_vec = &sol->C_tot_pd[idx_interp];
+                double* v_vec = &sol->V_couple_pd[idx_interp];
 
-                // total consumption
-                double C_tot = tools::interp_1d(M_grid,par->num_A_pd,C_grid,M_now);
+                // constraint: binding if common m is smaller than smallest m in endogenous grid (check if this holds when the endo grid bends back)
+                for (int iA=0; iA < par->num_A; iA++){
+                    if (par->grid_A[iA] < m_vec[0]){ //<------------ check this
+                        int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
 
-                // check credit constraint
-                if (C_tot > M_now){
-                    C_tot = M_now;
+                        // consume all
+                        double M_now = resources(par->grid_A[iA],par);
+                        double C_tot = M_now;
+                        sol->C_tot_remain_couple[idx] = C_tot;
 
-                    // marginal value when constrained
-                    sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot); 
+                        // Value when constrained <-------------- should we multiply by beta*R here for consistency?
+                        //sol->V_remain_couple[idx] = tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, sol->V_couple_pd, C_tot);
+                        double _ = value_of_choice_couple(&sol->Cw_priv_remain_couple[idx] ,&sol->Cm_priv_remain_couple[idx],&sol->C_pub_remain_couple[idx],&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],C_tot,t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
+                        
+                        double power = par->grid_power[iP];
+                        sol->V_remain_couple[idx] = power*sol->Vw_remain_couple[idx] + (1-power)*sol->Vm_remain_couple[idx];
+                        // marginal  value when constrained
+                        sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot);
+                    }
                 }
-                else{
-                    // marginal value when unconstrained
-                    sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(M_grid,par->num_A_pd,EmargU_grid,M_now);
+
+                // // do upper envelope
+                for (int iA_pd = 0; iA_pd<par->num_A_pd-1;iA_pd++){
+                    double A_low = par->grid_A_pd[iA_pd];
+                    double A_high = par->grid_A_pd[iA_pd+1];
+
+                    if (A_low>A_high){ // AMO: why is this here? would the post decision grid ever not be monotone?
+                        continue;
+                    }
+
+                    // V interval and v slope AMO: for interpolation later - maybe not  necessary?
+                    double V_low = v_vec[iA_pd];
+                    double V_high = v_vec[iA_pd+1];
+                    double v_slope = (V_high - V_low)/(A_high - A_low);
+
+                    // m interval and c slope
+                    double m_low = m_vec[iA_pd];
+                    double m_high = m_vec[iA_pd+1];
+                    double c_low = c_vec[iA_pd];
+                    double c_high = c_vec[iA_pd+1];
+                    double c_slope = (c_high - c_low)/(m_high - m_low);
+
+                    // loop through common grid
+                    for (int iA = 0; iA<par->num_A; iA++){
+                        int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+
+                        // current m
+                        double M_now = resources(par->grid_A[iA],par); 
+
+                        // interpolate?
+                        bool interp = (M_now > m_low) && (M_now < m_high); // AMO: Assumes ascending order of m_vec - DOES THIS ALWAYS HOLD?
+                        //bool extrap_above = iA == par->num_A-2 && M_now>m_vec[iA_pd-1];
+
+                        if (interp){ //} || extrap_above){
+
+                            // implied guess
+                            double c_guess = c_low + c_slope*(M_now - m_low);
+                            double a_guess = M_now - c_guess;
+
+                            // implied post decision value function
+                            double V_guess = V_low + v_slope*(a_guess - A_low);
+
+                            // update if better
+                            if (V_guess > sol->V_remain_couple[idx]){
+                                double C_tot = c_guess;
+                                sol->C_tot_remain_couple[idx] = C_tot;
+                                
+                                double _ = value_of_choice_couple(&sol->Cw_priv_remain_couple[idx] ,&sol->Cm_priv_remain_couple[idx],&sol->C_pub_remain_couple[idx],&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],C_tot,t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
+                                
+                                double power = par->grid_power[iP];
+                                sol->V_remain_couple[idx] = power*sol->Vw_remain_couple[idx] + (1-power)*sol->Vm_remain_couple[idx];
+                                
+                                // marginal value when unconstrained
+                                int idx_interp = index::index3(iP,iL,0,par->num_power,par->num_love,par->num_A_pd);
+                                sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(&sol->M_pd[idx_interp],par->num_A_pd,&sol->EmargU_pd[idx_interp],M_now);
+
+
+                            }
+
+                        }
+
+                    }
                 }
+            }
+            else{
+                for (int iA=0; iA<par->num_A;iA++){
+                    int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                    double M_now = resources(par->grid_A[iA],par); 
+                    
+                    // grids
+                    int idx_interp = index::index3(iP,iL,0,par->num_power,par->num_love,par->num_A_pd);
+                    double *M_grid = &sol->M_pd[idx_interp];
+                    double *C_grid = &sol->C_tot_pd[idx_interp];
+                    double *EmargU_grid = &sol->EmargU_pd[idx_interp];
 
-                // value of choice (allocate consumption)
-                double _ = value_of_choice_couple(&sol->Cw_priv_remain_couple[idx] ,&sol->Cm_priv_remain_couple[idx],&sol->C_pub_remain_couple[idx],&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],C_tot,t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
+                    // total consumption
+                    double C_tot = tools::interp_1d(M_grid,par->num_A_pd,C_grid,M_now);
 
-            } //common grid
+                    // check credit constraint
+                    if (C_tot > M_now){
+                        C_tot = M_now;
+
+                        // marginal value when constrained
+                        sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot); 
+                    }
+                    else{
+                        // marginal value when unconstrained
+                        sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(M_grid,par->num_A_pd,EmargU_grid,M_now);
+                    }
+
+                    // value of choice (allocate consumption)
+                    double _ = value_of_choice_couple(&sol->Cw_priv_remain_couple[idx] ,&sol->Cm_priv_remain_couple[idx],&sol->C_pub_remain_couple[idx],&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],C_tot,t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
+
+                } //common grid
+            } // upper envelope
 
         } // period check
         
