@@ -212,7 +212,7 @@ namespace couple {
             }
 
             // interpolate onto common beginning-of-period asset grid 
-            // First draft of an upper envelope which definitly does not work
+            // First draft of an upper envelope which definitely does not work
             if (par->do_upper_env){
 
                 // endogenous grids
