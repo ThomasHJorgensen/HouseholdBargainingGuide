@@ -86,6 +86,8 @@ class HouseholdModelClass(EconModelClass):
         par.num_marg_u = 200
         par.do_upper_env = False
 
+        par.marg_V_couple_finite_diff = True
+
         # simulation
         par.seed = 9210
         par.simT = par.T

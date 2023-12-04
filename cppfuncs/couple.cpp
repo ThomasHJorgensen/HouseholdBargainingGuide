@@ -223,7 +223,7 @@ namespace couple {
 
                 // constraint: binding if common m is smaller than smallest m in endogenous grid (check if this holds when the endo grid bends back)
                 for (int iA=0; iA < par->num_A; iA++){
-                    if (par->grid_A[iA] < m_vec[0]){ //<------------ check this
+                    if (par->grid_A[iA] < m_vec[0]){ //<------------ check this: Assumes savings function is ascending
                         int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
 
                         // consume all
@@ -423,7 +423,7 @@ namespace couple {
                     list_trans_to_single[i] = sol->Cw_priv_single[idx_single]; i++;
                     list_trans_to_single[i] = sol->Cm_priv_single[idx_single]; i++;
                     list_trans_to_single[i] = sol->Cw_pub_single[idx_single]; i++; //consider having two of these, one for each spouse
-                    list_trans_to_single[i] = sol->marg_Vw_single[idx_single]; // doesn't matter because not used in EGM
+                    list_trans_to_single[i] = sol->marg_Vw_single[idx_single]; // doesn't matter because not used in EGM (AMO: are you sure?)
 
                     // update solution
                     bargaining::check_participation_constraints(sol->power_idx, sol->power, Sw, Sm, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, num, par);
@@ -436,16 +436,46 @@ namespace couple {
                                 double power = par->grid_power[iP];
                                 double share = par->div_A_share;
 
-                                double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
-                                double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
-                                double margUw = utils::marg_util_C(Cw,woman,par); 
-                                double margUm = utils::marg_util_C(Cm,man,par);
-                                sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; 
+                                // double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
+                                // double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
+                                // double margUw = utils::marg_util_C(Cw,woman,par); 
+                                // double margUm = utils::marg_util_C(Cm,man,par);
+                                // sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; 
+
+                                int idx_single = index::index2(t,iA,par->T,par->num_A);
+                                double margVw = sol->marg_Vw_single[idx_single];
+                                double margVm = sol->marg_Vm_single[idx_single];
+                                sol->marg_V_couple[idx] = power*share*margVw + (1.0-power)*(1.0-share)*margVm;
+
                             
                             } 
+                             
                         }
-                    }
-                    
+                    } // EGM
+                    if (par->marg_V_couple_finite_diff) {
+                        // approximate marginal value of marriage by finite diff
+                        for (int iP=0; iP<par->num_power; iP++){
+                            double power = par->grid_power[iP];
+
+                            for (int iA=0; iA<par->num_A;iA++){
+                                if (iA < par->num_A-1){
+                                    int iA_plus = iA + 1;
+                                    int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                                    int idx_next = index::index4(t,iP,iL,iA_plus,par->T,par->num_power,par->num_love,par->num_A);
+
+                                    double margVw = (sol->Vw_couple[idx_next] - sol->Vw_couple[idx])/(par->grid_A[iA_plus] - par->grid_A[iA]);
+                                    double margVm = (sol->Vm_couple[idx_next] - sol->Vm_couple[idx])/(par->grid_A[iA_plus] - par->grid_A[iA]);
+
+                                    sol->marg_V_couple[idx] = power*margVw + (1.0-power)*margVm;
+                                }
+                                else{
+                                    int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                                    int idx_prev = index::index4(t,iP,iL,iA-1,par->T,par->num_power,par->num_love,par->num_A);
+                                    sol->marg_V_couple[idx] = sol->marg_V_couple[idx_prev]; 
+                                }   
+                            } // asset in finit diff 
+                        } // power in finite diff
+                    } // approx marg V by finite diff
                 } // wealth
             } // love
             
