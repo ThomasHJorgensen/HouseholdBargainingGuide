@@ -164,6 +164,8 @@ double interp_1d_index_delta(double* grid1,int num1 ,double* value1,double xi1,i
     return nom/denom;
 } // interp_1d_delta
 
+
+
 void interp_1d_2out_index(double* grid1,int num1 ,double* value1,double* value2,double xi1 , double* out1,double* out2 ,int j1){
 
     // a. left/right

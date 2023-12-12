@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <omp.h>
 
+#include <algorithm>
+
 #include "nlopt-2.4.2-dll64\nlopt.h"
 
 ///////////////

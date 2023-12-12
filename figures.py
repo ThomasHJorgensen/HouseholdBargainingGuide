@@ -131,8 +131,6 @@ def model_plot(models, plot_function, vars, *args, subtitles=None, num_plots=Non
             
     ## c. Handle subtitles
     if subtitles is None:
-        subtitles = [None] * len(models)
-    elif subtitles == 'model_names':
         subtitles = [model.name for model in models]
     elif len(subtitles) != len(models):
         print('Warning: number of subtitles does not match number of models. Subtitles set to None.')
@@ -202,8 +200,6 @@ def var_plot(models, plot_function, vars, *args, subtitles=None, num_plots=None,
             
     ## c. Handle subtitles
     if subtitles is None:
-        subtitles = [None] * len(vars)
-    elif subtitles == 'var_names':
         subtitles = vars
     elif len(subtitles) != len(vars):
         print('Warning: number of subtitles does not match number of models. Subtitles set to None.')
@@ -328,7 +324,7 @@ def plot_surplus(model, vars, t, iP, iL, iA, label='', add_lines=True, title=Non
         
     return ax
 
-def plot_var_over_assets(model, var, idx, label='', asset_grid='grid_points', title=None, ax=None):
+def plot_var_over_assets(model, var, idx, label='', asset_grid='', title=None, ax=None):
     par = model.par
     sol = model.sol
     

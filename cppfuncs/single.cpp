@@ -139,7 +139,7 @@ namespace single {
 
             /// c. handle credit constraint 
             //// if credit constrained
-            if (C_tot[idx] > M_now) {
+            if (M_now <= M_pd[0]) {
                 ///// o. consume all resources
                 C_tot[idx] = M_now; 
 

@@ -39,7 +39,7 @@ namespace couple {
         return par->R*A + par->inc_w + par->inc_m;
     }
 
-    EXPORT double value_of_choice_couple(double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm,  double C_tot,int t,double M_resources,int iL,int iP,double* Vw_next,double* Vm_next,sol_struct *sol, par_struct *par){
+    double value_of_choice_couple(double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm,  double C_tot,int t,double M_resources,int iL,int iP,double* Vw_next,double* Vm_next,sol_struct *sol, par_struct *par){
         double love = par->grid_love[iL];
         double power = par->grid_power[iP];
 
@@ -149,260 +149,216 @@ namespace couple {
             // solve unconstrained problem
             solve_remain_couple(&sol->Cw_priv_remain_couple[idx], &sol->Cm_priv_remain_couple[idx], &sol->C_pub_remain_couple[idx], &sol->Vw_remain_couple[idx], &sol->Vm_remain_couple[idx]
             , t,M_resources,iL,iP,Vw_next,Vm_next,starting_val,sol,par);
-            sol->C_tot_couple[idx] = sol->Cw_priv_remain_couple[idx] + sol->Cm_priv_remain_couple[idx] + sol->C_pub_remain_couple[idx];
+            sol->C_tot_remain_couple[idx] = sol->Cw_priv_remain_couple[idx] + sol->Cm_priv_remain_couple[idx] + sol->C_pub_remain_couple[idx];
 
         } // wealth   
+    }
+
+    void handle_liquidity_constraint_couple(int t, int iP, int iL, double* m_vec, double* EmargU_pd, double* C_tot, double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm, double* Vw_next, double* Vm_next, double* V, double* marg_V, sol_struct* sol, par_struct* par){
+        // 1. Check if liquidity constraint binds
+        // constraint: binding if common m is smaller than smallest m in endogenous grid (check if this holds when the endo grid bends back)
+        for (int iA=0; iA < par->num_A; iA++){
+            double M_now = resources(par->grid_A[iA],par);
+
+            if (M_now < m_vec[0]){
+
+                // a. Set total consumption equal to resources (consume all)
+                C_tot[iA] = M_now;
+
+                // b. Calculate intra-period allocation
+                double _ = value_of_choice_couple(&Cw_priv[iA] ,&Cm_priv[iA], &C_pub[iA], &Vw[iA], &Vm[iA], C_tot[iA],t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
+                
+                // c. Calculate value
+                double power = par->grid_power[iP];
+                V[iA] = power*Vw[iA] + (1-power)*Vm[iA];
+
+                // marginal  value when constrained
+                marg_V[iA] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot[iA]);
+            }
+        }
+    }
+
+    void do_upper_envelope_couple(int t, int iP, int iL, double* m_vec, double* c_vec, double* v_vec, double* EmargU_pd, double* C_tot, double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm, double* Vw_next, double* Vm_next, double* V, double* marg_V, sol_struct* sol, par_struct* par){
+
+        // Loop through unsorted endogenous grid
+        for (int iA_pd = 0; iA_pd<par->num_A_pd-1;iA_pd++){
+
+            // 1. Unpack intervals
+            double A_low = par->grid_A_pd[iA_pd];
+            double A_high = par->grid_A_pd[iA_pd+1];
+
+            double V_low = v_vec[iA_pd];
+            double V_high = v_vec[iA_pd+1];
+
+            double m_low = m_vec[iA_pd];
+            double m_high = m_vec[iA_pd+1];
+
+            double c_low = c_vec[iA_pd];
+            double c_high = c_vec[iA_pd+1];
+
+            // 2. Calculate slopes
+            double v_slope = (V_high - V_low)/(A_high - A_low);
+            double c_slope = (c_high - c_low)/(m_high - m_low);
+
+            // 3. Loop through common grid
+            for (int iA = 0; iA<par->num_A; iA++){
+
+                // i. Check if resources from common grid are in current interval of endogenous grid
+                double M_now = resources(par->grid_A[iA],par);
+                bool interp = (M_now >= m_low) && (M_now <= m_high); 
+                bool extrap_above = (iA_pd == par->num_A_pd-2) && (M_now>m_vec[par->num_A_pd-1]); // extrapolate above last point in endogenous grid
+                if (interp || extrap_above){
+
+                    // ii. Interpolate consumption and value
+                    double c_guess = c_low + c_slope*(M_now - m_low);
+                    double a_guess = M_now - c_guess;
+                    double V_guess = V_low + v_slope*(a_guess - A_low);
+
+                    // iii. Update sol if V is higher than previous guess (upper envelope)
+                    if (V_guess > V[iA]){
+
+                        // o. Update total consumption
+                        C_tot[iA] = c_guess;
+                        
+                        // oo. Update intra-period allocation
+                        double _ = value_of_choice_couple(&Cw_priv[iA], &Cm_priv[iA], &C_pub[iA] ,&Vw[iA] ,&Vm[iA], C_tot[iA], t, M_now,iL,iP,Vw_next,Vm_next,sol,par);
+                        
+                        // ooo. Update value
+                        V[iA] = par->grid_power[iP]*Vw[iA] + (1-par->grid_power[iP])*Vm[iA];
+                        
+                        // marginal value when unconstrained
+                        marg_V[iA] = par->beta*par->R*tools::interp_1d(m_vec,par->num_A_pd,EmargU_pd,M_now);
+                    }
+                }
+            }
+        }
     }
 
     //////////////////
     // EGM solution //
     void solve_remain_Agrid_egm(int t, int iP, int iL, double* Vw_next, double* Vm_next, double* marg_V_next,sol_struct* sol, par_struct* par){
         
+        // 1. Solve terminal period with VFI
         if(t==(par->T-1)){
-            // call vfi in last period since identical: consume everything
             solve_remain_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par);
             
-            // store marginal utility by interpolating pre-computed values
             for (int iA=0; iA<par->num_A;iA++){
                 int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
                 int idx_interp = index::index2(iP,0,par->num_power,par->num_marg_u);
 
-                double C_tot = sol->Cw_priv_remain_couple[idx] + sol->Cm_priv_remain_couple[idx] + sol->C_pub_remain_couple[idx];
-                sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u,par->num_marg_u,&par->grid_marg_u[idx_interp],C_tot);
+                sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u,par->num_marg_u,&par->grid_marg_u[idx_interp],sol->C_tot_remain_couple[idx]);
             }
 
+        // 2. Solve remaining periods with EGM
         } else {
-
+            // Solve on endogenous grid
             for (int iA_pd=0; iA_pd<par->num_A_pd;iA_pd++){
-                int idx_pd = index::index3(iP,iL,iA_pd,par->num_power,par->num_love,par->num_A_pd);
 
-                // resources next period
-                double A_next = par->grid_A_pd[iA_pd];
+                // i. Unpack
+                double A_next = par->grid_A_pd[iA_pd]; // assets next period
+                int idx_pd = index::index4(t,iP,iL,iA_pd,par->T, par->num_power,par->num_love,par->num_A_pd);
+                int idx_interp = index::index2(iP,0,par->num_power,par->num_marg_u);
 
-                // interpolate marginal utility [TODO: speed up by re-using index for A and assendig order in love.]
+                // ii. interpolate marginal utility and take expectations using quadrature
+                // [TODO: speed up by re-using index for A and assendig order in love.]
                 sol->EmargU_pd[idx_pd] = 0.0;
                 for (int iL_next = 0; iL_next < par->num_shock_love; iL_next++) {
                     double love_next = par->grid_love[iL] + par->grid_shock_love[iL_next];
 
-                    sol->EmargU_pd[idx_pd] += par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, marg_V_next, love_next,A_next);
+                    sol->EmargU_pd[idx_pd] += par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, marg_V_next, love_next, A_next);
 
                 }
 
-                // invert FOC to get consumption. Using interpolation of pre-computed inverse marginal utility
-                double EmargU = sol->EmargU_pd[idx_pd]; 
-                int idx_interp = index::index2(iP,0,par->num_power,par->num_marg_u);
-                
-                sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,EmargU);
+                // iii. Get total consumption by interpolation of pre-computed inverse marginal utility (comming from Euler)
+                sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,sol->EmargU_pd[idx_pd]);
 
-                // endogenous grid
+                // iv. Get endogenous grid points
                 sol->M_pd[idx_pd] = A_next + sol->C_tot_pd[idx_pd];
 
-                // joint value
+                // v. Get post-choice value
                 double Cw_priv {};
                 double Cm_priv {};
                 double C_pub {};
                 double Vw {};
                 double Vm {};
-
-                value_of_choice_couple(&Cw_priv, &Cm_priv, &C_pub, &Vw, &Vm, sol->C_tot_pd[idx_pd],t,sol->M_pd[idx_pd],iL,iP,Vw_next,Vm_next,sol,par);
-
-                double power = par->grid_power[iP];
-                sol->V_couple_pd[idx_pd] = power*Vw + (1-power)*Vm;
-
+                sol->V_couple_pd[idx_pd] = value_of_choice_couple(&Cw_priv, &Cm_priv, &C_pub, &Vw, &Vm, sol->C_tot_pd[idx_pd],t,sol->M_pd[idx_pd],iL,iP,Vw_next,Vm_next,sol,par);
             }
 
-            // interpolate onto common beginning-of-period asset grid 
-            // First draft of an upper envelope which definitely does not work
-            if (par->do_upper_env){
+            // 3. Apply upper envelope and interpolate onto common grid
+            int idx_interp_pd = index::index4(t,iP,iL,0,par->T,par->num_power,par->num_love,par->num_A_pd); // TODO: Remove t dimension from pd objects
+            int idx_interp = index::index4(t,iP,iL,0,par->T,par->num_power,par->num_love,par->num_A);
 
-                // endogenous grids
-                int idx_interp = index::index3(iP,iL,0,par->num_power,par->num_love,par->num_A_pd);
-                double* m_vec = &sol->M_pd[idx_interp];
-                double* c_vec = &sol->C_tot_pd[idx_interp];
-                double* v_vec = &sol->V_couple_pd[idx_interp];
+            handle_liquidity_constraint_couple(t, iP, iL, &sol->M_pd[idx_interp_pd], &sol->EmargU_pd[idx_interp_pd], &sol->C_tot_remain_couple[idx_interp], &sol->Cw_priv_remain_couple[idx_interp], &sol->Cm_priv_remain_couple[idx_interp], &sol->C_pub_remain_couple[idx_interp], &sol->Vw_remain_couple[idx_interp], &sol->Vm_remain_couple[idx_interp], Vw_next, Vm_next, &sol->V_remain_couple[idx_interp], &sol->marg_V_remain_couple[idx_interp], sol, par);
+            do_upper_envelope_couple(t, iP, iL, &sol->M_pd[idx_interp_pd], &sol->C_tot_pd[idx_interp_pd], &sol->V_couple_pd[idx_interp_pd], &sol->EmargU_pd[idx_interp_pd], &sol->C_tot_remain_couple[idx_interp], &sol->Cw_priv_remain_couple[idx_interp] ,&sol->Cm_priv_remain_couple[idx_interp],&sol->C_pub_remain_couple[idx_interp],&sol->Vw_remain_couple[idx_interp],&sol->Vm_remain_couple[idx_interp], Vw_next, Vm_next, &sol->V_remain_couple[idx_interp], &sol->marg_V_remain_couple[idx_interp], sol, par);
 
-                // constraint: binding if common m is smaller than smallest m in endogenous grid (check if this holds when the endo grid bends back)
-                for (int iA=0; iA < par->num_A; iA++){
-                    if (par->grid_A[iA] < m_vec[0]){ //<------------ check this: Assumes savings function is ascending
-                        int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-
-                        // consume all
-                        double M_now = resources(par->grid_A[iA],par);
-                        double C_tot = M_now;
-                        sol->C_tot_remain_couple[idx] = C_tot;
-
-                        // Value when constrained <-------------- should we multiply by beta*R here for consistency?
-                        //sol->V_remain_couple[idx] = tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, sol->V_couple_pd, C_tot);
-                        double _ = value_of_choice_couple(&sol->Cw_priv_remain_couple[idx] ,&sol->Cm_priv_remain_couple[idx],&sol->C_pub_remain_couple[idx],&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],C_tot,t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
-                        
-                        double power = par->grid_power[iP];
-                        sol->V_remain_couple[idx] = power*sol->Vw_remain_couple[idx] + (1-power)*sol->Vm_remain_couple[idx];
-                        // marginal  value when constrained
-                        sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot);
-                    }
-                }
-
-                // // do upper envelope
-                for (int iA_pd = 0; iA_pd<par->num_A_pd-1;iA_pd++){
-                    double A_low = par->grid_A_pd[iA_pd];
-                    double A_high = par->grid_A_pd[iA_pd+1];
-
-                    if (A_low>A_high){ // AMO: why is this here? would the post decision grid ever not be monotone?
-                        continue;
-                    }
-
-                    // V interval and v slope AMO: for interpolation later - maybe not  necessary?
-                    double V_low = v_vec[iA_pd];
-                    double V_high = v_vec[iA_pd+1];
-                    double v_slope = (V_high - V_low)/(A_high - A_low);
-
-                    // m interval and c slope
-                    double m_low = m_vec[iA_pd];
-                    double m_high = m_vec[iA_pd+1];
-                    double c_low = c_vec[iA_pd];
-                    double c_high = c_vec[iA_pd+1];
-                    double c_slope = (c_high - c_low)/(m_high - m_low);
-
-                    // loop through common grid
-                    for (int iA = 0; iA<par->num_A; iA++){
-                        int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-
-                        // current m
-                        double M_now = resources(par->grid_A[iA],par); 
-
-                        // interpolate?
-                        bool interp = (M_now > m_low) && (M_now < m_high); // AMO: Assumes ascending order of m_vec - DOES THIS ALWAYS HOLD?
-                        //bool extrap_above = iA == par->num_A-2 && M_now>m_vec[iA_pd-1];
-
-                        if (interp){ //} || extrap_above){
-
-                            // implied guess
-                            double c_guess = c_low + c_slope*(M_now - m_low);
-                            double a_guess = M_now - c_guess;
-
-                            // implied post decision value function
-                            double V_guess = V_low + v_slope*(a_guess - A_low);
-
-                            // update if better
-                            if (V_guess > sol->V_remain_couple[idx]){
-                                double C_tot = c_guess;
-                                sol->C_tot_remain_couple[idx] = C_tot;
-                                
-                                double _ = value_of_choice_couple(&sol->Cw_priv_remain_couple[idx] ,&sol->Cm_priv_remain_couple[idx],&sol->C_pub_remain_couple[idx],&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],C_tot,t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
-                                
-                                double power = par->grid_power[iP];
-                                sol->V_remain_couple[idx] = power*sol->Vw_remain_couple[idx] + (1-power)*sol->Vm_remain_couple[idx];
-                                
-                                // marginal value when unconstrained
-                                int idx_interp = index::index3(iP,iL,0,par->num_power,par->num_love,par->num_A_pd);
-                                sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(&sol->M_pd[idx_interp],par->num_A_pd,&sol->EmargU_pd[idx_interp],M_now);
-
-
-                            }
-
-                        }
-
-                    }
-                }
-            }
-            else{
-                for (int iA=0; iA<par->num_A;iA++){
-                    int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-                    double M_now = resources(par->grid_A[iA],par); 
-                    
-                    // grids
-                    int idx_interp = index::index3(iP,iL,0,par->num_power,par->num_love,par->num_A_pd);
-                    double *M_grid = &sol->M_pd[idx_interp];
-                    double *C_grid = &sol->C_tot_pd[idx_interp];
-                    double *EmargU_grid = &sol->EmargU_pd[idx_interp];
-
-                    // total consumption
-                    double C_tot = tools::interp_1d(M_grid,par->num_A_pd,C_grid,M_now);
-
-                    // check credit constraint
-                    if (C_tot > M_now){
-                        C_tot = M_now;
-
-                        // marginal value when constrained
-                        sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot); 
-                    }
-                    else{
-                        // marginal value when unconstrained
-                        sol->marg_V_remain_couple[idx] = par->beta*par->R*tools::interp_1d(M_grid,par->num_A_pd,EmargU_grid,M_now);
-                    }
-
-                    // value of choice (allocate consumption)
-                    double _ = value_of_choice_couple(&sol->Cw_priv_remain_couple[idx] ,&sol->Cm_priv_remain_couple[idx],&sol->C_pub_remain_couple[idx],&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],C_tot,t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
-
-                } //common grid
-            } // upper envelope
-
-        } // period check
-        
-        
+        } // period check        
     }
 
 
     void solve_couple(int t,sol_struct *sol,par_struct *par){
         
         #pragma omp parallel num_threads(par->threads)
-        {   int num = 6;
+        {   
+            // 1. Setup
+            /// a. lists
+            int num = 6;
             double** list_start_as_couple = new double*[num]; 
             double** list_remain_couple = new double*[num];
             double* list_trans_to_single = new double[num];             
 
+            // b. temporary arrays
             double* Sw = new double[par->num_power];
             double* Sm = new double[par->num_power];
 
+            // c. index struct
             index::index_couple_struct* idx_couple = new index::index_couple_struct;
 
-            // a. solve for values of reminaing a couple
+            // 2. solve for values of remainaing a couple
             #pragma omp for
             for (int iP=0; iP<par->num_power; iP++){
 
-                // continuation values
-                int idx_next = index::index4(t+1,iP,0,0,par->T,par->num_power,par->num_love,par->num_A);
-                if (t==(par->T-1)){ // does not matter in last period-> fix at some valid index
-                    idx_next = 0;
+                // Get next period continuation values
+                double *Vw_next = nullptr;  
+                double *Vm_next = nullptr;
+                double *marg_V_next = nullptr;
+                if (t<(par->T-1)){
+                    int idx_next = index::index4(t+1,iP,0,0,par->T,par->num_power,par->num_love,par->num_A);
+                    Vw_next = &sol->Vw_couple[idx_next];  
+                    Vm_next = &sol->Vm_couple[idx_next];
+                    marg_V_next = &sol->marg_V_couple[idx_next];
                 }
-                double *Vw_next = &sol->Vw_couple[idx_next];  
-                double *Vm_next = &sol->Vm_couple[idx_next];
-                double *marg_V_next = &sol->marg_V_couple[idx_next];
-
+                // solve
                 for (int iL=0; iL<par->num_love; iL++){
 
-                    // solve for all values in grid_A.
                     if (par->do_egm){
-                        // solve_remain_Agrid_egm(t,iP,iL,Vw_next,Vm_next,marg_V_next,sol,par); 
                         solve_remain_Agrid_egm(t,iP,iL,Vw_next,Vm_next, marg_V_next,sol,par); 
 
                     } else {
                         solve_remain_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par); 
 
                     }
- 
                 } // love
             } // power
 
-            // b. check the participation constraints. Same loops just without iP
+            // 3. Solve for values of starting as couple (check participation constraints)
             #pragma omp for
             for (int iL=0; iL<par->num_love; iL++){    
                 for (int iA=0; iA<par->num_A;iA++){
-                    // indices
+                    // i. Get indices
                     int idx_single = index::index2(t,iA,par->T,par->num_A);
                     idx_couple->t = t;
                     idx_couple->iL = iL;
                     idx_couple->iA = iA;
                     idx_couple->par = par;
 
-                    // setup temporary array of marital surplus with the one dimension being power
+                    // ii Calculate marital surplus
                     for (int iP=0; iP<par->num_power; iP++){
                         int idx_tmp = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
                         Sw[iP] = calc_marital_surplus(sol->Vw_remain_couple[idx_tmp],sol->Vw_single[idx_single],par);
                         Sm[iP] = calc_marital_surplus(sol->Vm_remain_couple[idx_tmp],sol->Vm_single[idx_single],par);
                     }
 
-                    // setup relevant lists
+                    // iii. setup relevant lists 
                     int i = 0;
                     list_start_as_couple[i] = sol->Vw_couple; i++;
                     list_start_as_couple[i] = sol->Vm_couple; i++;
@@ -425,10 +381,17 @@ namespace couple {
                     list_trans_to_single[i] = sol->Cw_pub_single[idx_single]; i++; //consider having two of these, one for each spouse
                     list_trans_to_single[i] = sol->marg_Vw_single[idx_single]; // doesn't matter because not used in EGM (AMO: are you sure?)
 
-                    // update solution
+                    // iv. Update solution
+                    // o. Update solutions in list_start_as_couple
                     bargaining::check_participation_constraints(sol->power_idx, sol->power, Sw, Sm, idx_couple, list_start_as_couple, list_remain_couple, list_trans_to_single, num, par);
+                    
+                    // oo. update C_tot_couple
+                    for (int iP=0; iP<par->num_power; iP++){
+                        int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                        sol->C_tot_couple[idx] = sol->Cw_priv_couple[idx] + sol->Cm_priv_couple[idx] + sol->C_pub_couple[idx];
+                    }
 
-                    // calculate marginal utility in case of singlehood [update after check above] if EGM is implemented for singles, these numbers are stored elsewhere
+                    // ooo. calculate marginal utility in case of singlehood [update after check above] if EGM is implemented for singles, these numbers are stored elsewhere
                     if(par->do_egm){
                         for (int iP=0; iP<par->num_power; iP++){
                             int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
@@ -436,43 +399,37 @@ namespace couple {
                                 double power = par->grid_power[iP];
                                 double share = par->div_A_share;
 
-                                // double Cw = sol->Cw_priv_single[idx_single] + sol->Cw_pub_single[idx_single];
-                                // double Cm = sol->Cm_priv_single[idx_single] + sol->Cm_pub_single[idx_single];
-                                // double margUw = utils::marg_util_C(Cw,woman,par); 
-                                // double margUm = utils::marg_util_C(Cm,man,par);
-                                // sol->marg_V_couple[idx] = power*share*margUw + (1.0-power)*(1.0-share)*margUm; 
-
                                 int idx_single = index::index2(t,iA,par->T,par->num_A);
                                 double margVw = sol->marg_Vw_single[idx_single];
                                 double margVm = sol->marg_Vm_single[idx_single];
                                 sol->marg_V_couple[idx] = power*share*margVw + (1.0-power)*(1.0-share)*margVm;
-
-                            
                             } 
-                             
                         }
                     } // EGM
+
+                    // v. Update marginal value
                     if (par->marg_V_couple_finite_diff) {
                         // approximate marginal value of marriage by finite diff
                         for (int iP=0; iP<par->num_power; iP++){
                             double power = par->grid_power[iP];
 
-                            for (int iA=0; iA<par->num_A;iA++){
-                                if (iA < par->num_A-1){
-                                    int iA_plus = iA + 1;
-                                    int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-                                    int idx_next = index::index4(t,iP,iL,iA_plus,par->T,par->num_power,par->num_love,par->num_A);
+                            for (int iA=0; iA<=par->num_A-2;iA++){
+                                // Setup indices
+                                int iA_plus = iA + 1;
+                                int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                                int idx_next = index::index4(t,iP,iL,iA_plus,par->T,par->num_power,par->num_love,par->num_A);
 
-                                    double margVw = (sol->Vw_couple[idx_next] - sol->Vw_couple[idx])/(par->grid_A[iA_plus] - par->grid_A[iA]);
-                                    double margVm = (sol->Vm_couple[idx_next] - sol->Vm_couple[idx])/(par->grid_A[iA_plus] - par->grid_A[iA]);
+                                // Calculate finite difference
+                                double margVw = (sol->Vw_couple[idx_next] - sol->Vw_couple[idx])/(par->grid_A[iA_plus] - par->grid_A[iA]);
+                                double margVm = (sol->Vm_couple[idx_next] - sol->Vm_couple[idx])/(par->grid_A[iA_plus] - par->grid_A[iA]);
 
-                                    sol->marg_V_couple[idx] = power*margVw + (1.0-power)*margVm;
+                                // Update solution
+                                sol->marg_V_couple[idx] = power*margVw + (1.0-power)*margVm;
+
+                                // Extrapolate gradient in last point
+                                if (iA == par->num_A-2){
+                                    sol->marg_V_couple[idx_next] = sol->marg_V_couple[idx];
                                 }
-                                else{
-                                    int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-                                    int idx_prev = index::index4(t,iP,iL,iA-1,par->T,par->num_power,par->num_love,par->num_A);
-                                    sol->marg_V_couple[idx] = sol->marg_V_couple[idx_prev]; 
-                                }   
                             } // asset in finit diff 
                         } // power in finite diff
                     } // approx marg V by finite diff

@@ -63,7 +63,7 @@ class HouseholdModelClass(EconModelClass):
         
         # wealth
         par.num_A = 50
-        par.max_A = 5.0
+        par.max_A = 15.0
         
         # bargaining power
         par.num_power = 21
@@ -83,8 +83,8 @@ class HouseholdModelClass(EconModelClass):
         par.analytic_marg_u_single = False
         par.analytic_inv_marg_u_single = False
         par.num_A_pd = par.num_A * 2
+        par.max_A_pd = par.max_A
         par.num_marg_u = 200
-        par.do_upper_env = False
 
         par.marg_V_couple_finite_diff = True
 
@@ -160,7 +160,7 @@ class HouseholdModelClass(EconModelClass):
         sol.marg_V_couple = np.zeros(shape_couple)              # marginal value (wrt c total) of being couple
         sol.marg_V_remain_couple = np.zeros(shape_couple)       # marginal value (wrt c total) of remaining couple
 
-        shape_egm = (par.num_power,par.num_love,par.num_A_pd)
+        shape_egm = (par.T, par.num_power,par.num_love,par.num_A_pd)
         sol.EmargU_pd = np.zeros(shape_egm)                     # Expected marginal utility post-decision
         sol.C_tot_pd = np.zeros(shape_egm)                      # C for EGM
         sol.M_pd = np.zeros(shape_egm)                          # Endogenous grid
@@ -261,7 +261,7 @@ class HouseholdModelClass(EconModelClass):
         par.grid_marg_u_single_m = np.nan + np.ones((par.num_marg_u))
         par.grid_marg_u_single_m_for_inv = np.nan + np.ones((par.num_marg_u))
 
-        par.grid_A_pd = nonlinspace(0.0,par.max_A,par.num_A_pd,1.1)
+        par.grid_A_pd = nonlinspace(0.0,par.max_A_pd,par.num_A_pd,1.1)
         par.grid_Aw_pd = par.div_A_share * par.grid_A_pd
         par.grid_Am_pd = (1.0 - par.div_A_share) * par.grid_A_pd
 
