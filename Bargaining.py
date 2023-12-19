@@ -86,8 +86,6 @@ class HouseholdModelClass(EconModelClass):
         par.max_A_pd = par.max_A
         par.num_marg_u = 200
 
-        par.marg_V_couple_finite_diff = True
-
         # simulation
         par.seed = 9210
         par.simT = par.T
@@ -158,7 +156,6 @@ class HouseholdModelClass(EconModelClass):
 
         # EGM
         sol.marg_V_couple = np.zeros(shape_couple)              # marginal value (wrt c total) of being couple
-        sol.marg_V_remain_couple = np.zeros(shape_couple)       # marginal value (wrt c total) of remaining couple
 
         shape_egm = (par.T, par.num_power,par.num_love,par.num_A_pd)
         sol.EmargU_pd = np.zeros(shape_egm)                     # Expected marginal utility post-decision
