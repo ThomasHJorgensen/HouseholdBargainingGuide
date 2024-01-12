@@ -29,7 +29,7 @@ namespace sim {
 
             if ((Vm_couple>=Vm_single)){ // woman want to leave
 
-                for (int iP=power_idx_lag+1; iP<(par->num_power-power_idx_lag); iP++){ // increase power of women
+                for (int iP=power_idx_lag+1; iP<par->num_power; iP++){ // increase power of women
                     int idx = index::index4(t,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); 
                     tools::interp_2d_2out(par->grid_love,par->grid_A,par->num_love,par->num_A,&sol->Vw_remain_couple[idx],&sol->Vm_remain_couple[idx],love,A_lag, &Vw_couple, &Vm_couple);
                     
