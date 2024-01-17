@@ -251,12 +251,8 @@ void interp_2d_2out(double* grid1,double* grid2,int num1, int num2,double* value
 }
 
 
-double interp_2d(double* grid1,double* grid2,int num1, int num2,double* value,double xi1,double xi2){
+double _interp_2d(double* grid1,double* grid2,int num1, int num2,double* value,double xi1,double xi2,int j1, int j2){
     
-    // a. search in each dimension
-    int j1 = binary_search(0,num1,grid1,xi1);
-    int j2 = binary_search(0,num2,grid2,xi2);
-
     // b. left/right
     double nom_1_left = grid1[j1+1]-xi1;
     double nom_1_right = xi1-grid1[j1];
@@ -283,7 +279,14 @@ double interp_2d(double* grid1,double* grid2,int num1, int num2,double* value,do
 
     return nom/denom;
 }
+double interp_2d(double* grid1,double* grid2,int num1, int num2,double* value,double xi1,double xi2){
 
+    // a. search in each dimension
+    int j1 = binary_search(0,num1,grid1,xi1);
+    int j2 = binary_search(0,num2,grid2,xi2);
+
+    return _interp_2d(grid1,grid2,num1,num2,value,xi1,xi2,j1,j2);
+}
 
 double interp_2d_int(double* grid1,double* grid2,int num1, int num2,int* value,double xi1,double xi2){
     

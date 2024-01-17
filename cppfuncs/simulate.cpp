@@ -9,17 +9,16 @@ namespace sim {
 
     double update_power(int t, double power_lag, double love,double A_lag,double Aw_lag,double Am_lag,sim_struct* sim, sol_struct* sol, par_struct* par){
         
-        // setup
+        // value of remaining a couple at current power
         double power = -1.0; // initialize as divorce
         int idx_sol = index::index4(t,0,0,0,par->T,par->num_power,par->num_love,par->num_A); 
         double Vw_couple, Vm_couple;
+        tools::interp_3d_2out(par->grid_power,par->grid_love,par->grid_A, par->num_power,par->num_love,par->num_A, &sol->Vw_remain_couple[idx_sol],&sol->Vm_remain_couple[idx_sol], power_lag,love,A_lag, &Vw_couple, &Vm_couple);
 
         // value of transitioning into singlehood
         int idx_single = index::index2(t,0,par->T,par->num_A);
         double Vw_single = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Vw_trans_single[idx_single],Aw_lag);
         double Vm_single = tools::interp_1d(par->grid_Am,par->num_A,&sol->Vm_trans_single[idx_single],Am_lag);
-
-        tools::interp_3d_2out(par->grid_power,par->grid_love,par->grid_A, par->num_power,par->num_love,par->num_A, &sol->Vw_remain_couple[idx_sol],&sol->Vm_remain_couple[idx_sol], power_lag,love,A_lag, &Vw_couple, &Vm_couple);
         
         // check participation constraints
         if ((Vw_couple>=Vw_single) & (Vm_couple>=Vm_single)){
@@ -29,11 +28,13 @@ namespace sim {
 
             if ((Vm_couple>=Vm_single)){ // woman want to leave
 
-                // find relevant values of remaining a couple at all other states than power (Could be smarter about this. Bisection search once)
+                // find relevant values of remaining a couple at all other states than power 
                 double* Vw_power = new double[par->num_power];
+                int j_love = tools::binary_search(0,par->num_love,par->grid_love,love); 
+                int j_A = tools::binary_search(0,par->num_A,par->grid_A,A_lag);
                 for (int iP=0; iP<par->num_power; iP++){ 
                     int idx = index::index4(t,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); 
-                    Vw_power[iP] = tools::interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A,&sol->Vw_remain_couple[idx],love,A_lag);
+                    Vw_power[iP] = tools::_interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A,&sol->Vw_remain_couple[idx],love,A_lag,j_love,j_A);
                 }
 
                 // interpolate the power based on the value of single to find indifference-point. (flip the axis so to speak)
@@ -55,9 +56,11 @@ namespace sim {
 
                 // find relevant values of remaining a couple at all other states than power
                 double* Vm_power = new double[par->num_power];
+                int j_love = tools::binary_search(0,par->num_love,par->grid_love,love); 
+                int j_A = tools::binary_search(0,par->num_A,par->grid_A,A_lag);
                 for (int iP=0; iP<par->num_power; iP++){ 
                     int idx = index::index4(t,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); 
-                    Vm_power[iP] = tools::interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A,&sol->Vm_remain_couple[idx],love,A_lag);
+                    Vm_power[iP] = tools::_interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A,&sol->Vm_remain_couple[idx],love,A_lag,j_love,j_A);
                 }
 
                 // interpolate the power based on the value of single to find indifference-point. (flip the axis so to speak)
