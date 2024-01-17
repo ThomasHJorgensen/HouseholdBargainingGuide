@@ -318,12 +318,7 @@ double interp_2d_int(double* grid1,double* grid2,int num1, int num2,int* value,d
     return nom/denom;
 }
 
-double _interp_3d(double* grid1,double* grid2,double* grid3,int num1, int num2, int num3,double* value,double xi1,double xi2,double xi3){
-
-    // a. search in each dimension
-    int j1 = binary_search(0,num1,grid1,xi1);
-    int j2 = binary_search(0,num2,grid2,xi2);
-    int j3 = binary_search(0,num3,grid3,xi3);
+double _interp_3d(double* grid1,double* grid2,double* grid3,int num1, int num2, int num3,double* value,double xi1,double xi2,double xi3,int j1, int j2, int j3){
 
     // a. left/right
     double nom_1_left = grid1[j1+1]-xi1;
@@ -360,17 +355,70 @@ double _interp_3d(double* grid1,double* grid2,double* grid3,int num1, int num2, 
 }
 
 
-
 double interp_3d(double* grid1,double* grid2,double* grid3,int num1, int num2, int num3,double* value,double xi1,double xi2,double xi3){
+    // a. search in each dimension
+    int j1 = binary_search(0,num1,grid1,xi1);
+    int j2 = binary_search(0,num2,grid2,xi2);
+    int j3 = binary_search(0,num3,grid3,xi3);
 
-    // check if first dimension only has one element. If so use linear_interp_2d from consav package
-    // This handles that child capital might not be kept track of
-    if (num1 == 1){
-        return interp_2d(grid2,grid3,num2,num3,value,xi2,xi3);
-    } else {
-        return _interp_3d(grid1,grid2,grid3,num1,num2,num3,value,xi1,xi2,xi3);
-    }
+    return _interp_3d(grid1,grid2,grid3,num1,num2,num3,value,xi1,xi2,xi3,j1,j2,j3);
+
 }
+
+
+void _interp_3d_2out(double* grid1,double* grid2,double* grid3,int num1, int num2, int num3,double* value1,double* value2,double xi1,double xi2,double xi3,int j1,int j2,int j3, double* out1,double* out2){
+
+    // a. left/right
+    double nom_1_left = grid1[j1+1]-xi1;
+    double nom_1_right = xi1-grid1[j1];
+
+    double nom_2_left = grid2[j2+1]-xi2;
+    double nom_2_right = xi2-grid2[j2];
+
+    double nom_3_left = grid3[j3+1]-xi3;
+    double nom_3_right = xi3-grid3[j3];
+
+    // b. interpolation
+    double denom = (grid1[j1+1]-grid1[j1])*(grid2[j2+1]-grid2[j2])*(grid3[j3+1]-grid3[j3]);
+    double nom1 = 0.0;
+    double nom2 = 0.0;
+    for (size_t k1 = 0; k1 < 2; k1++){
+        double nom_1 = nom_1_left;
+        if (k1==1){ nom_1 = nom_1_right;}
+
+        for (size_t k2 = 0; k2 < 2; k2++){
+            double nom_2 = nom_2_left;
+            if (k2==1){ nom_2 = nom_2_right;}
+
+            for (size_t k3 = 0; k3 < 2; k3++){
+                double nom_3 = nom_3_left;
+                if (k3==1){ nom_3 = nom_3_right;}      
+                double scale = nom_1*nom_2*nom_3;      
+
+                int idx = index::index3(j1+k1,j2+k2,j3+k3, num1,num2, num3);   
+                nom1 += scale*value1[idx];
+                nom2 += scale*value2[idx];
+            }
+        }
+    }
+
+    out1[0] = nom1/denom;
+    out2[0] = nom2/denom;
+}
+
+
+
+void interp_3d_2out(double* grid1,double* grid2,double* grid3,int num1, int num2, int num3,double* value1,double* value2,double xi1,double xi2,double xi3, double* out1,double* out2){
+
+    // a. search in each dimension
+    int j1 = binary_search(0,num1,grid1,xi1);
+    int j2 = binary_search(0,num2,grid2,xi2);
+    int j3 = binary_search(0,num3,grid3,xi3);
+
+    _interp_3d_2out(grid1,grid2,grid3,num1,num2,num3,value1,value2,xi1,xi2,xi3,j1,j2,j3,out1,out2);
+
+}
+
 
 
 double _interp_4d(double* grid1,double* grid2,double* grid3,double* grid4,int num1, int num2, int num3, int num4,double* value,double xi1,double xi2,double xi3,double xi4){

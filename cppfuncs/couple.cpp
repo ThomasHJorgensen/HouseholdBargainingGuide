@@ -35,6 +35,16 @@ namespace couple {
 
     }
 
+    void intraperiod_allocation_sim(double* Cw_priv, double* Cm_priv, double* C_pub , double C_tot,double power,sol_struct *sol,par_struct *par){
+        // interpolate pre-computed solution in both power and C_tot
+        int idx = index::index2(0,0,par->num_power,par->num_Ctot); 
+
+        tools::interp_2d_2out(par->grid_power,par->grid_Ctot,par->num_power,par->num_Ctot,&sol->pre_Ctot_Cw_priv[idx],&sol->pre_Ctot_Cm_priv[idx],power,C_tot,Cw_priv,Cm_priv);
+
+        C_pub[0] = C_tot - Cw_priv[0] - Cm_priv[0];
+
+    }
+
     double resources(double A, par_struct* par){
         return par->R*A + par->inc_w + par->inc_m;
     }
