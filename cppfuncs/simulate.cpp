@@ -69,6 +69,10 @@ namespace sim {
             power = tools::interp_1d(V_power_vec, par->num_power, par->grid_power, V_single);
             delete V_power_vec;
 
+            if((power<0.0)|(power>1.0)){ // divorce
+                return -1.0;
+            }
+
             // iv. find marital surplus of partner at this new power allocation
             int j_power = tools::binary_search(0,par->num_power,par->grid_power,power);
             double V_power_partner = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A, par->num_power,par->num_love,par->num_A, &V_remain_couple_partner[idx_sol], power,love,A_lag,j_power,j_love,j_A);
