@@ -32,12 +32,15 @@ namespace sim {
             double* V_remain_couple_partner;
             double V_single;
             double V_single_partner;
+            bool flip = false;
             if ((Vm_couple>=Vm_single)){ // woman wants to leave
                 V_single = Vw_single;
                 V_single_partner = Vm_single;
 
                 V_remain_couple = sol->Vw_remain_couple;
-                V_remain_couple_partner = sol->Vm_remain_couple;    
+                V_remain_couple_partner = sol->Vm_remain_couple;  
+
+                flip = false;                
 
             } else { // man wants to leave
                 V_single = Vm_single;
@@ -46,16 +49,22 @@ namespace sim {
                 V_remain_couple = sol->Vm_remain_couple;
                 V_remain_couple_partner = sol->Vw_remain_couple;
 
+                flip = true;
             }
 
-            // ii. find indifference point of unsatisfied partner
+            // ii. find indifference point of unsatisfied partner:
             int j_love = tools::binary_search(0,par->num_love,par->grid_love,love); 
-            int j_A = tools::binary_search(0,par->num_A,par->grid_A,A_lag);
+            int j_A = tools::binary_search(0,par->num_A,par->grid_A,A_lag); 
             for (int iP=0; iP<par->num_power; iP++){ 
-                int idx = index::index4(t,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); 
+                int idx;
+                if(flip){
+                    idx = index::index4(t,par->num_power-1 - iP,0,0,par->T,par->num_power,par->num_love,par->num_A); // flipped for men
+                } else {
+                    idx = index::index4(t,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); 
+                }
                 V_power_vec[iP] = tools::_interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A,&V_remain_couple[idx],love,A_lag,j_love,j_A);
             }
-
+            
             // iii. interpolate the power based on the value of single to find indifference-point. (flip the axis)
             power = tools::interp_1d(V_power_vec, par->num_power, par->grid_power, V_single);
             delete V_power_vec;
