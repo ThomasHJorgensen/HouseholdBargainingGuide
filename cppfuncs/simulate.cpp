@@ -24,6 +24,97 @@ namespace sim {
         if ((Vw_couple>=Vw_single) & (Vm_couple>=Vm_single)){
             power = power_lag;
 
+        } else if ((Vw_couple<Vw_single) & (Vm_couple<Vm_single)){
+            power = -1.0;
+
+        } else {
+
+            // interpolate power: note the index: use delta-interpolation
+            // check if divorce: could do interpolation function that checks if one of the relevant points are -1.0
+
+            
+            // i. determine which partner is unsatisfied
+            double* V_power_vec = new double[par->num_power];
+            double* V_remain_couple;
+            double* V_remain_couple_partner;
+            double V_single;
+            double V_single_partner;
+            bool flip = false;
+            if ((Vm_couple>=Vm_single)){ // woman wants to leave
+                V_single = Vw_single;
+                V_single_partner = Vm_single;
+
+                V_remain_couple = sol->Vw_remain_couple;
+                V_remain_couple_partner = sol->Vm_remain_couple;  
+
+                flip = false;                
+
+            } else { // man wants to leave
+                V_single = Vm_single;
+                V_single_partner = Vw_single;
+
+                V_remain_couple = sol->Vm_remain_couple;
+                V_remain_couple_partner = sol->Vw_remain_couple;
+
+                flip = true;
+            }
+
+            // ii. find indifference point of unsatisfied partner:
+            int j_love = tools::binary_search(0,par->num_love,par->grid_love,love); 
+            int j_A = tools::binary_search(0,par->num_A,par->grid_A,A_lag); 
+            for (int iP=0; iP<par->num_power; iP++){ 
+                int idx;
+                if(flip){
+                    idx = index::index4(t,par->num_power-1 - iP,0,0,par->T,par->num_power,par->num_love,par->num_A); // flipped for men
+                } else {
+                    idx = index::index4(t,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); 
+                }
+                V_power_vec[iP] = tools::_interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A,&V_remain_couple[idx],love,A_lag,j_love,j_A);
+            }
+            
+            // iii. interpolate the power based on the value of single to find indifference-point. (flip the axis)
+            power = tools::interp_1d(V_power_vec, par->num_power, par->grid_power, V_single);
+            delete V_power_vec;
+
+            if((power<0.0)|(power>1.0)){ // divorce
+                return -1.0;
+            }
+
+            // iv. find marital surplus of partner at this new power allocation
+            int j_power = tools::binary_search(0,par->num_power,par->grid_power,power);
+            double V_power_partner = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A, par->num_power,par->num_love,par->num_A, &V_remain_couple_partner[idx_sol], power,love,A_lag,j_power,j_love,j_A);
+            double S_partner = couple::calc_marital_surplus(V_power_partner,V_single_partner,par);
+            
+            // v. check if partner is happy. If not divorce
+            if(S_partner<0.0){
+                power = -1.0; 
+            }
+
+        }
+
+        return power;
+    } // update_power
+
+    double update_power_old(int t, double power_lag, double love,double A_lag,double Aw_lag,double Am_lag,sim_struct* sim, sol_struct* sol, par_struct* par){
+        
+        // a. value of remaining a couple at current power
+        double power = -1.0; // initialize as divorce
+        int idx_sol = index::index4(t,0,0,0,par->T,par->num_power,par->num_love,par->num_A); 
+        double Vw_couple, Vm_couple;
+        tools::interp_3d_2out(par->grid_power,par->grid_love,par->grid_A, par->num_power,par->num_love,par->num_A, &sol->Vw_remain_couple[idx_sol],&sol->Vm_remain_couple[idx_sol], power_lag,love,A_lag, &Vw_couple, &Vm_couple);
+
+        // b. value of transitioning into singlehood
+        int idx_single = index::index2(t,0,par->T,par->num_A);
+        double Vw_single = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Vw_trans_single[idx_single],Aw_lag);
+        double Vm_single = tools::interp_1d(par->grid_Am,par->num_A,&sol->Vm_trans_single[idx_single],Am_lag);
+        
+        // c. check participation constraints
+        if ((Vw_couple>=Vw_single) & (Vm_couple>=Vm_single)){
+            power = power_lag;
+
+        } else if ((Vw_couple<Vw_single) & (Vm_couple<Vm_single)){
+            power = -1.0;
+
         } else {
             
             // i. determine which partner is unsatisfied
