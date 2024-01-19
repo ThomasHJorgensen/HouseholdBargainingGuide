@@ -39,6 +39,7 @@ namespace sim {
             double* V_remain_couple_partner;
             double V_single;
             double V_single_partner;
+            double* grid_power;
             bool flip = false;
             if ((Vm_couple>=Vm_single)){ // woman wants to leave
                 V_single = Vw_single;
@@ -47,7 +48,8 @@ namespace sim {
                 V_remain_couple = sol->Vw_remain_couple;
                 V_remain_couple_partner = sol->Vm_remain_couple;  
 
-                flip = false;                
+                flip = false;
+                grid_power = par->grid_power;                
 
             } else { // man wants to leave
                 V_single = Vm_single;
@@ -57,6 +59,7 @@ namespace sim {
                 V_remain_couple_partner = sol->Vw_remain_couple;
 
                 flip = true;
+                grid_power = par->grid_power_flip;
             }
 
             // ii. find indifference point of unsatisfied partner:
@@ -73,7 +76,7 @@ namespace sim {
             }
             
             // iii. interpolate the power based on the value of single to find indifference-point. (flip the axis)
-            power = tools::interp_1d(V_power_vec, par->num_power, par->grid_power, V_single);
+            power = tools::interp_1d(V_power_vec, par->num_power, grid_power, V_single);
             delete V_power_vec;
 
             if((power<0.0)|(power>1.0)){ // divorce
@@ -124,6 +127,7 @@ namespace sim {
             double V_single;
             double V_single_partner;
             bool flip = false;
+            double* grid_power;
             if ((Vm_couple>=Vm_single)){ // woman wants to leave
                 V_single = Vw_single;
                 V_single_partner = Vm_single;
@@ -131,7 +135,8 @@ namespace sim {
                 V_remain_couple = sol->Vw_remain_couple;
                 V_remain_couple_partner = sol->Vm_remain_couple;  
 
-                flip = false;                
+                flip = false;     
+                grid_power = par->grid_power;           
 
             } else { // man wants to leave
                 V_single = Vm_single;
@@ -141,6 +146,7 @@ namespace sim {
                 V_remain_couple_partner = sol->Vw_remain_couple;
 
                 flip = true;
+                grid_power = par->grid_power_flip;
             }
 
             // ii. find indifference point of unsatisfied partner:
@@ -157,7 +163,7 @@ namespace sim {
             }
             
             // iii. interpolate the power based on the value of single to find indifference-point. (flip the axis)
-            power = tools::interp_1d(V_power_vec, par->num_power, par->grid_power, V_single);
+            power = tools::interp_1d(V_power_vec, par->num_power, grid_power, V_single);
             delete V_power_vec;
 
             if((power<0.0)|(power>1.0)){ // divorce
