@@ -63,13 +63,7 @@ namespace single {
     void EGM_single(int t, int gender, sol_struct* sol, par_struct* par){
         // 1. Setup
         /// a. unpack
-        int const &T {par->T};
-        int const &num_marg_u {par->num_marg_u};
-        int const &num_A {par->num_A};
-        int const &num_A_pd {par->num_A_pd};
         bool const &analytic_inv_marg_u_single {par->analytic_inv_marg_u_single};
-        double const &beta {par->beta};
-        double const &R {par->R};
         double* const &grid_inv_marg_u {par->grid_inv_marg_u};
 
         /// b. gender specific variables
@@ -95,29 +89,29 @@ namespace single {
         }
 
         /// c. Allocate memory
-        double* EmargU_pd {new double[num_A_pd]};
-        double* C_tot_pd {new double[num_A_pd]};
-        double* M_pd {new double[num_A_pd]};
+        double* EmargU_pd {new double[par->num_A_pd]};
+        double* C_tot_pd {new double[par->num_A_pd]};
+        double* M_pd {new double[par->num_A_pd]};
 
         // 2. EGM step
         /// setup
-        int idx_next = index::index2(t+1,0, T, num_A);
-        int min_point_A {0};
+        int idx_next = index::single(t+1,0, par);
+        int min_point_A = 0;
 
-        for (int iA_pd=0; iA_pd<num_A_pd; iA_pd++){
+        for (int iA_pd=0; iA_pd<par->num_A_pd; iA_pd++){
 
             /// a. get next period assets
-            double &A_next = grid_A_pd[iA_pd];
+            double A_next = grid_A_pd[iA_pd];
 
             /// b. calculate expected marginal utility
-            min_point_A = tools::binary_search(min_point_A, num_A, grid_A, A_next);
-            EmargU_pd[iA_pd] = tools::interp_1d_index(grid_A, num_A, &marg_V[idx_next],A_next, min_point_A);
+            min_point_A = tools::binary_search(min_point_A, par->num_A, grid_A, A_next);
+            EmargU_pd[iA_pd] = tools::interp_1d_index(grid_A, par->num_A, &marg_V[idx_next],A_next, min_point_A);
 
             /// c. invert marginal utility by interpolation from pre-computed grid
             if (analytic_inv_marg_u_single == 1){
                 C_tot_pd[iA_pd] = utils::inv_marg_util_C(EmargU_pd[iA_pd], gender, par);
             } else {
-                C_tot_pd[iA_pd] = tools::interp_1d(grid_marg_u_single_for_inv, num_marg_u, grid_inv_marg_u, EmargU_pd[iA_pd]);
+                C_tot_pd[iA_pd] = tools::interp_1d(grid_marg_u_single_for_inv, par->num_marg_u, grid_inv_marg_u, EmargU_pd[iA_pd]);
             }
             /// d. endogenous grid over resources
             M_pd[iA_pd] = C_tot_pd[iA_pd] + A_next;
@@ -125,17 +119,17 @@ namespace single {
 
         // 3. interpolate to common grid
         ///setup
-        int idx = index::index2(t,0, T, num_A);
         min_point_A = 0;
 
-        for (int iA=0; iA<num_A; iA++){
+        for (int iA=0; iA<par->num_A; iA++){
+            int idx = index::single(t,iA, par);
 
             /// a. calculate resources
             double M_now = resources(grid_A[iA], gender, par);
 
             /// b. find total consumption
-            min_point_A = tools::binary_search(min_point_A,num_A_pd, M_pd, M_now);
-            C_tot[idx] = tools::interp_1d_index(M_pd, num_A_pd, C_tot_pd, M_now, min_point_A);
+            min_point_A = tools::binary_search(min_point_A,par->num_A_pd, M_pd, M_now);
+            C_tot[idx] = tools::interp_1d_index(M_pd, par->num_A_pd, C_tot_pd, M_now, min_point_A);
 
             /// c. handle credit constraint 
             //// if credit constrained
@@ -145,16 +139,16 @@ namespace single {
 
                 ///// oo. calculate marginal value of constrained consumption
                 if (par->analytic_marg_u_single){
-                    marg_V[idx] = beta * R * utils::marg_util_C(C_tot[idx], gender, par);
+                    marg_V[idx] = par->beta * par->R * utils::marg_util_C(C_tot[idx], gender, par);
                 }
                 else{
-                    marg_V[idx] = beta * R * tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot[idx]);
+                    marg_V[idx] = par->beta * par->R * tools::interp_1d(par->grid_C_for_marg_u, par->num_marg_u, par->grid_marg_u, C_tot[idx]);
                 }
             }
             //// if not credit constrained
             else{
                 // o. calculate marginal value of unconstrained consumption
-                marg_V[idx] = beta * R * tools::interp_1d_index(M_pd, num_A_pd, EmargU_pd, M_now, min_point_A);
+                marg_V[idx] = par->beta * par->R * tools::interp_1d_index(M_pd, par->num_A_pd, EmargU_pd, M_now, min_point_A);
             }
 
             /// d. calculate private and public consumption
@@ -163,8 +157,6 @@ namespace single {
             /// e. calculate values (not used in EGM step)
             V[idx] = value_of_choice(C_tot[idx], M_now, gender, &V[idx_next], par);
 
-            /// f. update index
-            idx++;
         }
 
         // 4. clean up
@@ -181,7 +173,7 @@ namespace single {
         // terminal period
         if (t == (par->T-1)){
             for (int iA=0; iA<par->num_A;iA++){
-                int idx = index::index2(t,iA,par->T,par->num_A);
+                int idx = index::single(t,iA,par);
 
                 double Aw = par->grid_Aw[iA];
                 double Am = par->grid_Am[iA];
@@ -221,7 +213,7 @@ namespace single {
                     // 2. loop over assets
                     #pragma omp for
                     for (int iA=0; iA<par->num_A;iA++){
-                        int idx = index::index2(t,iA,par->T,par->num_A);
+                        int idx = index::single(t,iA,par);
                         
                         // resources
                         double Aw = par->grid_Aw[iA];
@@ -234,7 +226,7 @@ namespace single {
                         // WOMEN
                         // settings
                         solver_data->M = Mw;
-                        solver_data->V_next = &sol->Vw_single[index::index2(t+1,0,par->T,par->num_A)];
+                        solver_data->V_next = &sol->Vw_single[index::single(t+1,0,par)];
                         solver_data->gender = woman;
                         solver_data->par = par;
                         nlopt_set_min_objective(opt, objfunc_single, solver_data); 
@@ -257,7 +249,7 @@ namespace single {
                         // MEN
                         // settings
                         solver_data->M = Mm;
-                        solver_data->V_next = &sol->Vm_single[index::index2(t+1,0,par->T,par->num_A)];
+                        solver_data->V_next = &sol->Vm_single[index::single(t+1,0,par)];
                         solver_data->gender = man;
                         solver_data->par = par;
                         nlopt_set_min_objective(opt, objfunc_single, solver_data);
@@ -296,7 +288,7 @@ namespace single {
         {
             #pragma omp for
             for (int iA=0; iA<par->num_A;iA++){
-                int idx = index::index2(t,iA,par->T,par->num_A);
+                int idx = index::single(t,iA,par);
 
                 sol->Vw_trans_single[idx] = sol->Vw_single[idx] - par->div_cost;
                 sol->Vm_trans_single[idx] = sol->Vm_single[idx] - par->div_cost;

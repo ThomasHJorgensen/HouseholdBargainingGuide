@@ -106,8 +106,8 @@ namespace couple {
         
         if (t<(par->T-1)){ 
             // objective function
-            int dim = 1;
-            double lb[1],ub[1],x[1];
+            int const dim = 1;
+            double lb[dim],ub[dim],x[dim];
             
             auto opt = nlopt_create(NLOPT_LN_BOBYQA, dim); // NLOPT_LD_MMA NLOPT_LD_LBFGS NLOPT_GN_ORIG_DIRECT
             double minf=0.0;
@@ -145,8 +145,8 @@ namespace couple {
     
     void solve_remain_Agrid_vfi(int t, int iP, int iL, double* Vw_next, double* Vm_next,sol_struct* sol, par_struct* par){
         for (int iA=0; iA<par->num_A;iA++){
-            int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
-            int idx_last = index::index4(t,iP,iL,iA-1,par->T,par->num_power,par->num_love,par->num_A); 
+            int idx = index::couple(t,iP,iL,iA,par);
+            int idx_last = index::couple(t,iP,iL,iA-1,par); 
 
             double M_resources = resources(par->grid_A[iA],par); 
 
@@ -335,7 +335,7 @@ namespace couple {
             // c. index struct to pass to bargaining algorithm
             index::index_couple_struct* idx_couple = new index::index_couple_struct;
 
-            // 2. solve for values of remainaing a couple
+            // 2. solve for values of remaining a couple
             #pragma omp for
             for (int iP=0; iP<par->num_power; iP++){
 
@@ -344,7 +344,7 @@ namespace couple {
                 double *Vm_next = nullptr;
                 double *marg_V_next = nullptr;
                 if (t<(par->T-1)){
-                    int idx_next = index::index4(t+1,iP,0,0,par->T,par->num_power,par->num_love,par->num_A);
+                    int idx_next = index::couple(t+1,iP,0,0,par);
                     Vw_next = &sol->Vw_couple[idx_next];  
                     Vm_next = &sol->Vm_couple[idx_next];
                     marg_V_next = &sol->marg_V_couple[idx_next];
@@ -367,7 +367,7 @@ namespace couple {
             for (int iL=0; iL<par->num_love; iL++){    
                 for (int iA=0; iA<par->num_A;iA++){
                     // i. Get indices
-                    int idx_single = index::index2(t,iA,par->T,par->num_A);
+                    int idx_single = index::single(t,iA,par);
                     idx_couple->t = t;
                     idx_couple->iL = iL;
                     idx_couple->iA = iA;
@@ -375,7 +375,7 @@ namespace couple {
 
                     // ii Calculate marital surplus
                     for (int iP=0; iP<par->num_power; iP++){
-                        int idx_tmp = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                        int idx_tmp = index::couple(t,iP,iL,iA,par);
                         Sw[iP] = calc_marital_surplus(sol->Vw_remain_couple[idx_tmp],sol->Vw_single[idx_single],par);
                         Sm[iP] = calc_marital_surplus(sol->Vm_remain_couple[idx_tmp],sol->Vm_single[idx_single],par);
                     }
@@ -406,7 +406,7 @@ namespace couple {
                     
                     // update C_tot_couple - not implemented correctly (and not used in solution)
                     for (int iP=0; iP<par->num_power; iP++){
-                        int idx = index::index4(t,iP,iL,iA,par->T,par->num_power,par->num_love,par->num_A);
+                        int idx = index::couple(t,iP,iL,iA,par);
                         sol->C_tot_couple[idx] = sol->Cw_priv_couple[idx] + sol->Cm_priv_couple[idx] + sol->C_pub_couple[idx];
                     }
 
@@ -414,7 +414,7 @@ namespace couple {
 
                 // v. Update marginal value
                 for (int iP=0; iP<par->num_power; iP++){
-                    int idx_interp = index::index4(t,iP,iL,0,par->T,par->num_power,par->num_love,par->num_A);
+                    int idx_interp = index::couple(t,iP,iL,0,par);
                     calc_marginal_value_couple(t, iP, iL, &sol->Vw_couple[idx_interp], &sol->Vm_couple[idx_interp], &sol->marg_V_couple[idx_interp], sol, par);
                 } // power in finite diff
 

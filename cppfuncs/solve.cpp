@@ -17,7 +17,6 @@ EXPORT void solve(sol_struct *sol, par_struct *par){
         single::solve_single(t,sol,par); 
         couple::solve_couple(t,sol,par);
 
-        // todo: use single, couple and trans to couple index ind index::
         // if(t>=(par->T-1)){
         //     single::solve_remain_trans_single(t,sol,par); // TODO: introduce remain_single solution and update code.
         //     couple::solve_remain_start_trans_couple(t,sol,par); 
