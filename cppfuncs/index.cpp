@@ -15,13 +15,23 @@ namespace index {
         return i4 + (i3 + (i2 + i1*N2)*N3)*N4;
     }
 
+    int couple(int t,int iP,int iL,int iA,par_struct* par){
+        return index4(t,iP,iL,iA , par->T,par->num_power,par->num_love,par->num_A); 
+    }
+    int trans_to_couple(int t,int iL,int iA,par_struct* par){
+        return index3(t,iL,iA , par->T,par->num_love,par->num_A); 
+    }
+    int single(int t,int iA,par_struct* par){
+        return index2(t,iA , par->T,par->num_A); 
+    }
+
     typedef struct{
             int t;
             int iL;
             int iA;
             par_struct *par; 
             int idx(int iP){
-                    return index::index4(t,iP,iL,iA , par->T,par->num_power,par->num_love,par->num_A); 
+                    return index::couple(t,iP,iL,iA , par); 
             }
         
     } index_couple_struct;
