@@ -297,15 +297,17 @@ namespace couple {
         double power = par->grid_power[iP];
 
         // approximate marginal value of marriage by finite diff
-        for (int iA=0; iA<=par->num_A-2;iA++){
+        for (int iA=0; iA<par->num_A-1;iA++){
             // Setup indices
             int iA_plus = iA + 1;
 
             // Calculate finite difference
             double margVw {0};
             double margVm {0};
-            margVw = (Vw[iA_plus] - Vw[iA])/(par->grid_A[iA_plus] - par->grid_A[iA]);
-            margVm = (Vm[iA_plus] - Vm[iA])/(par->grid_A[iA_plus] - par->grid_A[iA]);
+            double denom {0};
+            denom = (par->grid_A[iA_plus] - par->grid_A[iA]);
+            margVw = Vw[iA_plus]/denom - Vw[iA]/denom;
+            margVm = Vm[iA_plus]/denom - Vm[iA]/denom;
 
             // Update solution
             marg_V[iA] = power*margVw + (1.0-power)*margVm;

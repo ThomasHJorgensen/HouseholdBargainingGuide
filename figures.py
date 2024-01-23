@@ -57,7 +57,7 @@ formats = {
 # Add function to add multiple models to a single plot
 
 
-def make_fig(num_plots: int, dimensions: tuple):
+def make_fig(num_plots: int, dimensions: tuple, size='A4'):
     
     # 1. Setup
     ## a. Set figure size
@@ -70,6 +70,12 @@ def make_fig(num_plots: int, dimensions: tuple):
     subplot_height = subplot_width / 1.414  # Height adjusted to fit width
     fig_width = subplot_width * columns
     fig_height = subplot_height * rows
+    
+    if size == 'A4':
+        pass
+    elif size == 'big':
+        fig_width = fig_width * 2
+        fig_height = fig_height * 2
 
     ## b. Set format
     ### Set format based on number of subplot columns
@@ -110,7 +116,7 @@ def make_fig(num_plots: int, dimensions: tuple):
     return fig, axes
        
     
-def model_plot(models, plot_function, vars, *args, subtitles=None, num_plots=None, dim=None, save=False, figname=None, display=False, shared_legend=False, **kwargs):
+def model_plot(models, plot_function, vars, *args, subtitles=None, num_plots=None, dim=None, size='A4', save=False, figname=None, display=False, shared_legend=False, **kwargs):
     # 1. Setup
     ## a. Place models in a list if they are not already
     if type(models) is dict:
@@ -140,7 +146,7 @@ def model_plot(models, plot_function, vars, *args, subtitles=None, num_plots=Non
     
     # 2. Create figure
     ## a. initiate figure
-    fig, ax = make_fig(num_plots, dim)
+    fig, ax = make_fig(num_plots, dim, size)
     
     ## b. Create subplots
     for i, model in enumerate(models):
@@ -179,7 +185,7 @@ def model_plot(models, plot_function, vars, *args, subtitles=None, num_plots=Non
     
     return fig
 
-def var_plot(models, plot_function, vars, *args, subtitles=None, num_plots=None, dim=None, save=False, figname=None, display=False, shared_legend=False, **kwargs):
+def var_plot(models, plot_function, vars, *args, subtitles=None, num_plots=None, dim=None, size='A4', save=False, figname=None, display=False, shared_legend=False, **kwargs):
     # 1. Setup
     ## a. Place models in a list if they are not already
     if type(models) is dict:
@@ -209,7 +215,7 @@ def var_plot(models, plot_function, vars, *args, subtitles=None, num_plots=None,
     
     # 2. Create figure
     ## a. initiate figure
-    fig, ax = make_fig(num_plots, dim)
+    fig, ax = make_fig(num_plots, dim, size)
     
     ## b. Create subplots
     for model in models:

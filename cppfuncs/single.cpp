@@ -173,6 +173,41 @@ namespace single {
         delete[] M_pd;
     }
 
+    void calc_marginal_value_single(int t, int gender, sol_struct* sol, par_struct* par){
+
+        // unpack
+        int const &num_A = par->num_A;
+
+        // set index
+        int idx = index::index2(t,0,par->T,par->num_A);
+
+        // gender specific variables
+        double* grid_A = par->grid_Aw;
+        double* marg_V = &sol->marg_Vw_single[idx];
+        double* V      = &sol->Vw_single[idx];
+
+        if (gender == man){
+            grid_A = par->grid_Am;
+            marg_V = &sol->marg_Vm_single[idx];
+            V      = &sol->Vm_single[idx];
+        }
+
+
+        // approximate marginal value by finite diff
+        for (int iA=0; iA<num_A-1; iA++){
+            // Setup indices
+            int iA_plus = iA + 1;
+
+            // Calculate finite difference
+            marg_V[iA] = V[iA_plus] / (grid_A[iA_plus] - grid_A[iA]) - V[iA] / (grid_A[iA_plus] - grid_A[iA]);
+
+            // Extrapolate gradient in last point
+            if (iA == num_A-2){
+                marg_V[iA_plus] = marg_V[iA];
+            }
+        }
+    }
+
 
 
     void solve_single(int t,sol_struct *sol,par_struct *par){
@@ -284,8 +319,13 @@ namespace single {
                 } // pragma
             }
         }   
-        
-    }
+    
+        // overwrite previous approach with finite difference approach
+        if (par->do_num_marg_V == 1){
+            calc_marginal_value_single(t, woman, sol, par);
+            calc_marginal_value_single(t, man,   sol, par);
+        }
 
+    } // solve_single
 
 }
