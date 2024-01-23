@@ -40,6 +40,8 @@ class HouseholdModelClass(EconModelClass):
         par.beta = 1.0/par.R # Discount factor
         
         par.div_A_share = 0.5 # divorce share of wealth to wife
+        par.div_cost = 0.0
+        par.initial_nash = True
         
         # income
         par.inc_w = 1.0
@@ -116,6 +118,9 @@ class HouseholdModelClass(EconModelClass):
         sol.Cw_tot_single = np.nan + np.ones(shape_single)      # total concumption, single
         sol.Cm_tot_single = np.nan + np.ones(shape_single)
 
+        sol.EVw_start_single = np.nan + np.ones(shape_single)
+        sol.EVm_start_single = np.nan + np.ones(shape_single)  
+
         sol.Vw_trans_single = np.nan + np.ones(shape_single)        # Value marriage -> single
         sol.Vm_trans_single = np.nan + np.ones(shape_single)
         sol.Cw_priv_trans_single = np.nan + np.ones(shape_single)   # Private consumption marriage -> single
@@ -143,14 +148,27 @@ class HouseholdModelClass(EconModelClass):
         sol.Cm_priv_remain_couple = np.nan + np.ones(shape_couple)      
         sol.C_pub_remain_couple = np.nan + np.ones(shape_couple)        # public consumption, marriage -> marriage
         sol.C_tot_remain_couple = np.nan + np.ones(shape_couple)        # total consumption, marriage -> marriage
-                                                                        # different from marriage because this is conditional
-                                                                        # on remaining together
+        
         sol.Sw = np.nan + np.ones(par.num_power)                         # Surplus of mariage
         sol.Sm = np.nan + np.ones(par.num_power)
 
         sol.power_idx = np.zeros(shape_couple,dtype=np.int_)            # index of bargaining weight (approx)
         sol.power = np.zeros(shape_couple)                              # bargaining weight (interpolated)
 
+
+        shape_to_couple = (par.T,par.num_love,par.num_A) 
+        sol.Vw_trans_couple = np.nan + np.ones(shape_to_couple)           # value single -> marriage
+        sol.Vm_trans_couple = np.nan + np.ones(shape_to_couple)
+        sol.V_trans_couple = -np.inf + np.ones(shape_to_couple)           
+                                                                        
+        sol.Cw_priv_trans_couple = np.nan + np.ones(shape_to_couple)      
+        sol.Cm_priv_trans_couple = np.nan + np.ones(shape_to_couple)      
+        sol.C_pub_trans_couple = np.nan + np.ones(shape_to_couple)        
+        sol.C_tot_trans_couple = np.nan + np.ones(shape_to_couple)    
+
+        sol.power_trans = np.nan + np.zeros(shape_to_couple)
+        sol.power_idx_trans = np.zeros(shape_to_couple,dtype=np.int_)     
+                                                                                                                                       
         # temporary containers
         sol.savings_vec = np.zeros(par.num_shock_love)          
         sol.Vw_plus_vec = np.zeros(par.num_shock_love)          # not sure (next period maybe)
@@ -167,6 +185,13 @@ class HouseholdModelClass(EconModelClass):
 
         sol.marg_Vw_single = np.zeros(shape_single)
         sol.marg_Vm_single = np.zeros(shape_single)
+
+        sol.marg_Vw_trans_single = np.zeros(shape_single)
+        sol.marg_Vm_trans_single = np.zeros(shape_single)
+
+        sol.marg_Vw_trans_couple = np.zeros(shape_to_couple)
+        sol.marg_Vm_trans_couple = np.zeros(shape_to_couple)
+        sol.marg_V_trans_couple = np.zeros(shape_to_couple)
 
         sol.EmargUw_single_pd = np.zeros(shape_single)           # Expected marginal utility post-decision, woman single
         sol.C_totw_single_pd = np.zeros(par.num_A_pd)            # C for EGM, woman single 
@@ -264,6 +289,13 @@ class HouseholdModelClass(EconModelClass):
         par.grid_A_pd = nonlinspace(0.0,par.max_A_pd,par.num_A_pd,1.1)
         par.grid_Aw_pd = par.div_A_share * par.grid_A_pd
         par.grid_Am_pd = (1.0 - par.div_A_share) * par.grid_A_pd
+
+        # re-partering probabilities
+        par.prob_repartner = 0.1*np.ones(par.T) # likelihood of meeting a partner
+
+        par.prob_partner_A_w = np.eye(par.num_A) # likelihood of meeting a partner with a particular level of wealth, conditional on own
+        par.prob_partner_A_m = np.eye(par.num_A) # likelihood of meeting a partner with a particular level of wealth, conditional on own
+        par.prob_partner_love = np.ones(par.num_love)/par.num_love # likelihood of love shock
 
     def solve(self):
         

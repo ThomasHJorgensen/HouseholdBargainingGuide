@@ -378,4 +378,39 @@ namespace bargaining {
         } //case 1e
     } //end of check_participation_constraints
 
+
+    int initial_weight(double* Sw,double* Sm,par_struct* par){
+    // determine the initial bargaining weight. On grid for simplicity.
+    double weight = 0.5;
+
+    double min = HUGE_VAL;
+    int idx_power = -1;
+    double obj = 0.0;
+    for(int iP=0;iP<par->num_power;iP++){
+
+        // calculate objective function (to be minimized)
+        if((Sw[iP]>0) & (Sm[iP]>0)){
+            if(par->initial_nash){
+                obj = - pow(Sw[iP],weight)*pow(Sm[iP],1.0-weight);
+
+            } else {
+
+                double sum = weight*(Sw[iP] + Sm[iP]);
+                double dist = sum-Sw[iP];
+                obj = dist*dist;
+            }
+
+            // update minimum
+            if(obj<min){
+                min = obj;
+                idx_power = iP;
+            }
+        }
+
+    }
+
+    return idx_power;
+    
+}
+
 } // namespace bargaining
