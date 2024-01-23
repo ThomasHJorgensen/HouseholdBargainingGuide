@@ -212,8 +212,8 @@ namespace single {
                     // 1. allocate objects for solver
                     solver_single_struct* solver_data = new solver_single_struct;
                     
-                    int dim = 1;
-                    double lb[1],ub[1],x[1];
+                    int const dim = 1;
+                    double lb[dim],ub[dim],x[dim];
                     
                     auto opt = nlopt_create(NLOPT_LN_BOBYQA, dim); // NLOPT_LD_MMA NLOPT_LD_LBFGS NLOPT_GN_ORIG_DIRECT
                     double minf=0.0;
@@ -285,6 +285,101 @@ namespace single {
             }
         }   
         
+    }
+
+    void solve_remain_trans_single(int t,sol_struct *sol,par_struct *par){
+        // solve for value of remaining single
+        solve_single(t,sol,par);
+
+        // add divorce cost to get value of transition into singlehood
+        #pragma omp parallel num_threads(par->threads)
+        {
+            #pragma omp for
+            for (int iA=0; iA<par->num_A;iA++){
+                int idx = index::index2(t,iA,par->T,par->num_A);
+
+                sol->Vw_trans_single[idx] = sol->Vw_single[idx] - par->div_cost;
+                sol->Vm_trans_single[idx] = sol->Vm_single[idx] - par->div_cost;
+                sol->Cw_priv_trans_single[idx] = sol->Cw_priv_single[idx];
+                sol->Cm_priv_trans_single[idx] = sol->Cm_priv_single[idx];
+                sol->Cw_pub_trans_single[idx] = sol->Cw_pub_single[idx]; 
+
+                if (par->do_egm) {
+                    sol->marg_Vw_trans_single[idx] = sol->marg_Vw_single[idx];
+                    sol->marg_Vm_trans_single[idx] = sol->marg_Vm_single[idx];
+                }
+            }
+        }
+        
+    }
+
+    void expected_value_start_single(int t,sol_struct* sol,par_struct* par){
+        #pragma omp parallel num_threads(par->threads)
+        {
+            index::index_couple_struct* idx_couple = new index::index_couple_struct;
+
+            // loop over states
+            #pragma omp for
+            for (int iA=0; iA<par->num_A;iA++){
+
+                // value of remaining single
+                int idx_single = index::single(t,iA,par);
+                double V_remain_w = sol->Vw_single[idx_single]; //remain
+                double V_remain_m = sol->Vm_single[idx_single];
+
+                // loop over potential partners conditional on meeting a partner
+                // love is on the grid, so no need to interpolate in that direction. For wealth we need to.
+                double Ev_cond_w = 0.0;
+                double Ev_cond_m = 0.0;
+                double val_w = 0.0;
+                double val_m = 0.0;
+                for(int i_love=0;i_love<par->num_love;i_love++){
+                    for(int iAp=0;iAp<par->num_A;iAp++){ // partner's wealth
+
+                        // probability of meeting a specific type of partner
+                        int idx_A = index::index2(iA,iAp,par->num_A,par->num_A);
+                        double prob_A_w = par->prob_partner_A_w[idx_A]; 
+                        double prob_A_m = par->prob_partner_A_m[idx_A]; 
+                        double prob_love = par->prob_partner_love[i_love]; 
+                        double prob_w = prob_A_w*prob_love;
+                        double prob_m = prob_A_m*prob_love;
+                        
+                        // find relevant value function 
+                        int idx_trans = index::trans_to_couple(t,i_love,iA,par);
+                        int power_idx = sol->power_idx_trans[idx_trans];
+                        
+                        if (power_idx>=0){
+                            // TODO: interpolate: note there needs to be done something about wealth! The calculation of the value of transitioning might be move to here!
+                            double Aw_tot = par->grid_Aw[iA] + par->grid_Aw[iAp];
+                            double Am_tot = par->grid_Am[iA] + par->grid_Am[iAp]; 
+                            int idx_interp = index::trans_to_couple(t,i_love,0,par);
+                            val_w = tools::interp_1d(par->grid_A,par->num_A,&sol->Vw_trans_couple[idx_interp],Aw_tot);
+                            val_m = tools::interp_1d(par->grid_A,par->num_A,&sol->Vm_trans_couple[idx_interp],Am_tot);
+                        
+                        } else {
+                            val_w = V_remain_w;
+                            val_m = V_remain_m;
+                        }
+
+                        // expected value conditional on meeting a partner
+                        Ev_cond_w += prob_w*val_w;
+                        Ev_cond_m += prob_m*val_m;
+
+                    }
+                }
+
+                // expected value of starting single
+                double p_meet = par->prob_repartner[t]; 
+                double Ev_w = p_meet*Ev_cond_w + (1.0-p_meet)*V_remain_w;
+                double Ev_m = p_meet*Ev_cond_m + (1.0-p_meet)*V_remain_m;
+
+                sol->EVw_start_single[idx_single] = Ev_w;
+                sol->EVm_start_single[idx_single] = Ev_m;
+
+                
+            }
+
+        } // pragma
     }
 
 
