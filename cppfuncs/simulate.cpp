@@ -130,22 +130,25 @@ namespace sim {
                     
                     // first check if they want to remain together and what the bargaining power will be if they do.
                     double power;
+                    double C_tot;
+                    int idx_power,idx_love,idx_A;
                     if (couple_lag) {
 
                         if (par->interp_power){
                             // 1. search for grid points
-                            int idx_power = tools::binary_search(0,par->num_power,par->grid_power,power_lag);
-                            int idx_love = tools::binary_search(0,par->num_love,par->grid_love,love);
-                            int idx_A = tools::binary_search(0,par->num_A,par->grid_A,A_lag);
+                            idx_power = tools::binary_search(0,par->num_power,par->grid_power,power_lag);
+                            idx_love = tools::binary_search(0,par->num_love,par->grid_love,love);
+                            idx_A = tools::binary_search(0,par->num_A,par->grid_A,A_lag);
 
                             // 2. check if close to divorce
                             int idx = index::index4(t,idx_power,idx_love,idx_A,par->T,par->num_power,par->num_love,par->num_A);
-                            int idxp1 = index::index4(t,idx_power+1,idx_love,idx_A,par->T,par->num_power,par->num_love,par->num_A);
+                            int idxp1 = index::index4(t,idx_power,idx_love+1,idx_A,par->T,par->num_power,par->num_love,par->num_A);
                             if ((sol->power[idx]<0.0) | (sol->power[idxp1]<0.0)){
                                 power = -1.0; //update_power(t,power_lag,love,A_lag,Aw_lag,Am_lag,sim,sol,par);
                             } else {
                                 // 3. interpolate power
-                                power = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A, sol->power, power_lag, love, A_lag, idx_power, idx_love, idx_A);
+                                int idx_sol = index::couple(t,0,0,0,par);
+                                power = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A, &sol->power[idx_sol], power_lag, love, A_lag, idx_power, idx_love, idx_A);
                             }
                         }
                         else {
@@ -167,8 +170,13 @@ namespace sim {
                     if (sim->couple[it]){
                         
                         // optimal consumption allocation if couple (interpolate in power, love, A)
-                        int idx_sol = index::index4(t,0,0,0,par->T,par->num_power,par->num_love,par->num_A); 
-                        double C_tot = tools::interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A ,&sol->C_tot_couple[idx_sol],power,love,A_lag);
+                        int idx_sol = index::index4(t,0,0,0,par->T,par->num_power,par->num_love,par->num_A);
+                        if (par->interp_power){                            
+                            C_tot = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A,&sol->C_tot_couple[idx_sol],power_lag,love,A_lag,idx_power,idx_love,idx_A);
+                        }
+                        else{
+                            C_tot = tools::interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A ,&sol->C_tot_couple[idx_sol],power,love,A_lag);
+                        }
 
                         double C_pub = 0.0;
                         couple::intraperiod_allocation_sim(&sim->Cw_priv[it], &sim->Cm_priv[it], &C_pub,  C_tot,power,sol,par); 
