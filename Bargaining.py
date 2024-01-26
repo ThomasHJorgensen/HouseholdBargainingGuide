@@ -108,47 +108,51 @@ class HouseholdModelClass(EconModelClass):
         
         # singles
         shape_single = (par.T,par.num_A)                        # single states: T and assets
-        sol.Vw_single = np.nan + np.ones(shape_single)
-        sol.Vm_single = np.nan + np.ones(shape_single)      
-        sol.Cw_priv_single = np.nan + np.ones(shape_single)     # private consumption, single
-        sol.Cm_priv_single = np.nan + np.ones(shape_single)
-        sol.Cw_pub_single = np.nan + np.ones(shape_single)      # public consumption, single (i guess this functions as a private good when single)
-        sol.Cm_pub_single = np.nan + np.ones(shape_single)
-        sol.Cw_tot_single = np.nan + np.ones(shape_single)      # total concumption, single
-        sol.Cm_tot_single = np.nan + np.ones(shape_single)
+        sol.Vw_single_to_single = np.nan + np.ones(shape_single)
+        sol.Vm_single_to_single = np.nan + np.ones(shape_single) 
 
-        sol.EVw_start_single = np.nan + np.ones(shape_single)
-        sol.EVm_start_single = np.nan + np.ones(shape_single)  
-        sol.EmargVw_start_single = np.nan + np.ones(shape_single)
-        sol.EmargVm_start_single = np.nan + np.ones(shape_single)  
+        sol.Cw_priv_single_to_single = np.nan + np.ones(shape_single)     # private consumption, single
+        sol.Cm_priv_single_to_single = np.nan + np.ones(shape_single)
+        sol.Cw_pub_single_to_single = np.nan + np.ones(shape_single)      # public consumption, single (i guess this functions as a private good when single)
+        sol.Cm_pub_single_to_single = np.nan + np.ones(shape_single)
+        sol.Cw_tot_single_to_single = np.nan + np.ones(shape_single)      # total concumption, single
+        sol.Cm_tot_single_to_single = np.nan + np.ones(shape_single)
 
-        sol.Vw_trans_single = np.nan + np.ones(shape_single)        # Value marriage -> single
-        sol.Vm_trans_single = np.nan + np.ones(shape_single)
-        sol.Cw_priv_trans_single = np.nan + np.ones(shape_single)   # Private consumption marriage -> single
-        sol.Cm_priv_trans_single = np.nan + np.ones(shape_single)
-        sol.Cw_pub_trans_single = np.nan + np.ones(shape_single)    # Public consumption marriage -> single 
-        sol.Cm_pub_trans_single = np.nan + np.ones(shape_single)
-        sol.Cw_tot_trans_single = np.nan + np.ones(shape_single)    # Total consumption marriage -> single
-        sol.Cm_tot_trans_single = np.nan + np.ones(shape_single)    # (Are these different from consumption when single? - no bc singlehood is absorbing)
+        sol.EVw_start_as_single = np.nan + np.ones(shape_single)
+        sol.EVm_start_as_single = np.nan + np.ones(shape_single)  
+        sol.EmargVw_start_as_single = np.nan + np.ones(shape_single)
+        sol.EmargVm_start_as_single = np.nan + np.ones(shape_single)  
+
+        sol.Vw_couple_to_single = np.nan + np.ones(shape_single)        # Value marriage -> single
+        sol.Vm_couple_to_single = np.nan + np.ones(shape_single)
+
+        sol.Cw_priv_couple_to_single = np.nan + np.ones(shape_single)   # Private consumption marriage -> single
+        sol.Cm_priv_couple_to_single = np.nan + np.ones(shape_single)
+        sol.Cw_pub_couple_to_single = np.nan + np.ones(shape_single)    # Public consumption marriage -> single 
+        sol.Cm_pub_couple_to_single = np.nan + np.ones(shape_single)    # Not used
+        sol.Cw_tot_couple_to_single = np.nan + np.ones(shape_single)
+        sol.Cm_tot_couple_to_single = np.nan + np.ones(shape_single)
 
         # couples
         shape_couple = (par.T,par.num_power,par.num_love,par.num_A)     # states when couple: T, assets, power, love
-        sol.Vw_couple = np.nan + np.ones(shape_couple)
-        sol.Vm_couple = np.nan + np.ones(shape_couple)
-        sol.Cw_priv_couple = np.nan + np.ones(shape_couple)             # private consumption, couple
-        sol.Cm_priv_couple = np.nan + np.ones(shape_couple)             
-        sol.C_pub_couple = np.nan + np.ones(shape_couple)               # public consumption, couple
-        sol.C_tot_couple = np.zeros(shape_couple)                       # total consumption, couple
+        sol.Vw_start_as_couple = np.nan + np.ones(shape_couple)
+        sol.Vm_start_as_couple = np.nan + np.ones(shape_couple)
+
+        sol.Cw_priv_start_as_couple = np.nan + np.ones(shape_couple)             # private consumption, couple
+        sol.Cm_priv_start_as_couple = np.nan + np.ones(shape_couple)             
+        sol.C_pub_start_as_couple = np.nan + np.ones(shape_couple)               # public consumption, couple
+        sol.C_tot_start_as_couple = np.zeros(shape_couple)                       # total consumption, couple
                                                                         # AMO: initialized at zero which is useful in upper envelope
 
-        sol.Vw_remain_couple = np.nan + np.ones(shape_couple)           # value marriage -> marriage
-        sol.Vm_remain_couple = np.nan + np.ones(shape_couple)
-        sol.V_remain_couple = -np.inf + np.ones(shape_couple)           # value marriage -> marriage, weighted by bargaining power (for DC-EGM)
+        sol.Vw_couple_to_couple = np.nan + np.ones(shape_couple)           # value marriage -> marriage
+        sol.Vm_couple_to_couple = np.nan + np.ones(shape_couple)
+        sol.V_couple_to_couple = -np.inf + np.ones(shape_couple)           # value marriage -> marriage, weighted by bargaining power (for DC-EGM)
                                                                         # AMO: initialized at -inf which is useful in upper envelope
-        sol.Cw_priv_remain_couple = np.nan + np.ones(shape_couple)      # private consumption, marriage -> marriage
-        sol.Cm_priv_remain_couple = np.nan + np.ones(shape_couple)      
-        sol.C_pub_remain_couple = np.nan + np.ones(shape_couple)        # public consumption, marriage -> marriage
-        sol.C_tot_remain_couple = np.nan + np.ones(shape_couple)        # total consumption, marriage -> marriage
+
+        sol.Cw_priv_couple_to_couple = np.nan + np.ones(shape_couple)      # private consumption, marriage -> marriage
+        sol.Cm_priv_couple_to_couple = np.nan + np.ones(shape_couple)      
+        sol.C_pub_couple_to_couple = np.nan + np.ones(shape_couple)        # public consumption, marriage -> marriage
+        sol.C_tot_couple_to_couple = np.nan + np.ones(shape_couple)        # total consumption, marriage -> marriage
         
         sol.Sw = np.nan + np.ones(par.num_power)                         # Surplus of mariage
         sol.Sm = np.nan + np.ones(par.num_power)
@@ -158,49 +162,52 @@ class HouseholdModelClass(EconModelClass):
 
 
         shape_to_couple = (par.T,par.num_love,par.num_A) 
-        sol.Vw_trans_couple = np.nan + np.ones(shape_to_couple)           # value single -> marriage
-        sol.Vm_trans_couple = np.nan + np.ones(shape_to_couple)
-        sol.V_trans_couple = -np.inf + np.ones(shape_to_couple)           
+        sol.Vw_single_to_couple = np.nan + np.ones(shape_to_couple)           # value single -> marriage
+        sol.Vm_single_to_couple = np.nan + np.ones(shape_to_couple)
+        sol.V_single_to_couple = -np.inf + np.ones(shape_to_couple)           
                                                                         
-        sol.Cw_priv_trans_couple = np.nan + np.ones(shape_to_couple)      
-        sol.Cm_priv_trans_couple = np.nan + np.ones(shape_to_couple)      
-        sol.C_pub_trans_couple = np.nan + np.ones(shape_to_couple)        
-        sol.C_tot_trans_couple = np.nan + np.ones(shape_to_couple)    
+        sol.Cw_priv_single_to_couple = np.nan + np.ones(shape_to_couple)      
+        sol.Cm_priv_single_to_couple = np.nan + np.ones(shape_to_couple)      
+        sol.C_pub_single_to_couple = np.nan + np.ones(shape_to_couple)        
+        sol.C_tot_single_to_couple = np.nan + np.ones(shape_to_couple)    
 
-        sol.power_trans = np.nan + np.zeros(shape_to_couple)
-        sol.power_idx_trans = np.zeros(shape_to_couple,dtype=np.int_)     
-                                                                                                                                       
+        # sol.power_trans = np.nan + np.zeros(shape_to_couple)
+        # sol.power_idx_trans = np.zeros(shape_to_couple,dtype=np.int_)     
+        shape_power =(par.T,par.num_love,par.num_A,par.num_A)           # AMO: power when transitioning to couple depends on love, own assets and partner assets
+        sol.initial_power = np.nan + np.zeros(shape_power)
+        sol.initial_power_idx = np.zeros(shape_power,dtype=np.int_)
+
         # temporary containers
         sol.savings_vec = np.zeros(par.num_shock_love)          
         sol.Vw_plus_vec = np.zeros(par.num_shock_love)          # not sure (next period maybe)
         sol.Vm_plus_vec = np.zeros(par.num_shock_love) 
 
         # EGM
-        sol.marg_V_couple = np.zeros(shape_couple)              # marginal value (wrt c total) of being couple
+        sol.margV_start_as_couple = np.zeros(shape_couple)              # marginal value (wrt c total) of being couple
 
         shape_egm = (par.T, par.num_power,par.num_love,par.num_A_pd)
         sol.EmargU_pd = np.zeros(shape_egm)                     # Expected marginal utility post-decision
         sol.C_tot_pd = np.zeros(shape_egm)                      # C for EGM
         sol.M_pd = np.zeros(shape_egm)                          # Endogenous grid
-        sol.V_couple_pd = np.zeros(shape_egm)                   # Value of being couple, post-decision
+        sol.V_couple_to_couple_pd = np.zeros(shape_egm)                   # Value of being couple, post-decision
 
-        sol.marg_Vw_single = np.zeros(shape_single)
-        sol.marg_Vm_single = np.zeros(shape_single)
+        # sol.marg_Vw_start_as_single = np.zeros(shape_single)
+        # sol.marg_Vm_start_as_single = np.zeros(shape_single)
 
-        sol.marg_Vw_trans_single = np.zeros(shape_single)
-        sol.marg_Vm_trans_single = np.zeros(shape_single)
+        # sol.marg_Vw_couple_to_single = np.zeros(shape_single)
+        # sol.marg_Vm_couple_to_single = np.zeros(shape_single)
 
-        sol.marg_Vw_trans_couple = np.zeros(shape_to_couple)
-        sol.marg_Vm_trans_couple = np.zeros(shape_to_couple)
-        sol.marg_V_trans_couple = np.zeros(shape_to_couple)
+        # sol.marg_Vw_trans_couple = np.zeros(shape_to_couple)
+        # sol.marg_Vm_trans_couple = np.zeros(shape_to_couple)
+        # sol.marg_V_trans_couple = np.zeros(shape_to_couple)
 
-        sol.EmargUw_single_pd = np.zeros(shape_single)           # Expected marginal utility post-decision, woman single
-        sol.C_totw_single_pd = np.zeros(par.num_A_pd)            # C for EGM, woman single 
-        sol.Mw_single_pd = np.zeros(par.num_A_pd)                # Endogenous grid, woman single
+        sol.EmargUw_single_to_single_pd = np.zeros(shape_single)           # Expected marginal utility post-decision, woman single
+        sol.C_totw_single_to_single_pd = np.zeros(par.num_A_pd)            # C for EGM, woman single 
+        sol.Mw_single_to_single_pd = np.zeros(par.num_A_pd)                # Endogenous grid, woman single
 
-        sol.EmargUm_single_pd = np.zeros(shape_single)          # Expected marginal utility post-decision, man single
-        sol.C_totm_single_pd = np.zeros(par.num_A_pd)           # C for EGM, man single
-        sol.Mm_single_pd = np.zeros(par.num_A_pd)               # Endogenous grid, man single
+        sol.EmargUm_single_to_single_pd = np.zeros(shape_single)          # Expected marginal utility post-decision, man single
+        sol.C_totm_single_to_single_pd = np.zeros(par.num_A_pd)           # C for EGM, man single
+        sol.Mm_single_to_single_pd = np.zeros(par.num_A_pd)               # Endogenous grid, man single
 
         # pre-compute optimal consumption allocation
         shape_pre = (par.num_power,par.num_Ctot)
@@ -326,20 +333,20 @@ class HouseholdModelClass(EconModelClass):
                 self.solve_couple(t)
 
         # total consumption
-        sol.C_tot_couple = sol.Cw_priv_couple + sol.Cm_priv_couple + sol.C_pub_couple
-        sol.C_tot_remain_couple = sol.Cw_priv_remain_couple + sol.Cm_priv_remain_couple + sol.C_pub_remain_couple
-        sol.Cw_tot_single = sol.Cw_priv_single + sol.Cw_pub_single
-        sol.Cm_tot_single = sol.Cm_priv_single + sol.Cm_pub_single
+        # sol.C_tot_couple = sol.Cw_priv_couple + sol.Cm_priv_couple + sol.C_pub_couple
+        # sol.C_tot_remain_couple = sol.Cw_priv_remain_couple + sol.Cm_priv_remain_couple + sol.C_pub_remain_couple
+        # sol.Cw_tot_single = sol.Cw_priv_single + sol.Cw_pub_single
+        # sol.Cm_tot_single = sol.Cm_priv_single + sol.Cm_pub_single
 
         # value of transitioning to singlehood. Done here because absorbing . it is the same as entering period as single.
-        sol.Vw_trans_single = sol.Vw_single.copy()
-        sol.Vm_trans_single = sol.Vm_single.copy()
-        sol.Cw_priv_trans_single = sol.Cw_priv_single.copy()
-        sol.Cm_priv_trans_single = sol.Cm_priv_single.copy()
-        sol.Cw_pub_trans_single = sol.Cw_pub_single.copy()
-        sol.Cm_pub_trans_single = sol.Cm_pub_single.copy()
-        sol.Cw_tot_trans_single = sol.Cw_tot_single.copy()
-        sol.Cm_tot_trans_single = sol.Cm_tot_single.copy()
+        # sol.Vw_trans_single = sol.Vw_single.copy()
+        # sol.Vm_trans_single = sol.Vm_single.copy()
+        # sol.Cw_priv_trans_single = sol.Cw_priv_single.copy()
+        # sol.Cm_priv_trans_single = sol.Cm_priv_single.copy()
+        # sol.Cw_pub_trans_single = sol.Cw_pub_single.copy()
+        # sol.Cm_pub_trans_single = sol.Cm_pub_single.copy()
+        # sol.Cw_tot_trans_single = sol.Cw_tot_single.copy()
+        # sol.Cm_tot_trans_single = sol.Cm_tot_single.copy()
         
         # End timing
         sol.solution_time[0] = time.time() - start_time

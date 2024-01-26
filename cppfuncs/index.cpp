@@ -18,7 +18,10 @@ namespace index {
     int couple(int t,int iP,int iL,int iA,par_struct* par){
         return index4(t,iP,iL,iA , par->T,par->num_power,par->num_love,par->num_A); 
     }
-    int trans_to_couple(int t,int iL,int iA,par_struct* par){
+    int couple_pd(int t,int iP,int iL,int iA_pd,par_struct* par){
+        return index4(t,iP,iL,iA_pd , par->T,par->num_power,par->num_love,par->num_A_pd); 
+    }
+    int single_to_couple(int t,int iL,int iA,par_struct* par){
         return index3(t,iL,iA , par->T,par->num_love,par->num_A); 
     }
     int single(int t,int iA,par_struct* par){

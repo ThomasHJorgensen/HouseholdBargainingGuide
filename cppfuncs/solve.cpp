@@ -14,11 +14,14 @@ EXPORT void solve(sol_struct *sol, par_struct *par){
     // loop backwards
     for (int t = par->T-1; t >= 0; t--){
 
-        single::solve_remain_single(t,sol,par); 
+        single::solve_single_to_single(t,sol,par); 
+        single::solve_couple_to_single(t,sol,par); 
         couple::solve_couple(t,sol,par);
+        single::expected_value_start_single(t,sol,par);
 
         // if(t>=(par->T-1)){
-        //     single::solve_remain_trans_single(t,sol,par); // TODO: introduce remain_single solution and update code.
+        //     single::solve_single_to_single(t,sol,par);
+        //     single::solve_couple_to_single(t,sol,par); //AMO: maybe put this in couple namespace?
         //     couple::solve_remain_start_trans_couple(t,sol,par); 
         //     single::expected_value_start_single(t,sol,par); // expectation over potential partners, using value of trans to couple and value of remain single
         // }

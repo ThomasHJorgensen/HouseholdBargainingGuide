@@ -11,48 +11,48 @@ namespace sim {
         
         // a. value of remaining a couple at current power
         double power = -1.0; // initialize as divorce
-        int idx_sol = index::index4(t,0,0,0,par->T,par->num_power,par->num_love,par->num_A); 
-        double Vw_couple, Vm_couple;
-        tools::interp_3d_2out(par->grid_power,par->grid_love,par->grid_A, par->num_power,par->num_love,par->num_A, &sol->Vw_remain_couple[idx_sol],&sol->Vm_remain_couple[idx_sol], power_lag,love,A_lag, &Vw_couple, &Vm_couple);
+        int idx_sol = index::couple(t,0,0,0,par); 
+        double Vw_couple_to_couple, Vm_couple_to_couple;
+        tools::interp_3d_2out(par->grid_power,par->grid_love,par->grid_A, par->num_power,par->num_love,par->num_A, &sol->Vw_couple_to_couple[idx_sol],&sol->Vm_couple_to_couple[idx_sol], power_lag,love,A_lag, &Vw_couple_to_couple, &Vm_couple_to_couple);
 
         // b. value of transitioning into singlehood
-        int idx_single = index::index2(t,0,par->T,par->num_A);
-        double Vw_single = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Vw_trans_single[idx_single],Aw_lag);
-        double Vm_single = tools::interp_1d(par->grid_Am,par->num_A,&sol->Vm_trans_single[idx_single],Am_lag);
+        int idx_single = index::single(t,0,par);
+        double Vw_couple_to_single = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Vw_couple_to_single[idx_single],Aw_lag);
+        double Vm_couple_to_single = tools::interp_1d(par->grid_Am,par->num_A,&sol->Vm_couple_to_single[idx_single],Am_lag);
         
         // c. check participation constraints
-        if ((Vw_couple>=Vw_single) & (Vm_couple>=Vm_single)){
+        if ((Vw_couple_to_couple>=Vw_couple_to_single) & (Vm_couple_to_couple>=Vm_couple_to_single)){
             power = power_lag;
 
-        } else if ((Vw_couple<Vw_single) & (Vm_couple<Vm_single)){
+        } else if ((Vw_couple_to_couple<Vw_couple_to_single) & (Vm_couple_to_couple<Vm_couple_to_single)){
             power = -1.0;
 
         } else {
           
             // i. determine which partner is unsatisfied
             double* V_power_vec = new double[par->num_power];
-            double* V_remain_couple;
-            double* V_remain_couple_partner;
-            double V_single;
-            double V_single_partner;
+            double* V_couple_to_couple;
+            double* V_couple_to_couple_partner;
+            double V_couple_to_single;
+            double V_couple_to_single_partner;
             double* grid_power;
             bool flip = false;
-            if ((Vm_couple>=Vm_single)){ // woman wants to leave
-                V_single = Vw_single;
-                V_single_partner = Vm_single;
+            if ((Vm_couple_to_couple>=Vm_couple_to_single)){ // woman wants to leave
+                V_couple_to_single = Vw_couple_to_single;
+                V_couple_to_single_partner = Vm_couple_to_single;
 
-                V_remain_couple = sol->Vw_remain_couple;
-                V_remain_couple_partner = sol->Vm_remain_couple;  
+                V_couple_to_couple = sol->Vw_couple_to_couple;
+                V_couple_to_couple_partner = sol->Vm_couple_to_couple;  
 
                 flip = false;
                 grid_power = par->grid_power;                
 
             } else { // man wants to leave
-                V_single = Vm_single;
-                V_single_partner = Vw_single;
+                V_couple_to_single = Vm_couple_to_single;
+                V_couple_to_single_partner = Vw_couple_to_single;
 
-                V_remain_couple = sol->Vm_remain_couple;
-                V_remain_couple_partner = sol->Vw_remain_couple;
+                V_couple_to_couple = sol->Vm_couple_to_couple;
+                V_couple_to_couple_partner = sol->Vw_couple_to_couple;
 
                 flip = true;
                 grid_power = par->grid_power_flip;
@@ -68,11 +68,11 @@ namespace sim {
                 } else {
                     idx = index::index4(t,iP,0,0,par->T,par->num_power,par->num_love,par->num_A); 
                 }
-                V_power_vec[iP] = tools::_interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A,&V_remain_couple[idx],love,A_lag,j_love,j_A);
+                V_power_vec[iP] = tools::_interp_2d(par->grid_love,par->grid_A,par->num_love,par->num_A,&V_couple_to_couple[idx],love,A_lag,j_love,j_A);
             }
             
             // iii. interpolate the power based on the value of single to find indifference-point. (flip the axis)
-            power = tools::interp_1d(V_power_vec, par->num_power, grid_power, V_single);
+            power = tools::interp_1d(V_power_vec, par->num_power, grid_power, V_couple_to_single);
             delete V_power_vec;
 
             if((power<0.0)|(power>1.0)){ // divorce
@@ -81,8 +81,8 @@ namespace sim {
 
             // iv. find marital surplus of partner at this new power allocation
             int j_power = tools::binary_search(0,par->num_power,par->grid_power,power);
-            double V_power_partner = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A, par->num_power,par->num_love,par->num_A, &V_remain_couple_partner[idx_sol], power,love,A_lag,j_power,j_love,j_A);
-            double S_partner = couple::calc_marital_surplus(V_power_partner,V_single_partner,par);
+            double V_power_partner = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A, par->num_power,par->num_love,par->num_A, &V_couple_to_couple_partner[idx_sol], power,love,A_lag,j_power,j_love,j_A);
+            double S_partner = couple::calc_marital_surplus(V_power_partner,V_couple_to_single_partner,par);
             
             // v. check if partner is happy. If not divorce
             if(S_partner<0.0){
@@ -172,10 +172,10 @@ namespace sim {
                         // optimal consumption allocation if couple (interpolate in power, love, A)
                         int idx_sol = index::index4(t,0,0,0,par->T,par->num_power,par->num_love,par->num_A);
                         if (par->interp_power){                            
-                            C_tot = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A,&sol->C_tot_couple[idx_sol],power_lag,love,A_lag,idx_power,idx_love,idx_A);
+                            C_tot = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A,&sol->C_tot_couple_to_couple[idx_sol],power_lag,love,A_lag,idx_power,idx_love,idx_A);
                         }
                         else{
-                            C_tot = tools::interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A ,&sol->C_tot_couple[idx_sol],power,love,A_lag);
+                            C_tot = tools::interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A ,&sol->C_tot_couple_to_couple[idx_sol],power,love,A_lag);
                         }
 
                         double C_pub = 0.0;
@@ -203,11 +203,11 @@ namespace sim {
 
                         // pick relevant solution for single, depending on whether just became single
                         int idx_sol_single = index::index2(t,0,par->T,par->num_A);
-                        double *sol_single_w = &sol->Cw_tot_trans_single[idx_sol_single];
-                        double *sol_single_m = &sol->Cm_tot_trans_single[idx_sol_single];
+                        double *sol_single_w = &sol->Cw_tot_couple_to_single[idx_sol_single];
+                        double *sol_single_m = &sol->Cm_tot_couple_to_single[idx_sol_single];
                         if (power_lag<0){
-                            sol_single_w = &sol->Cw_tot_single[idx_sol_single];
-                            sol_single_m = &sol->Cm_tot_single[idx_sol_single];
+                            sol_single_w = &sol->Cw_tot_single_to_single[idx_sol_single];
+                            sol_single_m = &sol->Cm_tot_single_to_single[idx_sol_single];
                         } 
 
                         // optimal consumption allocations

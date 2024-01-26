@@ -1,0 +1,3 @@
+- Remove t from pd objects (in sol) -> kill EGM sol objects?
+- We haven't changed index2, etc. (index functions that are not specifically couple or single)
+- C_..._single is weird
