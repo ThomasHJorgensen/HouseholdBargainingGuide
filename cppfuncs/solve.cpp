@@ -14,7 +14,7 @@ EXPORT void solve(sol_struct *sol, par_struct *par){
     // loop backwards
     for (int t = par->T-1; t >= 0; t--){
 
-        single::solve_single(t,sol,par); 
+        single::solve_remain_single(t,sol,par); 
         couple::solve_couple(t,sol,par);
 
         // if(t>=(par->T-1)){

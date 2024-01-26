@@ -167,7 +167,7 @@ namespace single {
 
 
 
-    void solve_single(int t,sol_struct *sol,par_struct *par){
+    void solve_remain_single(int t,sol_struct *sol,par_struct *par){
         double love = 0.0; // no love for singles 
 
         // terminal period
@@ -226,7 +226,7 @@ namespace single {
                         // WOMEN
                         // settings
                         solver_data->M = Mw;
-                        solver_data->V_next = &sol->Vw_single[index::single(t+1,0,par)];
+                        solver_data->V_next = &sol->Vw_single[index::single(t+1,0,par)]; // sol->EVw_start_single;
                         solver_data->gender = woman;
                         solver_data->par = par;
                         nlopt_set_min_objective(opt, objfunc_single, solver_data); 
@@ -249,7 +249,7 @@ namespace single {
                         // MEN
                         // settings
                         solver_data->M = Mm;
-                        solver_data->V_next = &sol->Vm_single[index::single(t+1,0,par)];
+                        solver_data->V_next = &sol->Vm_single[index::single(t+1,0,par)]; // sol->EVm_start_single;
                         solver_data->gender = man;
                         solver_data->par = par;
                         nlopt_set_min_objective(opt, objfunc_single, solver_data);
@@ -281,7 +281,7 @@ namespace single {
 
     void solve_remain_trans_single(int t,sol_struct *sol,par_struct *par){
         // solve for value of remaining single
-        solve_single(t,sol,par);
+        solve_remain_single(t,sol,par);
 
         // add divorce cost to get value of transition into singlehood
         #pragma omp parallel num_threads(par->threads)
@@ -304,8 +304,24 @@ namespace single {
         }
         
     }
-
     void expected_value_start_single(int t,sol_struct* sol,par_struct* par){
+        #pragma omp parallel num_threads(par->threads)
+        {
+            index::index_couple_struct* idx_couple = new index::index_couple_struct;
+
+            // loop over states
+            #pragma omp for
+            for (int iA=0; iA<par->num_A;iA++){
+                int idx = index::single(t,iA,par);
+                // sol->EVw_start_single[idx] = sol->Vw_remain_single[idx]; // not there yet
+                // sol->EVm_start_single[idx] = sol->Vm_remain_single[idx];
+                // add marginal values
+
+            }
+        }
+    }
+
+    void expected_value_start_single_new(int t,sol_struct* sol,par_struct* par){
         #pragma omp parallel num_threads(par->threads)
         {
             index::index_couple_struct* idx_couple = new index::index_couple_struct;
@@ -335,7 +351,14 @@ namespace single {
                         double prob_love = par->prob_partner_love[i_love]; 
                         double prob_w = prob_A_w*prob_love;
                         double prob_m = prob_A_m*prob_love;
+
+                        // find value of s->m (interpolate in A_tot) and s->s (on grid in A_j)
+                        // bargain over consumption
+                        // check if remaining single or joining couple
+                        // update expected value
                         
+
+                        // OLD:
                         // find relevant value function 
                         int idx_trans = index::trans_to_couple(t,i_love,iA,par);
                         int power_idx = sol->power_idx_trans[idx_trans];

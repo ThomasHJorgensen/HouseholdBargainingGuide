@@ -41,7 +41,6 @@ class HouseholdModelClass(EconModelClass):
         
         par.div_A_share = 0.5 # divorce share of wealth to wife
         par.div_cost = 0.0
-        par.initial_nash = True
         
         # income
         par.inc_w = 1.0
@@ -120,6 +119,8 @@ class HouseholdModelClass(EconModelClass):
 
         sol.EVw_start_single = np.nan + np.ones(shape_single)
         sol.EVm_start_single = np.nan + np.ones(shape_single)  
+        sol.EmargVw_start_single = np.nan + np.ones(shape_single)
+        sol.EmargVm_start_single = np.nan + np.ones(shape_single)  
 
         sol.Vw_trans_single = np.nan + np.ones(shape_single)        # Value marriage -> single
         sol.Vm_trans_single = np.nan + np.ones(shape_single)
