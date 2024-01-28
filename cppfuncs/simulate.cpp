@@ -140,7 +140,7 @@ namespace sim {
                             idx_love = tools::binary_search(0,par->num_love,par->grid_love,love);
                             idx_A = tools::binary_search(0,par->num_A,par->grid_A,A_lag);
 
-                            // 2. check if close to divorce
+                            // 2. check if close to divorce - AMO: need to check for discontinuity in all dimensions!
                             int idx = index::index4(t,idx_power,idx_love,idx_A,par->T,par->num_power,par->num_love,par->num_A);
                             int idxp1 = index::index4(t,idx_power,idx_love+1,idx_A,par->T,par->num_power,par->num_love,par->num_A);
                             if ((sol->power[idx]<0.0) | (sol->power[idxp1]<0.0)){

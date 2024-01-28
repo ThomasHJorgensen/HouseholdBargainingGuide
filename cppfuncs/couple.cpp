@@ -445,4 +445,27 @@ namespace couple {
         } // pragma
     }
     
+
+    void solve_single_to_couple(int t, sol_struct *sol, par_struct *par){
+        #pragma omp parallel num_threads(par->threads)
+        {
+            #pragma omp for
+            for (int iP=0; iP<par->num_power; iP++){
+                for (int iL=0; iL< par->num_love; iL++){
+                    for (int iA=0; iA<par->num_A;iA++){
+                        int idx = index::couple(t,iP,iL,iA,par);
+
+                        sol->Vw_single_to_couple[idx] = sol->Vw_couple_to_couple[idx];
+                        sol->Vm_single_to_couple[idx] = sol->Vm_couple_to_couple[idx];
+                        sol->Cw_priv_single_to_couple[idx] = sol->Cw_priv_couple_to_couple[idx];
+                        sol->Cm_priv_single_to_couple[idx] = sol->Cm_priv_couple_to_couple[idx];
+                        sol->C_pub_single_to_couple[idx] = sol->C_pub_couple_to_couple[idx];  
+                        sol->Cw_tot_single_to_couple[idx] = sol->Cw_priv_single_to_couple[idx] + sol->C_pub_single_to_couple[idx];
+                        sol->Cm_tot_single_to_couple[idx] = sol->Cm_priv_single_to_couple[idx] + sol->C_pub_single_to_couple[idx];
+                    } // wealth
+                } // love
+            } // power
+        } // pragma
+    }
+    
 }
