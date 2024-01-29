@@ -37,7 +37,7 @@ class HouseholdModelClass(EconModelClass):
         par = self.par
         
         par.R = 1.03
-        par.beta = 1.0 #1.0/par.R # Discount factor
+        par.beta = 1.0/par.R # Discount factor
         
         par.div_A_share = 0.5 # divorce share of wealth to wife
         par.div_cost = 0.0
@@ -75,6 +75,9 @@ class HouseholdModelClass(EconModelClass):
 
         par.sigma_love = 0.1
         par.num_shock_love = 5
+
+        # re-partnering
+        par.p_meet = 0.1
 
         # pre-computation
         par.num_Ctot = 100
@@ -174,7 +177,6 @@ class HouseholdModelClass(EconModelClass):
         sol.V_couple_to_couple_pd = np.zeros(shape_egm)         # Value of being couple, post-decision
 
         ## b.2. single to couple
-        shape_to_couple = (par.T,par.num_love,par.num_A)        # AMO: pretty sure these should be power dependent also
         sol.Vw_single_to_couple = np.nan + np.ones(shape_couple)           # value single -> marriage
         sol.Vm_single_to_couple = np.nan + np.ones(shape_couple)
         sol.V_single_to_couple = -np.inf + np.ones(shape_couple)           
@@ -184,10 +186,8 @@ class HouseholdModelClass(EconModelClass):
         sol.C_pub_single_to_couple = np.nan + np.ones(shape_couple)        
         sol.Cw_tot_single_to_couple = np.nan + np.ones(shape_couple)   
         sol.Cm_tot_single_to_couple = np.nan + np.ones(shape_couple) 
-
-        # sol.power_trans = np.nan + np.zeros(shape_to_couple)
-        # sol.power_idx_trans = np.zeros(shape_to_couple,dtype=np.int_)     
-        shape_power =(par.T,par.num_love,par.num_A,par.num_A)           # AMO: power when transitioning to couple depends on love, own assets and partner assets
+  
+        shape_power =(par.T,par.num_love,par.num_A,par.num_A)          
         sol.initial_power = np.nan + np.zeros(shape_power)
         sol.initial_power_idx = np.zeros(shape_power,dtype=np.int_)
 
@@ -245,7 +245,6 @@ class HouseholdModelClass(EconModelClass):
         sim.init_power_idx = par.num_power//2 * np.ones(par.simN,dtype=np.int_)
         sim.init_love = np.zeros(par.simN)
         
-
         # f. timing
         sol.solution_time = np.array([0.0])
         
@@ -300,7 +299,7 @@ class HouseholdModelClass(EconModelClass):
         par.grid_Am_pd = (1.0 - par.div_A_share) * par.grid_A_pd
 
         # re-partering probabilities
-        par.prob_repartner = 0.1*np.ones(par.T) # likelihood of meeting a partner
+        par.prob_repartner = par.p_meet*np.ones(par.T) # likelihood of meeting a partner
 
         par.prob_partner_A_w = np.eye(par.num_A) # likelihood of meeting a partner with a particular level of wealth, conditional on own
         par.prob_partner_A_m = np.eye(par.num_A) # likelihood of meeting a partner with a particular level of wealth, conditional on own

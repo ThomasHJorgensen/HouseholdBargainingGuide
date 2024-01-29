@@ -224,10 +224,6 @@ namespace single {
                 intraperiod_allocation(&sol->Cm_priv_single_to_single[idx],&sol->Cm_pub_single_to_single[idx],sol->Cm_tot_single_to_single[idx],man,par);
                 sol->Vm_single_to_single[idx] = utils::util(sol->Cm_priv_single_to_single[idx],sol->Cm_pub_single_to_single[idx],man,par,love);
 
-                // if (par->do_egm) {
-                //     sol->margVw_single[idx] = par->beta*par->R*utils::marg_util_C(sol->Cw_tot_single[idx], woman, par);
-                //     sol->margVm_single[idx] = par->beta*par->R*utils::marg_util_C(sol->Cm_tot_single[idx], man, par);
-                // }
             }
         } else {
             if (par->do_egm) {
@@ -346,9 +342,9 @@ namespace single {
         double Vm_single = sol->Vm_single_to_single[idx_single_m];
 
         // b. Setup values for being in couple
-        double* Vw_single_to_couple = new double[par->num_power];
-        double* Vm_single_to_couple = new double[par->num_power];
-        double* nash_surplus = new double[par->num_power];
+        double Vw_single_to_couple = 0.0;
+        double Vm_single_to_couple = 0.0;
+        double nash_surplus = 0.0;
 
         int max_idx = -1;
         double max_nash_surplus = 0.0; 
@@ -362,210 +358,24 @@ namespace single {
         // c. loop over bargaining weights
         for (int iP=0; iP < par->num_power; iP++){
             int idx_interp = index::couple(t, iP, iL, 0, par);;
-            Vw_single_to_couple[iP] = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vw_single_to_couple[idx_interp], A_tot, iA); // AMO: can this be moved outside loop? not sure
-            Vm_single_to_couple[iP] = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vm_single_to_couple[idx_interp], A_tot, iA);
-            Sw = Vw_single_to_couple[iP] - Vw_single;
-            Sm = Vm_single_to_couple[iP] - Vm_single;
+            Vw_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vw_single_to_couple[idx_interp], A_tot, iA);
+            Vm_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vm_single_to_couple[idx_interp], A_tot, iA);
+            Sw = Vw_single_to_couple - Vw_single;
+            Sm = Vm_single_to_couple - Vm_single;
 
+            // c.1. find power idx that maxes Nash surplus
             if ((Sw>0) & (Sm>0)){
-                nash_surplus[iP] = Sw*Sm;
-                if (nash_surplus[iP] > max_nash_surplus){
-                    // check surplus is positive
-                    max_nash_surplus = nash_surplus[iP];
+                nash_surplus = Sw*Sm;
+                if (nash_surplus > max_nash_surplus){
+                    max_nash_surplus = nash_surplus;
                     max_idx = iP;
                 }
             }
         }
-
-        delete[] Vw_single_to_couple;
-        delete[] Vm_single_to_couple;
-        delete[] nash_surplus;
-
         return max_idx;
     }
 
-
     void expected_value_start_single(int t,sol_struct* sol,par_struct* par){
-        // a. compute initial bargaining weights
-        #pragma omp parallel num_threads(par->threads)
-        {
-            // loop over states
-            #pragma omp for
-            for (int iAw=0; iAw<par->num_A;iAw++){
-                for (int iAm=0; iAm<par->num_A;iAm++){
-                    // only calculate if match has positive probability of happening
-                    int idx_w = index::index2(iAw,iAm,par->num_A,par->num_A);
-                    double pw = par->prob_partner_A_w[idx_w]; // woman's prob of meeting man
-                    int idx_m = index::index2(iAm,iAw,par->num_A,par->num_A);
-                    double pm = par->prob_partner_A_m[idx_w]; // man's prob of meeting
-
-                    if (pw > 0.0 || pm > 0.0) {
-                        for (int iL=0; iL<par->num_love;iL++){
-                            int idx = index::index4(t,iL,iAw,iAm,par->T,par->num_love,par->num_A,par->num_A);
-                            sol->initial_power_idx[idx] = calc_initial_bargaining_weight(t, iL, iAw, iAm, sol, par);
-                        } // love
-                    } // if
-                } // iAm
-            } // iAw
-        } // pragma
-
-        #pragma omp parallel num_threads(par->threads)
-        {
-            index::index_couple_struct* idx_couple = new index::index_couple_struct;
-
-            // loop over states
-            #pragma omp for
-            for (int iA=0; iA<par->num_A;iA++){
-                int idx = index::single(t,iA,par);
-                sol->EVw_start_as_single[idx] = sol->Vw_single_to_single[idx]; // not there yet
-                sol->EVm_start_as_single[idx] = sol->Vm_single_to_single[idx];
-                // add marginal values
-            }
-        }
-        
-        if (par->do_egm){
-            calc_marginal_value_single(t, woman, sol, par);
-            calc_marginal_value_single(t, man, sol, par);
-        }
-    }
-
-    void expected_value_start_single_test(int t, sol_struct *sol, par_struct *par){
-         #pragma omp parallel num_threads(par->threads)
-        {
-            index::index_couple_struct* idx_couple = new index::index_couple_struct;
-
-            // a. calculate initial bargaining weights
-            // loop over states
-            #pragma omp for
-            for (int iAw=0; iAw<par->num_A;iAw++){
-                for (int iAm=0; iAm<par->num_A;iAm++){
-                    // only calculate if match has positive probability of happening
-                    int idx_w = index::index2(iAw,iAm,par->num_A,par->num_A);
-                    double pw = par->prob_partner_A_w[idx_w]; // woman's prob of meeting man
-                    int idx_m = index::index2(iAm,iAw,par->num_A,par->num_A);
-                    double pm = par->prob_partner_A_m[idx_m]; // man's prob of meeting
-
-                    if (true){ //(pw > 0.0 || pm > 0.0) {
-                        for (int iL=0; iL<par->num_love;iL++){
-                            int idx = index::index4(t,iL,iAw,iAm,par->T,par->num_love,par->num_A,par->num_A);
-                            sol->initial_power_idx[idx] = calc_initial_bargaining_weight(t, iL, iAw, iAm, sol, par);
-                        } // love
-                    } // if
-                } // iAm
-            } // iAw
-
-
-            // b. Loop over states
-            #pragma omp for
-            for (int iA=0; iA<par->num_A;iA++){
-
-                // value of remaining single
-                int idx_single = index::single(t,iA,par);
-                double Vw_single_to_single = sol->Vw_single_to_single[idx_single]; //remain
-                double Vm_single_to_single = sol->Vm_single_to_single[idx_single];
-
-                // b.1. loop over potential partners conditional on meeting a partner
-                double Ev_cond_w = 0.0;
-                double Ev_cond_m = 0.0;
-                double val_w = 0.0;
-                double val_m = 0.0;
-
-                int iL_determ = 39;
-                int iAp_determ = 25;
-
-                // b.1.2. bargain over consumption
-                int idx_power_w = index::index4(t,iL_determ,iA,iAp_determ,par->T,par->num_love,par->num_A,par->num_A);
-                int iPw = sol->initial_power_idx[idx_power_w];
-                int idx_power_m = index::index4(t,iL_determ,iAp_determ,iA,par->T,par->num_love,par->num_A,par->num_A);
-                int iPm = sol->initial_power_idx[idx_power_m];
-
-                // int iPm = 10;
-                // int iPw = 10;
-
-                 //Value for woman
-                if (iPw>=0){
-                    double Aw_tot = par->grid_Aw[iA] + par->grid_Am[iAp_determ]; 
-                    int idx_interp = index::couple(t,iPw,iL_determ,0,par);
-                    val_w = tools::interp_1d(par->grid_A,par->num_A,&sol->Vw_single_to_couple[idx_interp],Aw_tot);
-                } else {
-                    val_w = Vw_single_to_single;
-                }
-
-                // Value for man
-                if (iPm>=0){
-                    double Am_tot = par->grid_Am[iA] + par->grid_Aw[iAp_determ];
-                    int idx_interp = index::couple(t,iPm,iL_determ,0,par);
-                    val_m = tools::interp_1d(par->grid_A,par->num_A,&sol->Vm_single_to_couple[idx_interp],Am_tot);
-                } else {
-                    val_m = Vm_single_to_single;
-                }
-
-                // for(int iL=0;iL<par->num_love;iL++){
-                //     for(int iAp=0;iAp<par->num_A;iAp++){ // partner's wealth 
-
-                //         // b.1.1. probability of meeting a specific type of partner
-                //         int idx_A = index::index2(iA,iAp,par->num_A,par->num_A);
-                //         double prob_A_w = par->prob_partner_A_w[idx_A]; 
-                //         double prob_A_m = par->prob_partner_A_m[idx_A]; 
-                //         double prob_love = par->prob_partner_love[iL]; 
-                //         double prob_w = prob_A_w*prob_love;
-                //         double prob_m = prob_A_m*prob_love;
-
-                //         // b.1.2. bargain over consumption
-                //         double A_tot_w = par->grid_Aw[iA] + par->grid_Am[iAp];
-                //         double A_tot_m = par->grid_Am[iA] + par->grid_Aw[iAp]; //assymetric if grids are not identical
-
-                //         int idx_power_w = index::index4(t,iL,iA,iAp,par->T,par->num_love,par->num_A,par->num_A);
-                //         int iPw = sol->initial_power_idx[idx_power_w];
-                //         int idx_power_m = index::index4(t,iL,iAp,iA,par->T,par->num_love,par->num_A,par->num_A);
-                //         int iPm = sol->initial_power_idx[idx_power_m];
-                //         // AMO: note that power_idx_m and power_idx_w are different if grids or preferences are not symmetric
-                       
-                //         // b.1.3 Value conditional on meeting partner
-                //         //Value for woman
-                //         if (iPw>=0){
-                //             double Aw_tot = par->grid_Aw[iA] + par->grid_Aw[iAp]; 
-                //             int idx_interp = index::couple(t,iPw,iL,0,par);
-                //             val_w = tools::interp_1d(par->grid_A,par->num_A,&sol->Vw_single_to_couple[idx_interp],Aw_tot);
-                //         } else {
-                //             val_w = Vw_single_to_single;
-                //         }
-
-                //         // Value for man
-                //         if (iPm>=0){
-                //             double Am_tot = par->grid_Am[iA] + par->grid_Am[iAp];
-                //             int idx_interp = index::couple(t,iPm,iL,0,par);
-                //             val_m = tools::interp_1d(par->grid_A,par->num_A,&sol->Vm_single_to_couple[idx_interp],Am_tot);
-                //         } else {
-                //             val_m = Vm_single_to_single;
-                //         }
-
-                //         // expected value conditional on meeting a partner
-                //         Ev_cond_w += prob_w*val_w;
-                //         Ev_cond_m += prob_m*val_m;
-
-                //     } // iAp
-                // } // love 
-
-                // b.2. expected value of starting single
-                double p_meet = par->prob_repartner[t]; 
-                double Ev_w = p_meet*val_w + (1.0-p_meet)*Vw_single_to_single;
-                double Ev_m = p_meet*val_m + (1.0-p_meet)*Vm_single_to_single;
-
-                sol->EVw_start_as_single[idx_single] = Ev_w;
-                sol->EVm_start_as_single[idx_single] = Ev_m;
-
-            } // iA
-        } // pragma
-
-        if (par->do_egm){
-            calc_marginal_value_single(t, woman, sol, par);
-            calc_marginal_value_single(t, man, sol, par);
-        }
-
-    }
-
-    void expected_value_start_single_new_full(int t,sol_struct* sol,par_struct* par){
         #pragma omp parallel num_threads(par->threads)
         {
             index::index_couple_struct* idx_couple = new index::index_couple_struct;
@@ -581,7 +391,7 @@ namespace single {
                     int idx_m = index::index2(iAm,iAw,par->num_A,par->num_A);
                     double pm = par->prob_partner_A_m[idx_w]; // man's prob of meeting
 
-                    if (true){ //(pw > 0.0 || pm > 0.0) {
+                    if ((pw > 0.0) | (pm > 0.0)) {
                         for (int iL=0; iL<par->num_love;iL++){
                             int idx = index::index4(t,iL,iAw,iAm,par->T,par->num_love,par->num_A,par->num_A);
                             sol->initial_power_idx[idx] = calc_initial_bargaining_weight(t, iL, iAw, iAm, sol, par);
@@ -589,7 +399,6 @@ namespace single {
                     } // if
                 } // iAm
             } // iAw
-
 
             // b. Loop over states
             #pragma omp for
@@ -617,20 +426,16 @@ namespace single {
                         double prob_m = prob_A_m*prob_love;
 
                         // // b.1.2. bargain over consumption
-                        // double A_tot_w = par->grid_Aw[iA] + par->grid_Am[iAp];
-                        // double A_tot_m = par->grid_Am[iA] + par->grid_Aw[iAp]; //assymetric if grids are not identical
-
                         int idx_power_w = index::index4(t,iL,iA,iAp,par->T,par->num_love,par->num_A,par->num_A);
                         int iPw = sol->initial_power_idx[idx_power_w];
 
                         int idx_power_m = index::index4(t,iL,iAp,iA,par->T,par->num_love,par->num_A,par->num_A);
                         int iPm = sol->initial_power_idx[idx_power_m];
-                        // AMO: note that power_idx_m and power_idx_w are different if grids or preferences are not symmetric
                        
                         // b.1.3 Value conditional on meeting partner
                         //Value for woman
                         if (iPw>=0){
-                            double Aw_tot = par->grid_Aw[iA] + par->grid_Am[iAp]; // AMO: check this!!
+                            double Aw_tot = par->grid_Aw[iA] + par->grid_Am[iAp]; 
                             int idx_interp = index::couple(t,iPw,iL,0,par);
                             val_w = tools::interp_1d(par->grid_A,par->num_A,&sol->Vw_single_to_couple[idx_interp],Aw_tot);
                         } else {
@@ -639,7 +444,7 @@ namespace single {
 
                         // Value for man
                         if (iPm>=0){
-                            double Am_tot = par->grid_Am[iA] + par->grid_Aw[iAp]; // AMO: check this!!
+                            double Am_tot = par->grid_Am[iA] + par->grid_Aw[iAp]; 
                             int idx_interp = index::couple(t,iPm,iL,0,par);
                             val_m = tools::interp_1d(par->grid_A,par->num_A,&sol->Vm_single_to_couple[idx_interp],Am_tot);
                         } else {
@@ -669,83 +474,4 @@ namespace single {
             calc_marginal_value_single(t, man, sol, par);
         }
     }
-
-
-    void expected_value_single_new(int t,sol_struct* sol,par_struct* par){
-        #pragma omp parallel num_threads(par->threads)
-        {
-            index::index_couple_struct* idx_couple = new index::index_couple_struct;
-
-            // loop over states
-            #pragma omp for
-            for (int iA=0; iA<par->num_A;iA++){
-
-                // value of remaining single
-                int idx_single = index::single(t,iA,par);
-                double Vw_single_to_single = sol->Vw_single_to_single[idx_single]; //remain
-                double Vm_single_to_single = sol->Vm_single_to_single[idx_single];
-
-                // loop over potential partners conditional on meeting a partner
-                // love is on the grid, so no need to interpolate in that direction. For wealth we need to.
-                double Ev_cond_w = 0.0;
-                double Ev_cond_m = 0.0;
-                double val_w = 0.0;
-                double val_m = 0.0;
-                for(int i_love=0;i_love<par->num_love;i_love++){
-                    for(int iAp=0;iAp<par->num_A;iAp++){ // partner's wealth
-
-                        // probability of meeting a specific type of partner
-                        int idx_A = index::index2(iA,iAp,par->num_A,par->num_A);
-                        double prob_A_w = par->prob_partner_A_w[idx_A]; 
-                        double prob_A_m = par->prob_partner_A_m[idx_A]; 
-                        double prob_love = par->prob_partner_love[i_love]; 
-                        double prob_w = prob_A_w*prob_love;
-                        double prob_m = prob_A_m*prob_love;
-
-                        // find value of s->m (interpolate in A_tot) and s->s (on grid in A_j)
-                        // bargain over consumption
-                        // check if remaining single or joining couple
-                        // update expected value
-                        
-
-                        // OLD:
-                        // find relevant value function 
-                        int idx_trans = index::single_to_couple(t,i_love,iA,par);   // TODO: Index should have partner in it
-                        int power_idx = sol->initial_power_idx[idx_trans];            // TODO: Power should have partner in it
-                        
-                        if (power_idx>=0){
-                            // TODO: interpolate: note there needs to be done something about wealth! The calculation of the value of transitioning might be move to here!
-                            double Aw_tot = par->grid_Aw[iA] + par->grid_Aw[iAp];
-                            double Am_tot = par->grid_Am[iA] + par->grid_Am[iAp]; 
-                            int idx_interp = index::single_to_couple(t,i_love,0,par);
-                            val_w = tools::interp_1d(par->grid_A,par->num_A,&sol->Vw_single_to_couple[idx_interp],Aw_tot);
-                            val_m = tools::interp_1d(par->grid_A,par->num_A,&sol->Vm_single_to_couple[idx_interp],Am_tot);
-                        
-                        } else {
-                            val_w = Vw_single_to_single;
-                            val_m = Vm_single_to_single;
-                        }
-
-                        // expected value conditional on meeting a partner
-                        Ev_cond_w += prob_w*val_w;
-                        Ev_cond_m += prob_m*val_m;
-
-                    }
-                }
-
-                // expected value of starting single
-                double p_meet = par->prob_repartner[t]; 
-                double Ev_w = p_meet*Ev_cond_w + (1.0-p_meet)*Vw_single_to_single;
-                double Ev_m = p_meet*Ev_cond_m + (1.0-p_meet)*Vm_single_to_single;
-
-                sol->EVw_start_as_single[idx_single] = Ev_w;
-                sol->EVm_start_as_single[idx_single] = Ev_m;
-
-                
-            }
-
-        } // pragma
-    }
-
-
 }
