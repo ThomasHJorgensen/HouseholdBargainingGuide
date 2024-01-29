@@ -264,7 +264,7 @@ namespace couple {
                 for (int iL_next = 0; iL_next < par->num_shock_love; iL_next++) {
                     double love_next = par->grid_love[iL] + par->grid_shock_love[iL_next];
 
-                    sol->EmargU_pd[idx_pd] += par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, margV_next, love_next, A_next);
+                    sol->EmargU_pd[idx_pd] += par->beta*par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, margV_next, love_next, A_next);
 
                 }
 
@@ -444,7 +444,7 @@ namespace couple {
 
         } // pragma
     }
-    
+
 
     void solve_single_to_couple(int t, sol_struct *sol, par_struct *par){
         #pragma omp parallel num_threads(par->threads)

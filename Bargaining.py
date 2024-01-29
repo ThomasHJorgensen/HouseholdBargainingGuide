@@ -37,7 +37,7 @@ class HouseholdModelClass(EconModelClass):
         par = self.par
         
         par.R = 1.03
-        par.beta = 1.0/par.R # Discount factor
+        par.beta = 1.0 #1.0/par.R # Discount factor
         
         par.div_A_share = 0.5 # divorce share of wealth to wife
         par.div_cost = 0.0
@@ -174,7 +174,7 @@ class HouseholdModelClass(EconModelClass):
         sol.V_couple_to_couple_pd = np.zeros(shape_egm)         # Value of being couple, post-decision
 
         ## b.2. single to couple
-        shape_to_couple = (par.T,par.num_power,par.num_love,par.num_A)        # AMO: pretty sure these should be power dependent also
+        shape_to_couple = (par.T,par.num_love,par.num_A)        # AMO: pretty sure these should be power dependent also
         sol.Vw_single_to_couple = np.nan + np.ones(shape_couple)           # value single -> marriage
         sol.Vm_single_to_couple = np.nan + np.ones(shape_couple)
         sol.V_single_to_couple = -np.inf + np.ones(shape_couple)           
