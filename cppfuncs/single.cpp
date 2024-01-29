@@ -113,7 +113,12 @@ namespace single {
             if (analytic_inv_marg_u_single == 1){
                 C_tot_pd[iA_pd] = utils::inv_marg_util_C(EmargU_pd[iA_pd], gender, par);
             } else {
-                C_tot_pd[iA_pd] = tools::interp_1d(grid_marg_u_single_for_inv, par->num_marg_u, grid_inv_marg_u, EmargU_pd[iA_pd]);
+                if (par->interp_inverse){
+                    C_tot_pd[iA_pd] = 1.0/tools::interp_1d(grid_marg_u_single_for_inv, par->num_marg_u, grid_inv_marg_u, EmargU_pd[iA_pd]); // AMO: invert
+                }
+                else{
+                    C_tot_pd[iA_pd] = tools::interp_1d(grid_marg_u_single_for_inv, par->num_marg_u, grid_inv_marg_u, EmargU_pd[iA_pd]);
+                }
             }
             /// d. endogenous grid over resources
             M_pd[iA_pd] = C_tot_pd[iA_pd] + A_next;

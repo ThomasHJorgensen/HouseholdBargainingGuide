@@ -269,7 +269,12 @@ namespace couple {
                 }
 
                 // iii. Get total consumption by interpolation of pre-computed inverse marginal utility (comming from Euler)
-                sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,sol->EmargU_pd[idx_pd]);
+                if (par->interp_inverse){
+                    sol->C_tot_pd[idx_pd] = 1.0/tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,sol->EmargU_pd[idx_pd]);
+                }
+                else{
+                    sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,sol->EmargU_pd[idx_pd]);
+                }
 
                 // iv. Get endogenous grid points
                 sol->M_pd[idx_pd] = A_next + sol->C_tot_pd[idx_pd];

@@ -80,6 +80,8 @@ class HouseholdModelClass(EconModelClass):
         par.p_meet = 0.1
 
         # pre-computation
+        par.interp_inverse = False # True: interpolate inverse consumption
+
         par.num_Ctot = 100
         par.max_Ctot = par.max_A*2
         
@@ -286,7 +288,10 @@ class HouseholdModelClass(EconModelClass):
         par.grid_marg_u_for_inv = np.nan + np.ones(par.grid_util.shape)
 
         par.grid_C_for_marg_u = nonlinspace(1.0e-6,par.max_Ctot,par.num_marg_u,1.1)
-        par.grid_inv_marg_u = np.flip(par.grid_C_for_marg_u) # Flipped to make interpolation possible
+
+        par.grid_inv_marg_u = np.flip(par.grid_C_for_marg_u) # Flipped to make interpolation possible ## AMO: invert
+        if par.interp_inverse:
+            par.grid_inv_marg_u = 1/par.grid_inv_marg_u
 
         par.grid_marg_u_single_w = np.nan + np.ones((par.num_marg_u))
         par.grid_marg_u_single_w_for_inv = np.nan + np.ones((par.num_marg_u))
