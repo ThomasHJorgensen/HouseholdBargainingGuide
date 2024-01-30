@@ -239,6 +239,14 @@ class HouseholdModelClass(EconModelClass):
         np.random.seed(par.seed)
         sim.draw_love = np.random.normal(size=shape_sim)
 
+        meet_uniform = np.random.uniform(size=shape_sim)
+        sim.meet_partner = meet_uniform < par.prob_repartner.reshape((1,par.T)) # meet a partner
+
+        sim.uniform_partner_Aw = np.random.uniform(size=shape_sim) # for inverse cdf transformation
+        sim.uniform_partner_Am = np.random.uniform(size=shape_sim) # for inverse cdf tranformation
+
+        sim.repartner_iL = np.random.choice(par.num_love, p=par.prob_partner_love, size=shape_sim) # Love index when repartnering
+
         ## e.2. initial distribution
         sim.init_A = par.grid_A[10] + np.zeros(par.simN)
         sim.init_Aw = sim.init_A * par.div_A_share
@@ -309,6 +317,9 @@ class HouseholdModelClass(EconModelClass):
         par.prob_partner_A_w = np.eye(par.num_A) # likelihood of meeting a partner with a particular level of wealth, conditional on own
         par.prob_partner_A_m = np.eye(par.num_A) # likelihood of meeting a partner with a particular level of wealth, conditional on own
         par.prob_partner_love = np.ones(par.num_love)/par.num_love # likelihood of love shock
+
+        par.cdf_partner_Aw = np.cumsum(par.prob_partner_A_w,axis=0) # cumulative distribution to be used in simulation
+        par.cdf_partner_Am = np.cumsum(par.prob_partner_A_m,axis=0)
 
     def solve(self):
         

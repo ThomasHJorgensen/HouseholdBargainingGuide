@@ -95,6 +95,95 @@ namespace sim {
     } // update_power
 
 
+    double draw_partner_assets(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
+
+        // deal with 0 assets (ABSOLUTELY NOT A GENERALIZABLE SOLUTION!)
+        if (A<=0.0){
+            A = 1e-6;
+        }
+
+        // unpack
+        double* cdf_partner_A = par->cdf_partner_Aw;
+        double* grid_A = par->grid_Aw;
+        double* uniform_partner_A = sim->uniform_partner_Aw;
+        if (gender == man){
+            cdf_partner_A = par->cdf_partner_Am;
+            grid_A = par->grid_Am;
+            uniform_partner_A = sim->uniform_partner_Am;
+        }
+
+        double* cdf_Ap_cond = new double[par->num_A];
+
+        // a. find cdf of partner assets
+        for (int iA=0; iA<par->num_A; iA++){
+            int idx_interp = index::index2(iA,0,par->num_A,par->num_A);
+            cdf_Ap_cond[iA] = tools::interp_1d(grid_A,par->num_A,&cdf_partner_A[idx_interp],A);
+        }
+
+        // b. find inverted cdf of random uniform draw
+        int index_sim = index::index2(i,t,par->simN,par->simT);
+        double random = uniform_partner_A[index_sim];
+        double A_sim = tools::interp_1d(cdf_Ap_cond,par->num_A,grid_A,random);
+
+        delete cdf_Ap_cond;
+
+        if (A_sim<0.0){ // ONCE AGAIN ABSOLUTELY HANDHELD DON'T USE THIS!!!
+            A_sim = 0.0;
+        }
+
+        return A_sim;
+    }
+
+    int calc_initial_bargaining_weight(int t, int iL, int A, int Ap, int gender, sol_struct *sol, par_struct *par){
+
+        // unpack
+        double Aw = A;
+        double Am = Ap;
+        if (gender==man){
+            Aw = Ap;
+            Am = A;
+        }              
+
+        // a. value of being single
+        int idx_single = index::single(t,0,par);
+        double Vw_single = tools::interp_1d(par->grid_Aw,par->num_A,&sol->Vw_single_to_single[idx_single],Aw);
+        double Vm_single = tools::interp_1d(par->grid_Am,par->num_A,&sol->Vm_single_to_single[idx_single],Am);
+
+        // b. Setup values for being in couple
+        double Vw_single_to_couple = 0.0;
+        double Vm_single_to_couple = 0.0;
+        double nash_surplus = 0.0;
+
+        int max_idx = -1;
+        double max_nash_surplus = 0.0; 
+        double A_tot = Aw+Am;
+
+        double Sw = 0;
+        double Sm = 0;
+
+        int iA = tools::binary_search(0, par->num_A, par->grid_A, A_tot);
+
+        // c. loop over bargaining weights
+        for (int iP=0; iP < par->num_power; iP++){
+            int idx_interp = index::couple(t, iP, iL, 0, par);;
+            Vw_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vw_single_to_couple[idx_interp], A_tot, iA);
+            Vm_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vm_single_to_couple[idx_interp], A_tot, iA);
+            Sw = Vw_single_to_couple - Vw_single;
+            Sm = Vm_single_to_couple - Vm_single;
+
+            // c.1. find power idx that maxes Nash surplus
+            if ((Sw>0) & (Sm>0)){
+                nash_surplus = Sw*Sm;
+                if (nash_surplus > max_nash_surplus){
+                    max_nash_surplus = nash_surplus;
+                    max_idx = iP;
+                }
+            }
+        }
+
+        return max_idx;
+    }
+
 
     void model(sim_struct *sim, sol_struct *sol, par_struct *par){
     
