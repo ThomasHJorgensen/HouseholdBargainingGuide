@@ -96,12 +96,13 @@ class HouseholdModelClass(EconModelClass):
         par.seed = 9210
         par.simT = par.T
         par.simN = 50_000
-
+                
         # cpp
         par.do_cpp = False
         par.threads = 8
 
         par.interp_power = False
+        par.centered_gradient = False
         
     def allocate(self):
         par = self.par
@@ -231,20 +232,19 @@ class HouseholdModelClass(EconModelClass):
         sim.Aw = np.nan + np.ones(shape_sim)
         sim.Am = np.nan + np.ones(shape_sim)
         sim.couple = np.nan + np.ones(shape_sim)
-        sim.power_idx = np.ones(shape_sim,dtype=np.int_)
+        #sim.power_idx = np.ones(shape_sim,dtype=np.int_)
         sim.power = np.nan + np.ones(shape_sim)
         sim.love = np.nan + np.ones(shape_sim)
 
         ## e.1. shocks
         np.random.seed(par.seed)
         sim.draw_love = np.random.normal(size=shape_sim)
+        sim.draw_meet = np.random.uniform(size=shape_sim) # for meeting a partner
 
-        sim.meet_uniform = np.random.uniform(size=shape_sim) # for meeting a partner
+        sim.draw_uniform_partner_Aw = np.random.uniform(size=shape_sim) # for inverse cdf transformation of partner wealth
+        sim.draw_uniform_partner_Am = np.random.uniform(size=shape_sim) # for inverse cdf tranformation of partner wealth
 
-        sim.uniform_partner_Aw = np.random.uniform(size=shape_sim) # for inverse cdf transformation of partner wealth
-        sim.uniform_partner_Am = np.random.uniform(size=shape_sim) # for inverse cdf tranformation of partner wealth
-
-        sim.repartner_iL = np.random.choice(par.num_love, p=par.prob_partner_love, size=shape_sim) # Love index when repartnering
+        sim.draw_repartner_iL = np.random.choice(par.num_love, p=par.prob_partner_love, size=shape_sim) # Love index when repartnering
 
         ## e.2. initial distribution
         sim.init_A = par.grid_A[10] + np.zeros(par.simN)
@@ -312,13 +312,13 @@ class HouseholdModelClass(EconModelClass):
 
         # re-partering probabilities
         par.prob_repartner = par.p_meet*np.ones(par.T) # likelihood of meeting a partner
-
-        par.prob_partner_A_w = np.eye(par.num_A) # likelihood of meeting a partner with a particular level of wealth, conditional on own
-        par.prob_partner_A_m = np.eye(par.num_A) # likelihood of meeting a partner with a particular level of wealth, conditional on own
+        par.prob_partner_A_w = np.eye(par.num_A) #np.ones((par.num_A,par.num_A))/par.num_A # likelihood of meeting a partner with a particular level of wealth, conditional on own
+        par.prob_partner_A_m = np.eye(par.num_A) #np.ones((par.num_A,par.num_A))/par.num_A # likelihood of meeting a partner with a particular level of wealth, conditional on own
         par.prob_partner_love = np.ones(par.num_love)/par.num_love # likelihood of love shock
 
-        par.cdf_partner_Aw = np.cumsum(par.prob_partner_A_w,axis=0) # cumulative distribution to be used in simulation
-        par.cdf_partner_Am = np.cumsum(par.prob_partner_A_m,axis=0)
+        par.cdf_partner_Aw = np.cumsum(par.prob_partner_A_w,axis=1) # cumulative distribution to be used in simulation
+        par.cdf_partner_Am = np.cumsum(par.prob_partner_A_m,axis=1)
+
 
     def solve(self):
         
@@ -355,6 +355,11 @@ class HouseholdModelClass(EconModelClass):
         sol = self.sol
         sim = self.sim
         par = self.par
+
+        # clear simulation
+        for key, val in sim.__dict__.items():
+            if 'init' in key or 'draw' in key: continue
+            setattr(sim, key, np.zeros(val.shape)+np.nan)
 
         if par.do_cpp:
             self.cpp.simulate(sim,sol,par)

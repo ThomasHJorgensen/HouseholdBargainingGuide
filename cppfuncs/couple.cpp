@@ -314,23 +314,48 @@ namespace couple {
         double power = par->grid_power[iP];
 
         // approximate marginal value of marriage by finite diff
-        for (int iA=0; iA<=par->num_A-2;iA++){
-            // Setup indices
-            int iA_plus = iA + 1;
+        if (par->centered_gradient){
+            for (int iA=1; iA<=par->num_A-2;iA++){
+                // Setup indices
+                int iA_plus = iA + 1;
+                int iA_minus = iA - 1;
 
-            // Calculate finite difference
-            double margVw {0};
-            double margVm {0};
-            double denom = 1/(par->grid_A[iA_plus] - par->grid_A[iA]);
-            margVw = (Vw[iA_plus] - Vw[iA])*denom;
-            margVm = (Vm[iA_plus] - Vm[iA])*denom;
+                // Calculate finite difference
+                double margVw {0};
+                double margVm {0};
+                double denom = 1/(par->grid_A[iA_plus] - par->grid_A[iA_minus]);
+                margVw = Vw[iA_plus]*denom - Vw[iA_minus]*denom;
+                margVm = Vm[iA_plus]*denom - Vm[iA_minus]*denom;
 
-            // Update solution
-            margV[iA] = power*margVw + (1.0-power)*margVm;
+                // Update solution
+                margV[iA] = power*margVw + (1.0-power)*margVm;
 
-            // Extrapolate gradient in last point
-            if (iA == par->num_A-2){
-                margV[iA_plus] = margV[iA];
+                // Extrapolate gradient in last point
+                if (iA == par->num_A-2){
+                    margV[iA_plus] = margV[iA];
+                }
+            }
+            margV[0] = margV[1];
+        }
+        else {
+            for (int iA=0; iA<=par->num_A-2;iA++){
+                // Setup indices
+                int iA_plus = iA + 1;
+
+                // Calculate finite difference
+                double margVw {0};
+                double margVm {0};
+                double denom = 1/(par->grid_A[iA_plus] - par->grid_A[iA]);
+                margVw = Vw[iA_plus]*denom - Vw[iA]*denom;
+                margVm = Vm[iA_plus]*denom - Vm[iA]*denom;
+
+                // Update solution
+                margV[iA] = power*margVw + (1.0-power)*margVm;
+
+                // Extrapolate gradient in last point
+                if (iA == par->num_A-2){
+                    margV[iA_plus] = margV[iA];
+                }
             }
         }
     }

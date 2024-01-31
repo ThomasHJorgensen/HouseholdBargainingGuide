@@ -193,16 +193,38 @@ namespace single {
         }
 
         // approximate marginal value by finite diff
-        for (int iA=0; iA<num_A-1; iA++){
-            // Setup indices
-            int iA_plus = iA + 1;
+        if (par->centered_gradient){
+            for (int iA=1; iA<num_A-1; iA++){
+                // Setup indices
+                int iA_plus = iA + 1;
+                int iA_minus = iA - 1;
 
-            // Calculate finite difference
-            margV[iA] = V[iA_plus] / (grid_A[iA_plus] - grid_A[iA]) - V[iA] / (grid_A[iA_plus] - grid_A[iA]);
+                double denom = 1/(grid_A[iA_plus] - grid_A[iA_minus]);
 
-            // Extrapolate gradient in last point
-            if (iA == num_A-2){
-                margV[iA_plus] = margV[iA];
+                // Calculate finite difference
+                margV[iA] = V[iA_plus]*denom - V[iA_minus]* denom; 
+
+                // Extrapolate gradient in last point
+                if (iA == num_A-2){
+                    margV[iA_plus] = margV[iA];
+                }
+            }
+            margV[0] = margV[1]; // extrapolate gradient in first point
+        } 
+        else {
+            for (int iA=0; iA<num_A-1; iA++){
+                // Setup indices
+                int iA_plus = iA + 1;
+
+                double denom = 1/(grid_A[iA_plus] - grid_A[iA]);
+
+                // Calculate finite difference
+                margV[iA] = V[iA_plus]*denom - V[iA]* denom; 
+
+                // Extrapolate gradient in last point
+                if (iA == num_A-2){
+                    margV[iA_plus] = margV[iA];
+                }
             }
         }
     }
