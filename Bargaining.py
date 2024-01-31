@@ -239,11 +239,10 @@ class HouseholdModelClass(EconModelClass):
         np.random.seed(par.seed)
         sim.draw_love = np.random.normal(size=shape_sim)
 
-        meet_uniform = np.random.uniform(size=shape_sim)
-        sim.meet_partner = meet_uniform < par.prob_repartner.reshape((1,par.T)) # meet a partner
+        sim.meet_uniform = np.random.uniform(size=shape_sim) # for meeting a partner
 
-        sim.uniform_partner_Aw = np.random.uniform(size=shape_sim) # for inverse cdf transformation
-        sim.uniform_partner_Am = np.random.uniform(size=shape_sim) # for inverse cdf tranformation
+        sim.uniform_partner_Aw = np.random.uniform(size=shape_sim) # for inverse cdf transformation of partner wealth
+        sim.uniform_partner_Am = np.random.uniform(size=shape_sim) # for inverse cdf tranformation of partner wealth
 
         sim.repartner_iL = np.random.choice(par.num_love, p=par.prob_partner_love, size=shape_sim) # Love index when repartnering
 
