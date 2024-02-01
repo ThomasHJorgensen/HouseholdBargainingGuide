@@ -78,6 +78,8 @@ class HouseholdModelClass(EconModelClass):
 
         # re-partnering
         par.p_meet = 0.1
+        par.prob_partner_A_w = np.array([[np.nan]]) # if not set here, defaults to np.eye(par.num_A) in setup_grids
+        par.prob_partner_A_m = np.array([[np.nan]])
 
         # pre-computation
         par.interp_inverse = False # True: interpolate inverse consumption
@@ -219,6 +221,7 @@ class HouseholdModelClass(EconModelClass):
 
 
         # e. simulation
+        # NB: all arrays not containing "init" or "draw" in name are wiped before each simulation
         shape_sim = (par.simN,par.simT)
         sim.Cw_priv = np.nan + np.ones(shape_sim)               
         sim.Cm_priv = np.nan + np.ones(shape_sim)
@@ -232,9 +235,12 @@ class HouseholdModelClass(EconModelClass):
         sim.Aw = np.nan + np.ones(shape_sim)
         sim.Am = np.nan + np.ones(shape_sim)
         sim.couple = np.nan + np.ones(shape_sim)
-        #sim.power_idx = np.ones(shape_sim,dtype=np.int_)
         sim.power = np.nan + np.ones(shape_sim)
         sim.love = np.nan + np.ones(shape_sim)
+
+        # containers for verifying simulaton
+        sim.A_own = np.nan + np.ones(shape_sim)
+        sim.A_partner = np.nan + np.ones(shape_sim)
 
         ## e.1. shocks
         np.random.seed(par.seed)
@@ -312,8 +318,13 @@ class HouseholdModelClass(EconModelClass):
 
         # re-partering probabilities
         par.prob_repartner = par.p_meet*np.ones(par.T) # likelihood of meeting a partner
-        par.prob_partner_A_w = np.eye(par.num_A) #np.ones((par.num_A,par.num_A))/par.num_A # likelihood of meeting a partner with a particular level of wealth, conditional on own
-        par.prob_partner_A_m = np.eye(par.num_A) #np.ones((par.num_A,par.num_A))/par.num_A # likelihood of meeting a partner with a particular level of wealth, conditional on own
+
+        if np.isnan(par.prob_partner_A_w[0,0]):
+            par.prob_partner_A_w = np.eye(par.num_A) #np.ones((par.num_A,par.num_A))/par.num_A # likelihood of meeting a partner with a particular level of wealth, conditional on own
+    
+        if np.isnan(par.prob_partner_A_m[0,0]):
+            par.prob_partner_A_m = np.eye(par.num_A) #np.ones((par.num_A,par.num_A))/par.num_A # likelihood of meeting a partner with a particular level of wealth, conditional on own
+
         par.prob_partner_love = np.ones(par.num_love)/par.num_love # likelihood of love shock
 
         par.cdf_partner_Aw = np.cumsum(par.prob_partner_A_w,axis=1) # cumulative distribution to be used in simulation

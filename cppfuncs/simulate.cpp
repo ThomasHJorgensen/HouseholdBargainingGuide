@@ -96,28 +96,22 @@ namespace sim {
 
 
     double draw_partner_assets(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
-
-        // deal with 0 assets (ABSOLUTELY NOT A GENERALIZABLE SOLUTION!)
-        if (A<=0.0){
-            A = 1e-6;
-        }
-
         // unpack
         double* cdf_partner_A = par->cdf_partner_Aw;
         double* grid_A = par->grid_Aw;
-        double* uniform_partner_A = sim->uniform_partner_Aw;
+        double* uniform_partner_A = sim->draw_uniform_partner_Aw;
         if (gender == man){
             cdf_partner_A = par->cdf_partner_Am;
             grid_A = par->grid_Am;
-            uniform_partner_A = sim->uniform_partner_Am;
+            uniform_partner_A = sim->draw_uniform_partner_Am;
         }
 
         double* cdf_Ap_cond = new double[par->num_A];
+        int index_iA = tools::binary_search(0,par->num_A,grid_A,A);
 
         // a. find cdf of partner assets
-        for (int iA=0; iA<par->num_A; iA++){
-            int idx_interp = index::index2(iA,0,par->num_A,par->num_A);
-            cdf_Ap_cond[iA] = tools::interp_1d(grid_A,par->num_A,&cdf_partner_A[idx_interp],A);
+        for (int iAp=0; iAp<par->num_A; iAp++){
+            cdf_Ap_cond[iAp] = tools::interp_1d_index_delta(grid_A,par->num_A,cdf_partner_A,A, index_iA,par->num_A, iAp,1,0);
         }
 
         // b. find inverted cdf of random uniform draw
@@ -127,7 +121,7 @@ namespace sim {
 
         delete cdf_Ap_cond;
 
-        if (A_sim<0.0){ // ONCE AGAIN ABSOLUTELY HANDHELD DON'T USE THIS!!!
+        if (A_sim<0.0){ // WATCH OUT FOR EXTRAPOLATION OR FLAT CDF'S!!!
             A_sim = 0.0;
         }
 
@@ -221,7 +215,7 @@ namespace sim {
                     double power;
                     double C_tot;
                     int idx_power,idx_love,idx_A;
-                    if (couple_lag) {
+                    if (couple_lag) { // if start as couple
 
                         if (par->interp_power){
                             // 1. search for grid points
@@ -251,8 +245,32 @@ namespace sim {
                             sim->couple[it] = true;
                         }
 
-                    } else { // remain single
-                        sim->couple[it] = false;
+                    } 
+                    else { // if start as single - follow woman only
+                        // meet partner?
+                        bool meet = (sim->draw_meet[it] < par->prob_repartner[t]);
+                        int iP = -1;
+                        double Ap = 0.0;
+                        int iL = 0;
+                        // draw partner type
+                        if (meet){
+                            Ap = draw_partner_assets(Aw_lag, woman, i,t, sim, par);
+                            sim->A_own[it] = Aw_lag;
+                            sim->A_partner[it] = Ap;
+                            iL = sim->draw_repartner_iL[it];
+                            iP = calc_initial_bargaining_weight(t, iL, Aw_lag, woman, Ap, sol, par);
+                        }
+
+                        // update state variables
+                        if (iP <0) {
+                            power = -1.0;
+                            sim->couple[it] = false;
+                        } else {
+                            sim->couple[it] = true;
+                            power = par->grid_power[iP];
+                            A_lag = Aw_lag + Ap;
+                            love = par->grid_love[iL];
+                        }
                     }
 
                     // update behavior

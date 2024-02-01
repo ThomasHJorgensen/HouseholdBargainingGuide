@@ -27,4 +27,3 @@ EXPORT void simulate(sim_struct *sim, sol_struct *sol, par_struct *par){
     sim::model(sim,sol,par);
 
 }
-
