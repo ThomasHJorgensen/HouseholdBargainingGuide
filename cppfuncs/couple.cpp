@@ -259,21 +259,22 @@ namespace couple {
                 int idx_interp = index::index2(iP,0,par->num_power,par->num_marg_u);
 
                 // ii. interpolate marginal utility and take expectations using quadrature
-                // [TODO: speed up by re-using index for A and assendig order in love.]
+                int j_A = tools::binary_search(0,par->num_A,par->grid_A,A_next);
+                int j_love = 0;
                 sol->EmargU_pd[idx_pd] = 0.0;
                 for (int iL_next = 0; iL_next < par->num_shock_love; iL_next++) {
                     double love_next = par->grid_love[iL] + par->grid_shock_love[iL_next];
+                    j_love = tools::binary_search(j_love,par->num_love,par->grid_love,love_next);
 
-                    sol->EmargU_pd[idx_pd] += par->beta*par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, margV_next, love_next, A_next);
+                    sol->EmargU_pd[idx_pd] += par->beta*par->grid_weight_love[iL_next] * tools::_interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, margV_next, love_next, A_next,j_love,j_A);
+                    // sol->EmargU_pd[idx_pd] += par->beta*par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, margV_next, love_next, A_next);
 
                 }
 
                 // iii. Get total consumption by interpolation of pre-computed inverse marginal utility (comming from Euler)
+                sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,sol->EmargU_pd[idx_pd]);
                 if (par->interp_inverse){
-                    sol->C_tot_pd[idx_pd] = 1.0/tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,sol->EmargU_pd[idx_pd]);
-                }
-                else{
-                    sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,sol->EmargU_pd[idx_pd]);
+                    sol->C_tot_pd[idx_pd] = 1.0/sol->C_tot_pd[idx_pd];
                 }
 
                 // iv. Get endogenous grid points
@@ -323,7 +324,7 @@ namespace couple {
                 // Calculate finite difference
                 double margVw {0};
                 double margVm {0};
-                double denom = 1/(par->grid_A[iA_plus] - par->grid_A[iA_minus]);
+                double denom = 1.0/(par->grid_A[iA_plus] - par->grid_A[iA_minus]);
                 margVw = Vw[iA_plus]*denom - Vw[iA_minus]*denom;
                 margVm = Vm[iA_plus]*denom - Vm[iA_minus]*denom;
 
@@ -345,7 +346,7 @@ namespace couple {
                 // Calculate finite difference
                 double margVw {0};
                 double margVm {0};
-                double denom = 1/(par->grid_A[iA_plus] - par->grid_A[iA]);
+                double denom = 1.0/(par->grid_A[iA_plus] - par->grid_A[iA]);
                 margVw = Vw[iA_plus]*denom - Vw[iA]*denom;
                 margVm = Vm[iA_plus]*denom - Vm[iA]*denom;
 
