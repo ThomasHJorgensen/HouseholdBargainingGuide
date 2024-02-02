@@ -174,37 +174,30 @@ namespace sim {
         // b. Setup values for being in couple
         double Vw_single_to_couple = 0.0;
         double Vm_single_to_couple = 0.0;
-        double nash_surplus = 0.0;
-
-        int max_idx = -1;
-        double max_nash_surplus = 0.0; 
         double A_tot = Aw+Am;
-
-        // TODO: consider constructing vector of Sw/Sm and use "bargaining::initial_weight"
-        double Sw = 0;
-        double Sm = 0;
-
         int iA = tools::binary_search(0, par->num_A, par->grid_A, A_tot);
+        
+        // c. Calculate surplus of being in couple
+        double* Sw = new double[par->num_power];
+        double* Sm = new double[par->num_power];
 
-        // c. loop over bargaining weights
         for (int iP=0; iP < par->num_power; iP++){
             int idx_interp = index::couple(t, iP, iL, 0, par);
             Vw_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vw_single_to_couple[idx_interp], A_tot, iA);
             Vm_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vm_single_to_couple[idx_interp], A_tot, iA);
-            Sw = Vw_single_to_couple - Vw_single;
-            Sm = Vm_single_to_couple - Vm_single;
-
-            // c.1. find power idx that maxes Nash surplus
-            if ((Sw>0) & (Sm>0)){
-                nash_surplus = Sw*Sm;
-                if (nash_surplus > max_nash_surplus){
-                    max_nash_surplus = nash_surplus;
-                    max_idx = iP;
-                }
-            }
+            Sw[iP] = Vw_single_to_couple - Vw_single;
+            Sm[iP] = Vm_single_to_couple - Vm_single;
         }
 
-        return max_idx;
+        // d. Calculate initial bargaining weight
+        int init_mu = bargaining::initial_weight(Sw, Sm, par);
+
+        // e. clean up
+        delete Sw;
+        delete Sm;
+
+        return init_mu;
+
     }
 
 
