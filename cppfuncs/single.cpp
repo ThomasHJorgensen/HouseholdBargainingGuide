@@ -444,6 +444,7 @@ namespace single {
                 for(int iL=0;iL<par->num_love;iL++){
                     for(int iAp=0;iAp<par->num_A;iAp++){ // partner's wealth 
 
+                        // TODO: 1: function that takes gender as input and re-uses code 2: only calculate if match has positive probability of happening
                         // b.1.1. probability of meeting a specific type of partner
                         int idx_A = index::index2(iA,iAp,par->num_A,par->num_A);
                         double prob_A_w = par->prob_partner_A_w[idx_A]; 

@@ -95,7 +95,7 @@ namespace sim {
     } // update_power
 
 
-    double draw_partner_assets_old(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
+    double draw_partner_assets(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
         // unpack
         double* cdf_partner_A = par->cdf_partner_Aw;
         double* grid_A = par->grid_Aw;
@@ -127,7 +127,7 @@ namespace sim {
 
         return A_sim;
     }
-    double draw_partner_assets(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
+    double draw_partner_assets_tj(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
         // unpack
         double* cdf_partner_A = par->cdf_partner_Aw;
         double* grid_A = par->grid_Aw;
@@ -143,13 +143,16 @@ namespace sim {
         double random = uniform_partner_A[index_sim];
 
         // b. find first index in asset cdf above uniform draw.
-        int iAp=0;
-        while((iAp < par->num_A-1) & (cdf_partner_A[iAp] < random)){
-            iAp++;
+        int index_iA = tools::binary_search(0,par->num_A,grid_A,A);
+        for (int iAp=0; iAp<par->num_A; iAp++){
+            double cdf_Ap_cond = tools::interp_1d_index_delta(grid_A,par->num_A,cdf_partner_A,A, index_iA,par->num_A, iAp,1,0);
+            if(cdf_Ap_cond >= random){
+                return grid_A[iAp];
+            }
         }
 
         // c. return asset value
-        return grid_A[iAp];
+        return grid_A[par->num_A-1];
 
     }
 
@@ -177,6 +180,7 @@ namespace sim {
         double max_nash_surplus = 0.0; 
         double A_tot = Aw+Am;
 
+        // TODO: consider constructing vector of Sw/Sm and use "bargaining::initial_weight"
         double Sw = 0;
         double Sm = 0;
 
@@ -184,7 +188,7 @@ namespace sim {
 
         // c. loop over bargaining weights
         for (int iP=0; iP < par->num_power; iP++){
-            int idx_interp = index::couple(t, iP, iL, 0, par);;
+            int idx_interp = index::couple(t, iP, iL, 0, par);
             Vw_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vw_single_to_couple[idx_interp], A_tot, iA);
             Vm_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vm_single_to_couple[idx_interp], A_tot, iA);
             Sw = Vw_single_to_couple - Vw_single;
@@ -282,7 +286,7 @@ namespace sim {
                             Ap = draw_partner_assets(Aw_lag, woman, i,t, sim, par);
                             sim->A_own[it] = Aw_lag;
                             sim->A_partner[it] = Ap;
-                            iL = sim->draw_repartner_iL[it];
+                            iL = sim->draw_repartner_iL[it]; // note: love draws on grid.
                             iP = calc_initial_bargaining_weight(t, iL, Aw_lag, woman, Ap, sol, par);
                         }
 

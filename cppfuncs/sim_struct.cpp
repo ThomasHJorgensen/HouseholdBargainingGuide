@@ -11,10 +11,15 @@ typedef struct sim_struct
  double* Aw;
  double* Am;
  double* couple;
- int* power_idx;
  double* power;
  double* love;
+ double* A_own;
+ double* A_partner;
  double* draw_love;
+ double* draw_meet;
+ double* draw_uniform_partner_Aw;
+ double* draw_uniform_partner_Am;
+ int* draw_repartner_iL;
  double* init_A;
  double* init_Aw;
  double* init_Am;
@@ -38,7 +43,12 @@ double* get_double_p_sim_struct(sim_struct* x, char* name){
  else if( strcmp(name,"couple") == 0 ){ return x->couple; }
  else if( strcmp(name,"power") == 0 ){ return x->power; }
  else if( strcmp(name,"love") == 0 ){ return x->love; }
+ else if( strcmp(name,"A_own") == 0 ){ return x->A_own; }
+ else if( strcmp(name,"A_partner") == 0 ){ return x->A_partner; }
  else if( strcmp(name,"draw_love") == 0 ){ return x->draw_love; }
+ else if( strcmp(name,"draw_meet") == 0 ){ return x->draw_meet; }
+ else if( strcmp(name,"draw_uniform_partner_Aw") == 0 ){ return x->draw_uniform_partner_Aw; }
+ else if( strcmp(name,"draw_uniform_partner_Am") == 0 ){ return x->draw_uniform_partner_Am; }
  else if( strcmp(name,"init_A") == 0 ){ return x->init_A; }
  else if( strcmp(name,"init_Aw") == 0 ){ return x->init_Aw; }
  else if( strcmp(name,"init_Am") == 0 ){ return x->init_Am; }
@@ -50,7 +60,7 @@ double* get_double_p_sim_struct(sim_struct* x, char* name){
 
 int* get_int_p_sim_struct(sim_struct* x, char* name){
 
- if( strcmp(name,"power_idx") == 0 ){ return x->power_idx; }
+ if( strcmp(name,"draw_repartner_iL") == 0 ){ return x->draw_repartner_iL; }
  else if( strcmp(name,"init_power_idx") == 0 ){ return x->init_power_idx; }
  else {return NULL;}
 
