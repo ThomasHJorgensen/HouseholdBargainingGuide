@@ -95,7 +95,7 @@ namespace sim {
     } // update_power
 
 
-    double draw_partner_assets(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
+    double draw_partner_assets_old(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
         // unpack
         double* cdf_partner_A = par->cdf_partner_Aw;
         double* grid_A = par->grid_Aw;
@@ -126,6 +126,31 @@ namespace sim {
         }
 
         return A_sim;
+    }
+    double draw_partner_assets(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
+        // unpack
+        double* cdf_partner_A = par->cdf_partner_Aw;
+        double* grid_A = par->grid_Aw;
+        double* uniform_partner_A = sim->draw_uniform_partner_Aw;
+        if (gender == man){
+            cdf_partner_A = par->cdf_partner_Am;
+            grid_A = par->grid_Am;
+            uniform_partner_A = sim->draw_uniform_partner_Am;
+        }
+
+        // a. random uniform number
+        int index_sim = index::index2(i,t,par->simN,par->simT);
+        double random = uniform_partner_A[index_sim];
+
+        // b. find first index in asset cdf above uniform draw.
+        int iAp=0;
+        while((iAp < par->num_A-1) & (cdf_partner_A[iAp] < random)){
+            iAp++;
+        }
+
+        // c. return asset value
+        return grid_A[iAp];
+
     }
 
     int calc_initial_bargaining_weight(int t, int iL, int A, int Ap, int gender, sol_struct *sol, par_struct *par){
