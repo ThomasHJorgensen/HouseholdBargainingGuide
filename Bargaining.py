@@ -304,7 +304,7 @@ class HouseholdModelClass(EconModelClass):
 
         par.grid_inv_marg_u = np.flip(par.grid_C_for_marg_u) # Flipped to make interpolation possible ## AMO: invert
         if par.interp_inverse:
-            par.grid_inv_marg_u = 1/par.grid_inv_marg_u
+            par.grid_inv_marg_u = 1.0/par.grid_inv_marg_u
 
         par.grid_marg_u_single_w = np.nan + np.ones((par.num_marg_u))
         par.grid_marg_u_single_w_for_inv = np.nan + np.ones((par.num_marg_u))
@@ -325,6 +325,7 @@ class HouseholdModelClass(EconModelClass):
         if np.isnan(par.prob_partner_A_m[0,0]):
             par.prob_partner_A_m = np.eye(par.num_A) #np.ones((par.num_A,par.num_A))/par.num_A # likelihood of meeting a partner with a particular level of wealth, conditional on own
 
+        # TODO: update probabilities to be normal with same variance as solution: difference in CDF between points
         par.prob_partner_love = np.ones(par.num_love)/par.num_love # likelihood of love shock
 
         par.cdf_partner_Aw = np.cumsum(par.prob_partner_A_w,axis=1) # cumulative distribution to be used in simulation
