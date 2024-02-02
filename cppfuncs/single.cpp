@@ -402,7 +402,7 @@ namespace single {
         return max_idx;
     }
 
-    void expected_value_start_single(int t,sol_struct* sol,par_struct* par){
+    void expected_value_start_single_old(int t,sol_struct* sol,par_struct* par){
         #pragma omp parallel num_threads(par->threads)
         {
             index::index_couple_struct* idx_couple = new index::index_couple_struct;
@@ -502,4 +502,113 @@ namespace single {
             calc_marginal_value_single(t, man, sol, par);
         }
     }
+
+
+    void EV_start_as_single(int t, int gender, sol_struct* sol, par_struct* par){
+        // unpack
+        double* V_single_to_single = sol->Vw_single_to_single;
+        double* V_single_to_couple = sol->Vw_single_to_couple;
+        double* prob_partner_A = par->prob_partner_A_w;
+        double* EV_start_as_single = sol->EVw_start_as_single;
+
+        if (gender==man){
+            V_single_to_single = sol->Vm_single_to_single;
+            V_single_to_couple = sol->Vm_single_to_couple;
+            prob_partner_A = par->prob_partner_A_m;
+            EV_start_as_single = sol->EVm_start_as_single;
+        }
+
+        #pragma omp for
+        for (int iA=0; iA<par->num_A;iA++){
+
+            // value of remaining single
+            int idx_single = index::single(t,iA,par);
+
+            // b.1. loop over potential partners conditional on meeting a partner
+            double Ev_cond = 0.0;
+            double val = 0.0;
+            for(int iL=0;iL<par->num_love;iL++){
+                for(int iAp=0;iAp<par->num_A;iAp++){ // partner's wealth 
+
+                    // b.1.1. probability of meeting a specific type of partner
+                    int idx_A = index::index2(iA,iAp,par->num_A,par->num_A);
+                    double prob_A = prob_partner_A[idx_A]; 
+                    double prob_love = par->prob_partner_love[iL]; 
+                    double prob = prob_A*prob_love;
+
+                    // only calculate if match has positive probability of happening
+                    if (prob>0.0) {
+                        // Figure out gender
+                        int iAw = iA;
+                        int iAm = iAp;
+                        if (gender==man) {
+                            int iAw = iAp;
+                            int iAm = iA;
+                        }
+
+                        // // b.1.2. bargain over consumption
+                        int idx_power = index::index4(t,iL,iAw,iAm,par->T,par->num_love,par->num_A,par->num_A);
+                        int iP = sol->initial_power_idx[idx_power];
+                        
+                        // b.1.3 Value conditional on meeting partner
+                        //Value for woman
+                        if (iP>=0){
+                            double A_tot = par->grid_Aw[iAw] + par->grid_Am[iAm]; 
+                            int idx_interp = index::couple(t,iP,iL,0,par);
+                            val = tools::interp_1d(par->grid_A,par->num_A, &V_single_to_couple[idx_interp],A_tot);
+                        } else {
+                            val = V_single_to_single[idx_single];
+                        }
+
+                        // expected value conditional on meeting a partner
+                        Ev_cond += prob*val;
+                    } // if
+                } // iAp
+            } // love 
+
+            // b.2. expected value of starting single
+            double p_meet = par->prob_repartner[t]; 
+            EV_start_as_single[idx_single] = p_meet*Ev_cond + (1.0-p_meet)*V_single_to_single[idx_single];
+
+        }
+    }
+
+
+    void expected_value_start_single(int t, sol_struct* sol,par_struct* par){
+        #pragma omp parallel num_threads(par->threads)
+        {
+            index::index_couple_struct* idx_couple = new index::index_couple_struct;
+
+            // a. calculate initial bargaining weights
+            // loop over states
+            #pragma omp for
+            for (int iAw=0; iAw<par->num_A;iAw++){
+                for (int iAm=0; iAm<par->num_A;iAm++){
+                    // only calculate if match has positive probability of happening
+                    int idx_w = index::index2(iAw,iAm,par->num_A,par->num_A);
+                    double pw = par->prob_partner_A_w[idx_w]; // woman's prob of meeting man
+                    int idx_m = index::index2(iAm,iAw,par->num_A,par->num_A);
+                    double pm = par->prob_partner_A_m[idx_w]; // man's prob of meeting
+
+                    if ((pw > 0.0) | (pm > 0.0)) {
+                        for (int iL=0; iL<par->num_love;iL++){
+                            int idx = index::index4(t,iL,iAw,iAm,par->T,par->num_love,par->num_A,par->num_A);
+                            sol->initial_power_idx[idx] = calc_initial_bargaining_weight(t, iL, iAw, iAm, sol, par);
+                        } // love
+                    } // if
+                } // iAm
+            } // iAw
+
+            // b. Loop over states
+            EV_start_as_single(t, woman, sol, par); //fills in sol->EVw_start_as_single
+            EV_start_as_single(t, man, sol, par); //fills in sol->EVm_start_as_single
+
+        } // pragma
+
+        if (par->do_egm){
+            calc_marginal_value_single(t, woman, sol, par);
+            calc_marginal_value_single(t, man, sol, par);
+        }
+    }
+
 }
