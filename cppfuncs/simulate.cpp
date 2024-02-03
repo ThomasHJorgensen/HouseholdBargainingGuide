@@ -95,7 +95,7 @@ namespace sim {
     } // update_power
 
 
-    double draw_partner_assets(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
+    double draw_partner_assets_cont(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
         // unpack
         double* cdf_partner_A = par->cdf_partner_Aw;
         double* grid_A = par->grid_Aw;
@@ -127,7 +127,8 @@ namespace sim {
 
         return A_sim;
     }
-    double draw_partner_assets_tj(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
+
+    double draw_partner_assets(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
         // unpack
         double* cdf_partner_A = par->cdf_partner_Aw;
         double* grid_A = par->grid_Aw;
@@ -307,13 +308,18 @@ namespace sim {
                             C_tot = tools::interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A ,&sol->C_tot_couple_to_couple[idx_sol],power,love,A_lag);
                         }
 
+                        // enforce ressource constraint (may be slightly broken due to approximation error)
+                        double M_resources = couple::resources(A_lag,par);
+                        if (C_tot > M_resources){
+                            C_tot = M_resources;
+                        }
+
                         double C_pub = 0.0;
                         couple::intraperiod_allocation_sim(&sim->Cw_priv[it], &sim->Cm_priv[it], &C_pub,  C_tot,power,sol,par); 
                         sim->Cw_pub[it] = C_pub;
                         sim->Cm_pub[it] = C_pub;
 
                         // update end-of-period states
-                        double M_resources = couple::resources(A_lag,par); 
                         sim->A[it] = M_resources - sim->Cw_priv[it] - sim->Cm_priv[it] - C_pub;
                         if(t<par->simT-1){
                             sim->love[it1] = love + par->sigma_love*sim->draw_love[it1];
@@ -325,8 +331,6 @@ namespace sim {
 
                         sim->power[it] = power;
 
-                        // sim->power_idx[it] = power_idx;
-                        // sim->power[it] = par->grid_power[power_idx];
 
                     } else { // single
 
@@ -343,22 +347,26 @@ namespace sim {
                         double Cw_tot = tools::interp_1d(par->grid_Aw,par->num_A,sol_single_w,Aw_lag);
                         double Cm_tot = tools::interp_1d(par->grid_Am,par->num_A,sol_single_m,Am_lag);
 
+                        // enforce ressource constraint (may be slightly broken due to approximation error)
+                        double Mw = single::resources(A_lag, woman, par);
+                        double Mm = single::resources(A_lag, man, par);
+                        if (Cw_tot > Mw){
+                            Cw_tot = Mw;
+                        }
+                        if (Cm_tot > Mm){
+                            Cm_tot = Mm;
+                        }
+                        
                         single::intraperiod_allocation(&sim->Cw_priv[it],&sim->Cw_pub[it],Cw_tot,woman,par);
                         single::intraperiod_allocation(&sim->Cm_priv[it],&sim->Cm_pub[it],Cm_tot,man,par);
 
-                        // update end-of-period states
-                        double Mw = single::resources(Aw_lag,woman,par); 
-                        double Mm = single::resources(Am_lag,man,par); 
+                        // update end-of-period states  
                         sim->Aw[it] = Mw - sim->Cw_priv[it] - sim->Cw_pub[it];
                         sim->Am[it] = Mm - sim->Cm_priv[it] - sim->Cm_pub[it];
 
                         // sim->power_idx[it] = -1;
                         sim->power[it] = -1.0;
 
-                        // left as nans by not updating them:
-                        // sim->power[it1] = nan
-                        // sim->love[it] = nan
-                        // sim->A[it] = nan
                     }
 
                 } // t

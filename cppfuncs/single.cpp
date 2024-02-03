@@ -503,75 +503,63 @@ namespace single {
         }
     }
 
-
-    void EV_start_as_single(int t, int gender, sol_struct* sol, par_struct* par){
+    double expected_value_cond_meet_partner(int t, int iA, int gender, sol_struct* sol, par_struct* par){
         // unpack
         double* V_single_to_single = sol->Vw_single_to_single;
         double* V_single_to_couple = sol->Vw_single_to_couple;
-        double* prob_partner_A = par->prob_partner_A_w;
-        double* EV_start_as_single = sol->EVw_start_as_single;
-
-        if (gender==man){
+        double* prob_partner_A = par->prob_partner_A_w;;
+        if (gender == man){
             V_single_to_single = sol->Vm_single_to_single;
             V_single_to_couple = sol->Vm_single_to_couple;
-            prob_partner_A = par->prob_partner_A_m;
-            EV_start_as_single = sol->EVm_start_as_single;
+            prob_partner_A = par->prob_partner_A_m;;
         }
+        // // value of remaining single
+        int idx_single = index::single(t,iA,par);
 
-        #pragma omp for
-        for (int iA=0; iA<par->num_A;iA++){
+        // // b.1. loop over potential partners conditional on meeting a partner
+        double Ev_cond = 0.0;
+        double val = 0.0;
+        for(int iL=0;iL<par->num_love;iL++){
+            for(int iAp=0;iAp<par->num_A;iAp++){ // partner's wealth 
 
-            // value of remaining single
-            int idx_single = index::single(t,iA,par);
+                // b.1.1. probability of meeting a specific type of partner
+                int idx_A = index::index2(iA,iAp,par->num_A,par->num_A);
+                double prob_A = prob_partner_A[idx_A]; 
+                double prob_love = par->prob_partner_love[iL]; 
+                double prob = prob_A*prob_love;
 
-            // b.1. loop over potential partners conditional on meeting a partner
-            double Ev_cond = 0.0;
-            double val = 0.0;
-            for(int iL=0;iL<par->num_love;iL++){
-                for(int iAp=0;iAp<par->num_A;iAp++){ // partner's wealth 
+                // only calculate if match has positive probability of happening
+                if (prob>0.0) {
+                    // Figure out gender
+                    int iAw = iA;
+                    int iAm = iAp;
+                    if (gender==man) {
+                        int iAw = iAp;
+                        int iAm = iA;
+                    }
 
-                    // b.1.1. probability of meeting a specific type of partner
-                    int idx_A = index::index2(iA,iAp,par->num_A,par->num_A);
-                    double prob_A = prob_partner_A[idx_A]; 
-                    double prob_love = par->prob_partner_love[iL]; 
-                    double prob = prob_A*prob_love;
+                    // // b.1.2. bargain over consumption
+                    int idx_power = index::index4(t,iL,iAw,iAm,par->T,par->num_love,par->num_A,par->num_A);
+                    int iP = sol->initial_power_idx[idx_power];
+                    
+                    // b.1.3 Value conditional on meeting partner
+                    //Value for woman
+                    if (iP>=0){
+                        double A_tot = par->grid_Aw[iAw] + par->grid_Am[iAm]; 
+                        int idx_interp = index::couple(t,iP,iL,0,par);
+                        val = tools::interp_1d(par->grid_A,par->num_A, &V_single_to_couple[idx_interp],A_tot);
+                    } else {
+                        val = V_single_to_single[idx_single];
+                    }
 
-                    // only calculate if match has positive probability of happening
-                    if (prob>0.0) {
-                        // Figure out gender
-                        int iAw = iA;
-                        int iAm = iAp;
-                        if (gender==man) {
-                            int iAw = iAp;
-                            int iAm = iA;
-                        }
-
-                        // // b.1.2. bargain over consumption
-                        int idx_power = index::index4(t,iL,iAw,iAm,par->T,par->num_love,par->num_A,par->num_A);
-                        int iP = sol->initial_power_idx[idx_power];
-                        
-                        // b.1.3 Value conditional on meeting partner
-                        //Value for woman
-                        if (iP>=0){
-                            double A_tot = par->grid_Aw[iAw] + par->grid_Am[iAm]; 
-                            int idx_interp = index::couple(t,iP,iL,0,par);
-                            val = tools::interp_1d(par->grid_A,par->num_A, &V_single_to_couple[idx_interp],A_tot);
-                        } else {
-                            val = V_single_to_single[idx_single];
-                        }
-
-                        // expected value conditional on meeting a partner
-                        Ev_cond += prob*val;
-                    } // if
-                } // iAp
-            } // love 
-
-            // b.2. expected value of starting single
-            double p_meet = par->prob_repartner[t]; 
-            EV_start_as_single[idx_single] = p_meet*Ev_cond + (1.0-p_meet)*V_single_to_single[idx_single];
-
-        }
+                    // expected value conditional on meeting a partner
+                    Ev_cond += prob*val;
+                } // if
+            } // iAp
+        } // love 
+        return Ev_cond;
     }
+
 
 
     void expected_value_start_single(int t, sol_struct* sol,par_struct* par){
@@ -600,9 +588,18 @@ namespace single {
             } // iAw
 
             // b. Loop over states
-            EV_start_as_single(t, woman, sol, par); //fills in sol->EVw_start_as_single
-            EV_start_as_single(t, man, sol, par); //fills in sol->EVm_start_as_single
+            #pragma omp for
+            for (int iA=0; iA<par->num_A;iA++){
+                // b.1 Value conditional on meeting partner
+                double EVw_cond = expected_value_cond_meet_partner(t,iA,woman,sol,par);
+                double EVm_cond = expected_value_cond_meet_partner(t,iA,man,sol,par);
 
+                // b.2. expected value of starting single
+                double p_meet = par->prob_repartner[t];
+                int idx_single = index::single(t,iA,par);
+                sol->EVw_start_as_single[idx_single] = p_meet*EVw_cond + (1.0-p_meet)*sol->Vw_single_to_single[idx_single];
+                sol->EVm_start_as_single[idx_single] = p_meet*EVm_cond + (1.0-p_meet)*sol->Vm_single_to_single[idx_single];
+            } // iA
         } // pragma
 
         if (par->do_egm){

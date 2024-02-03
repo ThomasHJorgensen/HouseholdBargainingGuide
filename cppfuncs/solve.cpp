@@ -29,7 +29,3 @@ EXPORT void simulate(sim_struct *sim, sol_struct *sol, par_struct *par){
 }
 
 
-
-EXPORT double draw_partner_assets(double A, int gender, int i, int t, sim_struct *sim, par_struct *par){
-    return sim::draw_partner_assets(A,gender,i,t,sim,par);
-}
