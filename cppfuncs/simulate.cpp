@@ -348,8 +348,8 @@ namespace sim {
                         double Cm_tot = tools::interp_1d(par->grid_Am,par->num_A,sol_single_m,Am_lag);
 
                         // enforce ressource constraint (may be slightly broken due to approximation error)
-                        double Mw = single::resources(A_lag, woman, par);
-                        double Mm = single::resources(A_lag, man, par);
+                        double Mw = single::resources(Aw_lag, woman, par);
+                        double Mm = single::resources(Am_lag, man, par);
                         if (Cw_tot > Mw){
                             Cw_tot = Mw;
                         }
