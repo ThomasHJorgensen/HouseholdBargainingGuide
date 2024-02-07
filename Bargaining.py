@@ -202,6 +202,10 @@ class HouseholdModelClass(EconModelClass):
         sol.Vm_start_as_couple = np.nan + np.ones(shape_couple)
         sol.margV_start_as_couple = np.zeros(shape_couple) 
 
+        sol.EVw_start_as_couple = np.nan + np.ones(shape_couple)
+        sol.EVm_start_as_couple = np.nan + np.ones(shape_couple)
+        sol.EmargV_start_as_couple = np.nan + np.ones(shape_couple)
+        
         sol.Cw_priv_start_as_couple = np.nan + np.ones(shape_couple)             # private consumption, couple
         sol.Cm_priv_start_as_couple = np.nan + np.ones(shape_couple)             
         sol.C_pub_start_as_couple = np.nan + np.ones(shape_couple)               # public consumption, couple
@@ -219,7 +223,6 @@ class HouseholdModelClass(EconModelClass):
         sol.pre_Ctot_Cw_priv = np.nan + np.ones(shape_pre)      # precomputed optimal allocation of consumption over grid of total C 
         sol.pre_Ctot_Cm_priv = np.nan + np.ones(shape_pre)
         sol.pre_Ctot_C_pub = np.nan + np.ones(shape_pre)
-
 
         # e. simulation
         # NB: all arrays not containing "init" or "draw" in name are wiped before each simulation
@@ -264,6 +267,82 @@ class HouseholdModelClass(EconModelClass):
         # f. timing
         sol.solution_time = np.array([0.0])
         
+    def setup_grids(self):
+        par = self.par
+        
+        # wealth. Single grids are such to avoid interpolation
+        par.grid_A = nonlinspace(0.0,par.max_A,par.num_A,1.1)       # asset grid
+
+        par.grid_Aw = par.div_A_share * par.grid_A                  # asset grid in case of divorce
+        par.grid_Am = (1.0 - par.div_A_share) * par.grid_A
+
+        # power. non-linear grid with more mass in both tails.
+        odd_num = np.mod(par.num_power,2)
+        first_part = nonlinspace(0.0,0.5,(par.num_power+odd_num)//2,1.3)
+        last_part = np.flip(1.0 - nonlinspace(0.0,0.5,(par.num_power-odd_num)//2 + 1,1.3))[1:]
+        par.grid_power = np.append(first_part,last_part)
+        par.grid_power_flip = np.flip(par.grid_power) # flip for men
+
+        # love grid and shock
+        if par.num_love>1:
+            par.grid_love = np.linspace(-par.max_love,par.max_love,par.num_love)
+        else:
+            par.grid_love = np.array([0.0])
+
+        if par.sigma_love<=1.0e-6:
+            par.num_shock_love = 1
+            par.grid_shock_love,par.grid_weight_love = np.array([0.0]),np.array([1.0])
+
+        else:
+            par.grid_shock_love,par.grid_weight_love = quadrature.normal_gauss_hermite(par.sigma_love,par.num_shock_love)
+
+        # pre-computation
+        par.grid_Ctot = nonlinspace(1.0e-6,par.max_Ctot,par.num_Ctot,1.1)   
+
+        # EGM
+        par.grid_util = np.nan + np.ones((par.num_power,par.num_marg_u))
+        par.grid_marg_u = np.nan + np.ones(par.grid_util.shape)
+        par.grid_marg_u_for_inv = np.nan + np.ones(par.grid_util.shape)
+
+        par.grid_C_for_marg_u = nonlinspace(1.0e-6,par.max_Ctot,par.num_marg_u,1.1)
+
+        par.grid_inv_marg_u = np.flip(par.grid_C_for_marg_u) # Flipped to make interpolation possible ## AMO: invert
+        if par.interp_inverse:
+            par.grid_inv_marg_u = 1.0/par.grid_inv_marg_u
+
+        par.grid_marg_u_single_w = np.nan + np.ones((par.num_marg_u))
+        par.grid_marg_u_single_w_for_inv = np.nan + np.ones((par.num_marg_u))
+
+        par.grid_marg_u_single_m = np.nan + np.ones((par.num_marg_u))
+        par.grid_marg_u_single_m_for_inv = np.nan + np.ones((par.num_marg_u))
+
+        par.grid_A_pd = nonlinspace(0.0,par.max_A_pd,par.num_A_pd,1.1)
+        par.grid_Aw_pd = par.div_A_share * par.grid_A_pd
+        par.grid_Am_pd = (1.0 - par.div_A_share) * par.grid_A_pd
+
+        # re-partering probabilities
+        par.prob_repartner = par.p_meet*np.ones(par.T) # likelihood of meeting a partner
+
+        if np.isnan(par.prob_partner_A_w[0,0]):
+            par.prob_partner_A_w = np.eye(par.num_A) #np.ones((par.num_A,par.num_A))/par.num_A # likelihood of meeting a partner with a particular level of wealth, conditional on own
+    
+        if np.isnan(par.prob_partner_A_m[0,0]):
+            par.prob_partner_A_m = np.eye(par.num_A) #np.ones((par.num_A,par.num_A))/par.num_A # likelihood of meeting a partner with a particular level of wealth, conditional on own
+       
+        # Norm distributed initial love - note: Probability mass between points (approximation of continuous distribution)
+        if par.sigma_love<=1.0e-6:
+            love_cdf = np.where(par.grid_love>=0.0,1.0,0.0)
+        else:
+            love_cdf = stats.norm.cdf(par.grid_love,0.0,par.sigma_love)
+        par.prob_partner_love = np.diff(love_cdf,1)
+        par.prob_partner_love = np.append(par.prob_partner_love,0.0) # lost last point in diff
+        # par.prob_partner_love = np.ones(par.num_love)/par.num_love # uniform
+
+        par.cdf_partner_Aw = np.cumsum(par.prob_partner_A_w,axis=1) # cumulative distribution to be used in simulation
+        par.cdf_partner_Am = np.cumsum(par.prob_partner_A_m,axis=1)
+
+
+
     def setup_grids(self):
         par = self.par
         

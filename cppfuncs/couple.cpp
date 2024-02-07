@@ -309,6 +309,29 @@ namespace couple {
         } // period check        
     }
 
+    void calc_expected_value_couple(int t, int iP, int iL, double* Vw, double* Vm, double* EVw, double* EVm, sol_struct* sol, par_struct* par){
+        double love = par->grid_love[iL];
+        double power = par->grid_power[iP];
+        for (int iA=0; iA<par->num_A;iA++){
+            int idx_interp = index::couple(t,iP,0,iA,par);
+            int delta_love = index::couple(t,iP,1,iA,par) - index::couple(t,iP,0,iA,par);
+            double Eval_w = 0;
+            double Eval_m = 0;        
+            for (int i_love_shock=0; i_love_shock<par->num_shock_love; i_love_shock++){
+                double love_next = love + par->grid_shock_love[i_love_shock];
+                double weight = par->grid_weight_love[i_love_shock];
+                int idx_love = tools::binary_search(0,par->num_love,par->grid_love,love_next);
+
+                Eval_w += weight*tools::interp_1d_index_delta(par->grid_love, par->num_love, &Vw[idx_interp], love_next, idx_love, delta_love);
+                Eval_m += weight*tools::interp_1d_index_delta(par->grid_love, par->num_love, &Vm[idx_interp], love_next, idx_love, delta_love);
+            }
+
+            int idx = index::couple(t,iP,iL,iA,par);
+            EVw[idx] = Eval_w;
+            EVm[idx] = Eval_m;
+        }
+    }
+
     void calc_marginal_value_couple(int t, int iP, int iL, double* Vw, double* Vm, double* margV, sol_struct* sol, par_struct* par){
 
         // Unpack power
@@ -457,14 +480,21 @@ namespace couple {
                     }
 
                 } // wealth
-
-                // v. Update marginal value
-                for (int iP=0; iP<par->num_power; iP++){
-                    int idx_interp = index::couple(t,iP,iL,0,par);
-                    calc_marginal_value_couple(t, iP, iL, &sol->Vw_start_as_couple[idx_interp], &sol->Vm_start_as_couple[idx_interp], &sol->margV_start_as_couple[idx_interp], sol, par);
-                } // power in finite diff
             } // love
             
+
+            for (int iL=0; iL<par->num_love; iL++){
+                for (int iP=0; iP<par->num_power; iP++){
+                    // v. Update expected value
+                    calc_expected_value_couple(t, iP, iL, sol->Vw_start_as_couple, sol->Vm_start_as_couple, sol->EVw_start_as_couple, sol->EVm_start_as_couple, sol, par);
+
+                     // vi. Update marginal value
+                    int idx_interp = index::couple(t,iP,iL,0,par);
+                    calc_marginal_value_couple(t, iP, iL, &sol->Vw_start_as_couple[idx_interp], &sol->Vm_start_as_couple[idx_interp], &sol->margV_start_as_couple[idx_interp], sol, par);
+                    calc_marginal_value_couple(t, iP, iL, &sol->EVw_start_as_couple[idx_interp], &sol->Vm_start_as_couple[idx_interp], &sol->EmargV_start_as_couple[idx_interp], sol, par);
+                } // power in finite diff
+            } // love
+
             // delete pointers
             delete[] list_start_as_couple;
             delete[] list_couple_to_couple;
