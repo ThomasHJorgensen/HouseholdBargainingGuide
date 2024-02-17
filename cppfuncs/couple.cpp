@@ -12,8 +12,8 @@ namespace couple {
         int iL;             
         int iP;             
         double M;           
-        double *Vw_next;    
-        double *Vm_next;    
+        double *EVw_next;    
+        double *EVm_next;    
 
         sol_struct *sol;
         par_struct *par;
@@ -28,26 +28,24 @@ namespace couple {
         return par->R*A + par->inc_w + par->inc_m;
     }
 
-    double value_of_choice_couple_to_couple(double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm,  double C_tot,int t,double M_resources,int iL,int iP,double* Vw_next,double* Vm_next,sol_struct *sol, par_struct *par){
+    double value_of_choice_couple_to_couple(double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm,  double C_tot,int t,double M_resources,int iL,int iP,double* EVw_next,double* EVm_next,sol_struct *sol, par_struct *par){
         double love = par->grid_love[iL];
         double power = par->grid_power[iP];
 
         // current utility from consumption allocation
-        intraperiod_allocation(Cw_priv, Cm_priv, C_pub , C_tot,iP,sol,par);
+        precompute::intraperiod_allocation(Cw_priv, Cm_priv, C_pub , C_tot,iP,sol,par);
         Vw[0] = utils::util(*Cw_priv,*C_pub,woman,par,love); 
         Vm[0] = utils::util(*Cm_priv,*C_pub,man,par,love);
 
-        // add continuation value [TODO: re-use index would speed this up since only output different!]
+        // add continuation value
         if (t < (par->T-1)){
             double savings = M_resources - C_tot ;
             double EVw_plus = 0.0;
             double EVm_plus = 0.0;
-            for (int iL_next = 0; iL_next < par->num_shock_love; iL_next++) {
-                double love_next = love + par->grid_shock_love[iL_next];
 
-                EVw_plus += par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, Vw_next, love_next,savings);
-                EVm_plus += par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, Vm_next, love_next,savings);
-            }
+            EVw_plus = tools::interp_1d(par->grid_A, par->num_A, EVw_next, savings);
+            EVm_plus = tools::interp_1d(par->grid_A, par->num_A, EVm_next, savings);
+
             Vw[0] += par->beta*EVw_plus;
             Vm[0] += par->beta*EVm_plus;
         }
@@ -69,18 +67,18 @@ namespace couple {
         int iL = solver_data->iL;
         int iP = solver_data->iP;
         double M = solver_data->M;
-        double *Vw_next = solver_data->Vw_next;
-        double *Vm_next = solver_data->Vm_next;
+        double *EVw_next = solver_data->EVw_next;
+        double *EVm_next = solver_data->EVm_next;
 
         sol_struct *sol = solver_data->sol;
         par_struct *par = solver_data->par;
 
         // return negative of value
         double Cw_priv,Cm_priv,C_pub,Vw,Vm;
-        return - value_of_choice_couple_to_couple(&Cw_priv,&Cm_priv,&C_pub,&Vw,&Vm, C_tot,t,M,iL,iP,Vw_next,Vm_next,sol,par);
+        return - value_of_choice_couple_to_couple(&Cw_priv,&Cm_priv,&C_pub,&Vw,&Vm, C_tot,t,M,iL,iP,EVw_next,EVm_next,sol,par);
     }
 
-    void solve_couple_to_couple(double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm , int t,double M_resources,int iL,int iP,double* Vw_next,double *Vm_next,double starting_val,sol_struct *sol,par_struct *par){
+    void solve_couple_to_couple(double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm , int t,double M_resources,int iL,int iP,double* EVw_next,double* EVm_next,double starting_val,sol_struct *sol,par_struct *par){
         
         double C_tot = M_resources;
         
@@ -97,8 +95,8 @@ namespace couple {
             solver_data->iL = iL;
             solver_data->iP = iP;
             solver_data->M = M_resources;
-            solver_data->Vw_next = Vw_next;
-            solver_data->Vm_next = Vm_next;
+            solver_data->EVw_next = EVw_next;
+            solver_data->EVm_next = EVm_next;
 
             solver_data->sol = sol;
             solver_data->par = par;
@@ -119,11 +117,11 @@ namespace couple {
         }
 
         // implied consumption allocation (re-calculation)
-        value_of_choice_couple_to_couple(Cw_priv,Cm_priv,C_pub,Vw,Vm, C_tot,t,M_resources,iL,iP,Vw_next,Vm_next,sol,par);
+        value_of_choice_couple_to_couple(Cw_priv,Cm_priv,C_pub,Vw,Vm, C_tot,t,M_resources,iL,iP,EVw_next,EVm_next,sol,par);
 
     }
     
-    void solve_couple_to_couple_Agrid_vfi(int t, int iP, int iL, double* Vw_next, double* Vm_next,sol_struct* sol, par_struct* par){
+    void solve_couple_to_couple_Agrid_vfi(int t, int iP, int iL, double* EVw_next, double* EVm_next,sol_struct* sol, par_struct* par){
         for (int iA=0; iA<par->num_A;iA++){
             int idx = index::couple(t,iP,iL,iA,par);
             int idx_last = index::couple(t,iP,iL,iA-1,par); 
@@ -138,7 +136,7 @@ namespace couple {
 
             // solve unconstrained problem
             solve_couple_to_couple(&sol->Cw_priv_couple_to_couple[idx], &sol->Cm_priv_couple_to_couple[idx], &sol->C_pub_couple_to_couple[idx], &sol->Vw_couple_to_couple[idx], &sol->Vm_couple_to_couple[idx]
-            , t,M_resources,iL,iP,Vw_next,Vm_next,starting_val,sol,par);
+            , t,M_resources,iL,iP,EVw_next,EVm_next,starting_val,sol,par);
             sol->C_tot_couple_to_couple[idx] = sol->Cw_priv_couple_to_couple[idx] + sol->Cm_priv_couple_to_couple[idx] + sol->C_pub_couple_to_couple[idx];
 
         } // wealth   
@@ -148,7 +146,7 @@ namespace couple {
     //////////////////
     // EGM solution //
 
-    void handle_liquidity_constraint_couple_to_couple(int t, int iP, int iL, double* m_vec, double* EmargU_pd, double* C_tot, double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm, double* Vw_next, double* Vm_next, double* V, sol_struct* sol, par_struct* par){
+    void handle_liquidity_constraint_couple_to_couple(int t, int iP, int iL, double* m_vec, double* EmargU_pd, double* C_tot, double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm, double* EVw_next, double* EVm_next, double* V, sol_struct* sol, par_struct* par){
         // 1. Check if liquidity constraint binds
         // constraint: binding if common m is smaller than smallest m in endogenous grid (check if this holds when the endo grid bends back)
         for (int iA=0; iA < par->num_A; iA++){
@@ -160,7 +158,7 @@ namespace couple {
                 C_tot[iA] = M_now;
 
                 // b. Calculate intra-period allocation
-                double _ = value_of_choice_couple_to_couple(&Cw_priv[iA] ,&Cm_priv[iA], &C_pub[iA], &Vw[iA], &Vm[iA], C_tot[iA],t,M_now,iL,iP,Vw_next,Vm_next,sol,par);
+                double _ = value_of_choice_couple_to_couple(&Cw_priv[iA] ,&Cm_priv[iA], &C_pub[iA], &Vw[iA], &Vm[iA], C_tot[iA],t,M_now,iL,iP,EVw_next,EVm_next,sol,par);
                 
                 // c. Calculate value
                 double power = par->grid_power[iP];
@@ -169,7 +167,7 @@ namespace couple {
         }
     }
 
-    void do_upper_envelope_couple_to_couple(int t, int iP, int iL, double* m_vec, double* c_vec, double* v_vec, double* EmargU_pd, double* C_tot, double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm, double* Vw_next, double* Vm_next, double* V, sol_struct* sol, par_struct* par){
+    void do_upper_envelope_couple_to_couple(int t, int iP, int iL, double* m_vec, double* c_vec, double* v_vec, double* EmargU_pd, double* C_tot, double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm, double* EVw_next, double* EVm_next, double* V, sol_struct* sol, par_struct* par){
 
         // Loop through unsorted endogenous grid
         for (int iA_pd = 0; iA_pd<par->num_A_pd-1;iA_pd++){
@@ -212,7 +210,7 @@ namespace couple {
                         C_tot[iA] = c_guess;
                         
                         // oo. Update intra-period allocation
-                        double _ = value_of_choice_couple_to_couple(&Cw_priv[iA], &Cm_priv[iA], &C_pub[iA] ,&Vw[iA] ,&Vm[iA], C_tot[iA], t, M_now,iL,iP,Vw_next,Vm_next,sol,par);
+                        double _ = value_of_choice_couple_to_couple(&Cw_priv[iA], &Cm_priv[iA], &C_pub[iA] ,&Vw[iA] ,&Vm[iA], C_tot[iA], t, M_now,iL,iP,EVw_next,EVm_next,sol,par);
                         
                         // ooo. Update value
                         V[iA] = par->grid_power[iP]*Vw[iA] + (1-par->grid_power[iP])*Vm[iA];
@@ -222,11 +220,11 @@ namespace couple {
         }
     }
 
-    void solve_couple_to_couple_Agrid_egm(int t, int iP, int iL, double* Vw_next, double* Vm_next, double* margV_next,sol_struct* sol, par_struct* par){
+    void solve_couple_to_couple_Agrid_egm(int t, int iP, int iL, double* EVw_next, double* EVm_next, double* EmargV_next,sol_struct* sol, par_struct* par){
         
         // 1. Solve terminal period with VFI
         if(t==(par->T-1)){
-            solve_couple_to_couple_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par);
+            solve_couple_to_couple_Agrid_vfi(t,iP,iL,EVw_next,EVm_next,sol,par);
 
         // 2. Solve remaining periods with EGM
         } else {
@@ -243,17 +241,9 @@ namespace couple {
                 int idx_pd = index::couple_pd(t,iP,iL,iA_pd,par);
                 int idx_interp = index::index2(iP,0,par->num_power,par->num_marg_u);
 
-                // ii. interpolate marginal utility and take expectations using quadrature
-                int j_A = tools::binary_search(0,par->num_A,par->grid_A,A_next);
-                int j_love = 0;
-                sol->EmargU_pd[idx_pd] = 0.0;
-                for (int iL_next = 0; iL_next < par->num_shock_love; iL_next++) {
-                    double love_next = par->grid_love[iL] + par->grid_shock_love[iL_next];
-                    j_love = tools::binary_search(j_love,par->num_love,par->grid_love,love_next);
+                // ii. interpolate marginal utility
+                sol->EmargU_pd[idx_pd] = par->beta * tools::interp_1d(par->grid_A, par->num_A, EmargV_next, A_next);
 
-                    sol->EmargU_pd[idx_pd] += par->beta*par->grid_weight_love[iL_next] * tools::_interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, margV_next, love_next, A_next,j_love,j_A);
-                    // sol->EmargU_pd[idx_pd] += par->beta*par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, margV_next, love_next, A_next);
-                }
                 // iii. Get total consumption by interpolation of pre-computed inverse marginal utility (coming from Euler)
                 if (strcmp(par->interp_method,"numerical")==0){
                     
@@ -286,8 +276,8 @@ namespace couple {
                 // iv. Get endogenous grid points
                 sol->M_pd[idx_pd] = A_next + sol->C_tot_pd[idx_pd];
 
-                // v. Get post-choice value
-                sol->V_couple_to_couple_pd[idx_pd] = value_of_choice_couple_to_couple(&Cw_priv, &Cm_priv, &C_pub, &Vw, &Vm, sol->C_tot_pd[idx_pd],t,sol->M_pd[idx_pd],iL,iP,Vw_next,Vm_next,sol,par);
+                // v. Get post-choice value (also updates the intra-period allocation)
+                sol->V_couple_to_couple_pd[idx_pd] = value_of_choice_couple_to_couple(&Cw_priv, &Cm_priv, &C_pub, &Vw, &Vm, sol->C_tot_pd[idx_pd],t,sol->M_pd[idx_pd],iL,iP,EVw_next,EVm_next,sol,par);
             }
 
             // 3. Apply upper envelope and interpolate onto common grid
@@ -298,13 +288,13 @@ namespace couple {
                                                          &sol->C_tot_couple_to_couple[idx_interp], &sol->Cw_priv_couple_to_couple[idx_interp], 
                                                          &sol->Cm_priv_couple_to_couple[idx_interp], &sol->C_pub_couple_to_couple[idx_interp], 
                                                          &sol->Vw_couple_to_couple[idx_interp], &sol->Vm_couple_to_couple[idx_interp], 
-                                                         Vw_next, Vm_next, &sol->V_couple_to_couple[idx_interp], sol, par);
+                                                         EVw_next, EVm_next, &sol->V_couple_to_couple[idx_interp], sol, par);
             do_upper_envelope_couple_to_couple( t, iP, iL, 
                                                 &sol->M_pd[idx_interp_pd], &sol->C_tot_pd[idx_interp_pd], &sol->V_couple_to_couple_pd[idx_interp_pd], 
                                                 &sol->EmargU_pd[idx_interp_pd], &sol->C_tot_couple_to_couple[idx_interp], 
                                                 &sol->Cw_priv_couple_to_couple[idx_interp] ,&sol->Cm_priv_couple_to_couple[idx_interp],
                                                 &sol->C_pub_couple_to_couple[idx_interp],&sol->Vw_couple_to_couple[idx_interp],
-                                                &sol->Vm_couple_to_couple[idx_interp], Vw_next, Vm_next, &sol->V_couple_to_couple[idx_interp], 
+                                                &sol->Vm_couple_to_couple[idx_interp], EVw_next, EVm_next, &sol->V_couple_to_couple[idx_interp], 
                                                 sol, par);
 
         } // period check        
@@ -408,23 +398,23 @@ namespace couple {
             for (int iP=0; iP<par->num_power; iP++){
 
                 // Get next period continuation values
-                double *Vw_next = nullptr;  
-                double *Vm_next = nullptr;
-                double *margV_next = nullptr;
-                if (t<(par->T-1)){
-                    int idx_next = index::couple(t+1,iP,0,0,par);
-                    Vw_next = &sol->Vw_start_as_couple[idx_next];  
-                    Vm_next = &sol->Vm_start_as_couple[idx_next];
-                    margV_next = &sol->margV_start_as_couple[idx_next];
-                }
+                double *EVw_next = nullptr;  
+                double *EVm_next = nullptr;
+                double *EmargV_next = nullptr;
                 // solve
                 for (int iL=0; iL<par->num_love; iL++){
+                    if (t<(par->T-1)){
+                        int idx_next = index::couple(t+1,iP,iL,0,par);
+                        EVw_next = &sol->EVw_start_as_couple[idx_next];  
+                        EVm_next = &sol->EVm_start_as_couple[idx_next];
+                        EmargV_next = &sol->EmargV_start_as_couple[idx_next];
+                    }
 
                     if (par->do_egm){
-                        solve_couple_to_couple_Agrid_egm(t,iP,iL,Vw_next,Vm_next, margV_next,sol,par); 
+                        solve_couple_to_couple_Agrid_egm(t,iP,iL,EVw_next,EVm_next, EmargV_next,sol,par); 
 
                     } else {
-                        solve_couple_to_couple_Agrid_vfi(t,iP,iL,Vw_next,Vm_next,sol,par); 
+                        solve_couple_to_couple_Agrid_vfi(t,iP,iL,EVw_next,EVm_next,sol,par); 
 
                     }
                 } // love
@@ -490,9 +480,11 @@ namespace couple {
                     calc_expected_value_couple(t, iP, iL, sol->Vw_start_as_couple, sol->Vm_start_as_couple, sol->EVw_start_as_couple, sol->EVm_start_as_couple, sol, par);
 
                      // vi. Update marginal value
-                    int idx_interp = index::couple(t,iP,iL,0,par);
-                    calc_marginal_value_couple(t, iP, iL, &sol->Vw_start_as_couple[idx_interp], &sol->Vm_start_as_couple[idx_interp], &sol->margV_start_as_couple[idx_interp], sol, par);
-                    calc_marginal_value_couple(t, iP, iL, &sol->EVw_start_as_couple[idx_interp], &sol->Vm_start_as_couple[idx_interp], &sol->EmargV_start_as_couple[idx_interp], sol, par);
+                    if (par->do_egm){
+                        int idx_interp = index::couple(t,iP,iL,0,par);
+                        // calc_marginal_value_couple(t, iP, iL, &sol->Vw_start_as_couple[idx_interp], &sol->Vm_start_as_couple[idx_interp], &sol->margV_start_as_couple[idx_interp], sol, par);
+                        calc_marginal_value_couple(t, iP, iL, &sol->EVw_start_as_couple[idx_interp], &sol->EVm_start_as_couple[idx_interp], &sol->EmargV_start_as_couple[idx_interp], sol, par);
+                    }
                 } // power in finite diff
             } // love
             
