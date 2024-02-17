@@ -24,27 +24,6 @@ namespace couple {
         return V_couple_to_couple - V_couple_to_single;
     }
 
-    void intraperiod_allocation(double* Cw_priv, double* Cm_priv, double* C_pub , double C_tot,int iP,sol_struct *sol,par_struct *par){
-        // interpolate pre-computed solution 
-        int idx = index::index2(iP,0,par->num_power,par->num_Ctot); 
-        int j1 = tools::binary_search(0,par->num_Ctot,par->grid_Ctot,C_tot);
-
-        Cw_priv[0] = tools::interp_1d_index(par->grid_Ctot,par->num_Ctot,&sol->pre_Ctot_Cw_priv[idx],C_tot,j1);
-        Cm_priv[0] = tools::interp_1d_index(par->grid_Ctot,par->num_Ctot,&sol->pre_Ctot_Cm_priv[idx],C_tot,j1);
-        C_pub[0] = C_tot - Cw_priv[0] - Cm_priv[0];
-
-    }
-
-    void intraperiod_allocation_sim(double* Cw_priv, double* Cm_priv, double* C_pub , double C_tot,double power,sol_struct *sol,par_struct *par){
-        // interpolate pre-computed solution in both power and C_tot
-        int idx = index::index2(0,0,par->num_power,par->num_Ctot); 
-
-        tools::interp_2d_2out(par->grid_power,par->grid_Ctot,par->num_power,par->num_Ctot,&sol->pre_Ctot_Cw_priv[idx],&sol->pre_Ctot_Cm_priv[idx],power,C_tot,Cw_priv,Cm_priv);
-
-        C_pub[0] = C_tot - Cw_priv[0] - Cm_priv[0];
-
-    }
-
     double resources(double A, par_struct* par){
         return par->R*A + par->inc_w + par->inc_m;
     }
@@ -73,6 +52,7 @@ namespace couple {
             Vm[0] += par->beta*EVm_plus;
         }
 
+        
         // return
         return power*Vw[0] + (1.0-power)*Vm[0];
     }
@@ -251,6 +231,11 @@ namespace couple {
         // 2. Solve remaining periods with EGM
         } else {
             // Solve on endogenous grid
+            double Cw_priv = 0.0;
+            double Cm_priv = 0.0;
+            double C_pub {};
+            double Vw {};
+            double Vm {};
             for (int iA_pd=0; iA_pd<par->num_A_pd;iA_pd++){
 
                 // i. Unpack
@@ -268,24 +253,40 @@ namespace couple {
 
                     sol->EmargU_pd[idx_pd] += par->beta*par->grid_weight_love[iL_next] * tools::_interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, margV_next, love_next, A_next,j_love,j_A);
                     // sol->EmargU_pd[idx_pd] += par->beta*par->grid_weight_love[iL_next] * tools::interp_2d(par->grid_love,par->grid_A ,par->num_love,par->num_A, margV_next, love_next, A_next);
-
                 }
+                // iii. Get total consumption by interpolation of pre-computed inverse marginal utility (coming from Euler)
+                if (strcmp(par->interp_method,"numerical")==0){
+                    
+                    // starting values
+                    double guess_Ctot = 3.0;
+                    double guess_Cw_priv = guess_Ctot/3.0;
+                    double guess_Cm_priv = guess_Ctot/3.0;
+                    if(iA_pd>0){
+                        // last found solution
+                        guess_Ctot = sol->C_tot_pd[index::couple_pd(t,iP,iL,iA_pd-1,par)];
+                        guess_Cw_priv = Cw_priv;
+                        guess_Cm_priv = Cm_priv;
 
-                // iii. Get total consumption by interpolation of pre-computed inverse marginal utility (comming from Euler)
-                sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,sol->EmargU_pd[idx_pd]);
-                if (par->interp_inverse){
-                    sol->C_tot_pd[idx_pd] = 1.0/sol->C_tot_pd[idx_pd];
+                    } else if (t<(par->T-2)) {
+                        guess_Ctot = sol->C_tot_pd[index::couple_pd(t+1,iP,iL,iA_pd,par)];
+                    }
+                                        
+                    sol->C_tot_pd[idx_pd] = precompute::inv_marg_util_couple(sol->EmargU_pd[idx_pd],iP,par,sol,guess_Ctot,guess_Cw_priv,guess_Cm_priv); // numerical inverse
+
+                } else {
+                    if(strcmp(par->interp_method,"linear")==0){
+                        sol->C_tot_pd[idx_pd] = tools::interp_1d(&par->grid_marg_u_for_inv[idx_interp],par->num_marg_u,par->grid_inv_marg_u,sol->EmargU_pd[idx_pd]);
+                    }
+
+                    if (par->interp_inverse){
+                        sol->C_tot_pd[idx_pd] = 1.0/sol->C_tot_pd[idx_pd];
+                    }
                 }
-
+                
                 // iv. Get endogenous grid points
                 sol->M_pd[idx_pd] = A_next + sol->C_tot_pd[idx_pd];
 
                 // v. Get post-choice value
-                double Cw_priv {};
-                double Cm_priv {};
-                double C_pub {};
-                double Vw {};
-                double Vm {};
                 sol->V_couple_to_couple_pd[idx_pd] = value_of_choice_couple_to_couple(&Cw_priv, &Cm_priv, &C_pub, &Vw, &Vm, sol->C_tot_pd[idx_pd],t,sol->M_pd[idx_pd],iL,iP,Vw_next,Vm_next,sol,par);
             }
 
@@ -481,7 +482,7 @@ namespace couple {
 
                 } // wealth
             } // love
-            
+
 
             for (int iL=0; iL<par->num_love; iL++){
                 for (int iP=0; iP<par->num_power; iP++){
@@ -494,7 +495,7 @@ namespace couple {
                     calc_marginal_value_couple(t, iP, iL, &sol->EVw_start_as_couple[idx_interp], &sol->Vm_start_as_couple[idx_interp], &sol->EmargV_start_as_couple[idx_interp], sol, par);
                 } // power in finite diff
             } // love
-
+            
             // delete pointers
             delete[] list_start_as_couple;
             delete[] list_couple_to_couple;

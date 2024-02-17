@@ -1,6 +1,10 @@
 #define MAIN
 #include "myheader.h"
 
+// include these again here to ensure that they are automatically compiled by consav
+#ifndef MAIN
+#include "precompute.cpp"
+#endif
 
 /////////////
 // 5. MAIN //
@@ -29,3 +33,19 @@ EXPORT void simulate(sim_struct *sim, sol_struct *sol, par_struct *par){
 }
 
 
+EXPORT void compute_margEV(sol_struct* sol, par_struct* par){
+    for (int t = 0; t < par->T; t++){
+        single::calc_marginal_value_single(t, woman, sol, par);
+        single::calc_marginal_value_single(t, man, sol, par);
+
+        for (int iP=0; iP<par->num_power; iP++){
+            for (int iL=0; iL<par->num_love; iL++){
+                int idx = index::couple(t,iP,iL,0,par);
+                double* EVw = &sol->EVw_start_as_couple[idx];
+                double* EVm = &sol->EVm_start_as_couple[idx];
+                double* EmargV = &sol->EmargV_start_as_couple[idx];
+                couple::calc_marginal_value_couple(t, iP, iL, EVw, EVm, EmargV, sol, par);
+            }
+        }
+    }
+}
