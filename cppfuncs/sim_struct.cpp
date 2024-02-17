@@ -13,6 +13,8 @@ typedef struct sim_struct
  double* couple;
  double* power;
  double* love;
+ double* util;
+ double* mean_lifetime_util;
  double* A_own;
  double* A_partner;
  double* draw_love;
@@ -43,6 +45,8 @@ double* get_double_p_sim_struct(sim_struct* x, char* name){
  else if( strcmp(name,"couple") == 0 ){ return x->couple; }
  else if( strcmp(name,"power") == 0 ){ return x->power; }
  else if( strcmp(name,"love") == 0 ){ return x->love; }
+ else if( strcmp(name,"util") == 0 ){ return x->util; }
+ else if( strcmp(name,"mean_lifetime_util") == 0 ){ return x->mean_lifetime_util; }
  else if( strcmp(name,"A_own") == 0 ){ return x->A_own; }
  else if( strcmp(name,"A_partner") == 0 ){ return x->A_partner; }
  else if( strcmp(name,"draw_love") == 0 ){ return x->draw_love; }

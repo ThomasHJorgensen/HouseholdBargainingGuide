@@ -353,6 +353,13 @@ namespace sim {
 
                     }
 
+                    // utility of women
+                    double love_now = 0.0;
+                    if (sim->couple[it]){
+                        love_now = sim->love[it];
+                    }
+                    sim->util[it] = pow(par->beta , t) * utils::util(sim->Cw_priv[it],sim->Cw_pub[it],woman,par,love_now);
+
                 } // t
             } // i
 
