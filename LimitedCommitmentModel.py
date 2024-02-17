@@ -84,9 +84,6 @@ class HouseholdModelClass(EconModelClass):
         par.interp_inverse = False # True: interpolate inverse consumption
         par.interp_method = 'linear'
         par.precompute_intratemporal = True # if True, precompute intratemporal allocation, else re-solve every time
-
-        par.analytic_inv_marg_u_single = True 
-        par.interp_power = False
         
         par.num_Ctot = 100
         par.max_Ctot = par.max_A*2

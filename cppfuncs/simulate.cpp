@@ -237,29 +237,11 @@ namespace sim {
                     // first check if they want to remain together and what the bargaining power will be if they do.
                     double power;
                     double C_tot;
-                    int idx_power,idx_love,idx_A;
+                    //int idx_power,idx_love,idx_A;
                     if (couple_lag) { // if start as couple
 
-                        if (par->interp_power){
-                            // 1. search for grid points
-                            idx_power = tools::binary_search(0,par->num_power,par->grid_power,power_lag);
-                            idx_love = tools::binary_search(0,par->num_love,par->grid_love,love);
-                            idx_A = tools::binary_search(0,par->num_A,par->grid_A,A_lag);
-
-                            // 2. check if close to divorce - AMO: need to check for discontinuity in all dimensions!
-                            int idx = index::index4(t,idx_power,idx_love,idx_A,par->T,par->num_power,par->num_love,par->num_A);
-                            int idxp1 = index::index4(t,idx_power,idx_love+1,idx_A,par->T,par->num_power,par->num_love,par->num_A);
-                            if ((sol->power[idx]<0.0) | (sol->power[idxp1]<0.0)){
-                                power = -1.0; //update_power(t,power_lag,love,A_lag,Aw_lag,Am_lag,sim,sol,par);
-                            } else {
-                                // 3. interpolate power
-                                int idx_sol = index::couple(t,0,0,0,par);
-                                power = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A, &sol->power[idx_sol], power_lag, love, A_lag, idx_power, idx_love, idx_A);
-                            }
-                        }
-                        else {
-                            power = update_power(t,power_lag,love,A_lag,Aw_lag,Am_lag,sim,sol,par);
-                        }
+                        power = update_power(t,power_lag,love,A_lag,Aw_lag,Am_lag,sim,sol,par);
+                        
 
                         if (power < 0.0) { // divorce is coded as -1
                             sim->couple[it] = false;
@@ -304,12 +286,7 @@ namespace sim {
                         
                         // optimal consumption allocation if couple (interpolate in power, love, A)
                         int idx_sol = index::index4(t,0,0,0,par->T,par->num_power,par->num_love,par->num_A);
-                        if (par->interp_power){                            
-                            C_tot = tools::_interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A,&sol->C_tot_couple_to_couple[idx_sol],power_lag,love,A_lag,idx_power,idx_love,idx_A);
-                        }
-                        else{
-                            C_tot = tools::interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A ,&sol->C_tot_couple_to_couple[idx_sol],power,love,A_lag);
-                        }
+                        C_tot = tools::interp_3d(par->grid_power,par->grid_love,par->grid_A,par->num_power,par->num_love,par->num_A ,&sol->C_tot_couple_to_couple[idx_sol],power,love,A_lag);
 
                         // enforce ressource constraint (may be slightly broken due to approximation error)
                         double M_resources = couple::resources(A_lag,par);
