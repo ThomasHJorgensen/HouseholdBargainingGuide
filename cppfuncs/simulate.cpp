@@ -157,7 +157,7 @@ namespace sim {
 
     }
 
-    int calc_initial_bargaining_weight(int t, int iL, int A, int Ap, int gender, sol_struct *sol, par_struct *par){
+    int calc_initial_bargaining_weight(int t, int iL, double A, double Ap, int gender, sol_struct *sol, par_struct *par){
 
         // unpack
         double Aw = A;
