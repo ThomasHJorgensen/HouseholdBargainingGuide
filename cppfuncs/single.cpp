@@ -382,6 +382,76 @@ namespace single {
         return max_idx;
     }
 
+    double repartner_surplus(double power, index::state_couple_struct* state_couple, index::state_single_struct* state_single, int gender, par_struct* par, sol_struct* sol){
+        // unpack
+        int t = state_single->t;
+        double A = state_single->A;
+
+        double love = state_couple->love;
+        double A_tot = state_couple->A; 
+
+        // unpack integers here
+
+        double* V_single_to_single = sol->Vw_single_to_single;
+        double* V_single_to_couple = sol->Vw_single_to_couple;
+        double* grid_A_single = par->grid_Aw;
+        if (gender == man){
+            V_single_to_single = sol->Vm_single_to_single;
+            V_single_to_couple = sol->Vm_single_to_couple;
+            grid_A_single = par->grid_Am;
+        }
+
+        //interpolate V_single_to_single
+        double Vsts = tools::interp_1d(grid_A_single, par->num_A, &V_single_to_single[t], A); 
+
+        // interpolate couple V_single_to_couple  
+        double Vstc = tools::interp_3d(par->grid_power, par->grid_love, par->grid_A, 
+                                       par->num_power, par->num_love, par->num_A, 
+                                       &V_single_to_couple[t], power, love, A_tot);
+
+        // surplus
+        return Vstc - Vsts;
+    }
+
+    double calc_initial_bargaining_weight_new(int t, int iL, int iAw, int iAm, sol_struct* sol, par_struct* par){ //TODO: take contiuous states
+        // state structs
+        index::state_couple_struct* state_couple = new index::state_couple_struct;
+        index::state_single_struct* state_single_w = new index::state_single_struct;
+        index::state_single_struct* state_single_m = new index::state_single_struct;
+
+        state_couple->t = t;
+        state_couple->love = par->grid_love[iL];
+        state_couple->A = par->grid_Aw[iAw] + par->grid_Am[iAm];
+
+        state_single_w->t = t;
+        state_single_w->A = par->grid_Aw[iAw];
+
+        state_single_m->t = t;
+        state_single_m->A = par->grid_Am[iAm];
+
+        //solver input
+        bargaining::nash_solver_struct* nash_struct = new bargaining::nash_solver_struct;
+        nash_struct->S = repartner_surplus;
+        nash_struct->state_couple = state_couple;
+        nash_struct->state_single_w = state_single_w;
+        nash_struct->state_single_m = state_single_m;
+        nash_struct->sol = sol;
+        nash_struct->par = par;
+
+        // solve
+        double init_mu = bargaining::nash_bargain(nash_struct, par);
+
+        // check surplus is positive
+        double Sw = repartner_surplus(init_mu, state_couple, state_single_w, woman, par, sol);
+        double Sm = repartner_surplus(init_mu, state_couple, state_single_m, man, par, sol);
+        if ((Sw<0.0) |(Sm<0.0)){
+            init_mu = -1.0;
+        }
+
+        return init_mu;
+    }
+    
+    
     double expected_value_cond_meet_partner(int t, int iA, int gender, sol_struct* sol, par_struct* par){
         // unpack
         double* V_single_to_single = sol->Vw_single_to_single;
@@ -478,6 +548,9 @@ namespace single {
                 int idx_single = index::single(t,iA,par);
                 sol->EVw_start_as_single[idx_single] = p_meet*EVw_cond + (1.0-p_meet)*sol->Vw_single_to_single[idx_single];
                 sol->EVm_start_as_single[idx_single] = p_meet*EVm_cond + (1.0-p_meet)*sol->Vm_single_to_single[idx_single];
+
+                sol->EVw_cond_meet_partner[idx_single] = EVw_cond;
+                sol->EVm_cond_meet_partner[idx_single] = EVm_cond;
             } // iA
         } // pragma
 

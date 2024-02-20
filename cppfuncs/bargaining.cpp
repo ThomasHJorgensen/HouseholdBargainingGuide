@@ -405,4 +405,68 @@ namespace bargaining {
     
 }
 
+//NASH BARGAINED INITIAL WEIGHT
+    typedef struct {        
+        par_struct *par;   
+        sol_struct *sol;                                    
+        double (*S)(double,index::state_couple_struct*,index::state_single_struct*,int,par_struct*,sol_struct*); //surplus func as function of power and state
+        index::state_couple_struct *state_couple;                                       // state - tbc 
+        index::state_single_struct *state_single_w;                                       // state - tbc   
+        index::state_single_struct *state_single_m;                                       // state - tbc                              
+    } nash_solver_struct;
+
+    // compute negative nash surplus for given power + nash_struct
+    double objfunc_nash_bargain(unsigned n, const double *x, double *grad, void* solver_data_in){
+        // unpack
+        nash_solver_struct* solver_data = (nash_solver_struct*) solver_data_in; 
+        par_struct* par = solver_data->par;
+        sol_struct* sol = solver_data->sol;
+        double (*S)(double,index::state_couple_struct*, index::state_single_struct*,int,par_struct*,sol_struct*) = solver_data->S; //TODO: take continuous states as input as generically as possible
+
+        // calculate individual supluses
+        double Sw_x = S(x[0],solver_data->state_couple, solver_data->state_single_w, woman, par, sol);
+        double Sm_x = S(x[0],solver_data->state_couple, solver_data->state_single_m, man, par, sol);
+
+        // penalty for negative surplus
+        double penalty = 0.0;
+        if(Sw_x<1e-6){
+            penalty += -Sw_x*1000.0;
+            Sw_x = 0.0;
+        }
+        if(Sm_x<1e-6){
+            penalty += -Sm_x*1000.0;
+            Sm_x = 0.0;
+        }
+
+        return -(Sw_x*Sm_x) + penalty;
+        
+    }
+
+    // write a function thakt takes as input two other functions. Each input function is the surplus of each spouse as a function of power and a user_specified containter for other parameters.
+    // The output is the index of the power grid that corresponds to the initial bargaining weight.
+    double nash_bargain(nash_solver_struct* nash_struct, par_struct* par){
+        // for a given couple idx, find the initial bargaining weight
+
+        int const dim = 1;
+        double lb[dim], ub[dim], x[dim];
+
+        auto opt = nlopt_create(NLOPT_LN_BOBYQA, dim);
+        double minf = 0.0;
+
+        nlopt_set_min_objective(opt, objfunc_nash_bargain, nash_struct);
+
+        // set bounds
+        lb[0] = par->grid_power[0];
+        ub[0] = par->grid_power[par->num_power-1];
+        nlopt_set_lower_bounds(opt, lb);
+        nlopt_set_upper_bounds(opt, ub);
+
+        //optimize
+        x[0] = 0.5;
+        nlopt_optimize(opt, x, &minf);
+        nlopt_destroy(opt);
+
+        return x[0];
+    }
+
 } // namespace bargaining
