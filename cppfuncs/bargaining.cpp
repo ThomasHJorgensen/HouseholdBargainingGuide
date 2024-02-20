@@ -427,23 +427,13 @@ namespace bargaining {
         double Sw_x = S(x[0],solver_data->state_couple, solver_data->state_single_w, woman, par, sol);
         double Sm_x = S(x[0],solver_data->state_couple, solver_data->state_single_m, man, par, sol);
 
-        // penalty for negative surplus
-        double penalty = 0.0;
-        if(Sw_x<1e-6){
-            penalty += -Sw_x*1000.0;
-            Sw_x = 0.0;
-        }
-        if(Sm_x<1e-6){
-            penalty += -Sm_x*1000.0;
-            Sm_x = 0.0;
-        }
+        //logs::write("barg_log.txt",1,"\nobjfunc_nash_bargain: power = %f, Sw_x = %f, Sm_x = %f",x[0],Sw_x,Sm_x);
 
-        return -(Sw_x*Sm_x) + penalty;
+        return -(Sw_x*Sm_x);
         
     }
 
-    // write a function thakt takes as input two other functions. Each input function is the surplus of each spouse as a function of power and a user_specified containter for other parameters.
-    // The output is the index of the power grid that corresponds to the initial bargaining weight.
+    
     double nash_bargain(nash_solver_struct* nash_struct, par_struct* par){
         // for a given couple idx, find the initial bargaining weight
 

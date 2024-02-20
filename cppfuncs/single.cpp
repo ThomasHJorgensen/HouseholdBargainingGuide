@@ -340,49 +340,7 @@ namespace single {
         }
     }
 
- int calc_initial_bargaining_weight(int t, int iL, int iAw, int iAm, sol_struct *sol, par_struct *par){
-        // a. value of being single
-        int idx_single_w = index::single(t,iAw,par);
-        int idx_single_m = index::single(t,iAm,par);
-
-        double Vw_single = sol->Vw_single_to_single[idx_single_w];
-        double Vm_single = sol->Vm_single_to_single[idx_single_m];
-
-        // b. Setup values for being in couple
-        double Vw_single_to_couple = 0.0;
-        double Vm_single_to_couple = 0.0;
-        double nash_surplus = 0.0;
-
-        int max_idx = -1;
-        double max_nash_surplus = 0.0; 
-        double A_tot = par->grid_Aw[iAw] + par->grid_Am[iAm];
-
-        double Sw = 0;
-        double Sm = 0;
-
-        int iA = tools::binary_search(0, par->num_A, par->grid_A, A_tot);
-
-        // c. loop over bargaining weights
-        for (int iP=0; iP < par->num_power; iP++){
-            int idx_interp = index::couple(t, iP, iL, 0, par);;
-            Vw_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vw_single_to_couple[idx_interp], A_tot, iA);
-            Vm_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vm_single_to_couple[idx_interp], A_tot, iA);
-            Sw = Vw_single_to_couple - Vw_single;
-            Sm = Vm_single_to_couple - Vm_single;
-
-            // c.1. find power idx that maxes Nash surplus
-            if ((Sw>0) & (Sm>0)){
-                nash_surplus = Sw*Sm;
-                if (nash_surplus > max_nash_surplus){
-                    max_nash_surplus = nash_surplus;
-                    max_idx = iP;
-                }
-            }
-        }
-        return max_idx;
-    }
-
-    double repartner_surplus(double power, index::state_couple_struct* state_couple, index::state_single_struct* state_single, int gender, par_struct* par, sol_struct* sol){
+    double repartner_surplus(double power, index::state_couple_struct* state_couple, index::state_single_struct* state_single, int gender, par_struct* par, sol_struct* sol){ //TODO: add index
         // unpack
         int t = state_single->t;
         double A = state_single->A;
@@ -413,21 +371,21 @@ namespace single {
         return Vstc - Vsts;
     }
 
-    double calc_initial_bargaining_weight_new(int t, int iL, int iAw, int iAm, sol_struct* sol, par_struct* par){ //TODO: take contiuous states
+    double calc_initial_bargaining_weight(int t, double love, double Aw, double Am, sol_struct* sol, par_struct* par){ //TODO: add index
         // state structs
         index::state_couple_struct* state_couple = new index::state_couple_struct;
         index::state_single_struct* state_single_w = new index::state_single_struct;
         index::state_single_struct* state_single_m = new index::state_single_struct;
 
         state_couple->t = t;
-        state_couple->love = par->grid_love[iL];
-        state_couple->A = par->grid_Aw[iAw] + par->grid_Am[iAm];
+        state_couple->love = love;
+        state_couple->A = Aw+Am;
 
         state_single_w->t = t;
-        state_single_w->A = par->grid_Aw[iAw];
+        state_single_w->A = Aw;
 
         state_single_m->t = t;
-        state_single_m->A = par->grid_Am[iAm];
+        state_single_m->A = Am;
 
         //solver input
         bargaining::nash_solver_struct* nash_struct = new bargaining::nash_solver_struct;
@@ -488,15 +446,17 @@ namespace single {
                     }
 
                     // // b.1.2. bargain over consumption
-                    int idx_power = index::index4(t,iL,iAw,iAm,par->T,par->num_love,par->num_A,par->num_A);
-                    int iP = sol->initial_power_idx[idx_power];
+                    double love = par->grid_love[iL];
+                    double Aw = par->grid_Aw[iAw];
+                    double Am = par->grid_Am[iAm];
+                    int power = calc_initial_bargaining_weight(t, love, Aw, Am, sol, par);
                     
                     // b.1.3 Value conditional on meeting partner
-                    //Value for woman
-                    if (iP>=0){
+                    if (power>0.0){
                         double A_tot = par->grid_Aw[iAw] + par->grid_Am[iAm]; 
-                        int idx_interp = index::couple(t,iP,iL,0,par);
-                        val = tools::interp_1d(par->grid_A,par->num_A, &V_single_to_couple[idx_interp],A_tot);
+                        val = tools::interp_3d(par->grid_power, par->grid_love, par->grid_A, 
+                                       par->num_power, par->num_love, par->num_A, 
+                                       &V_single_to_couple[t], power, love, A_tot); //TODO: reuse index
                     } else {
                         val = V_single_to_single[idx_single];
                     }
@@ -513,37 +473,14 @@ namespace single {
 
     void expected_value_start_single(int t, sol_struct* sol,par_struct* par){
         #pragma omp parallel num_threads(par->threads)
-        {
-            index::index_couple_struct* idx_couple = new index::index_couple_struct;
-
-            // a. calculate initial bargaining weights
-            // loop over states
-            #pragma omp for
-            for (int iAw=0; iAw<par->num_A;iAw++){
-                for (int iAm=0; iAm<par->num_A;iAm++){
-                    // only calculate if match has positive probability of happening
-                    int idx_w = index::index2(iAw,iAm,par->num_A,par->num_A);
-                    double pw = par->prob_partner_A_w[idx_w]; // woman's prob of meeting man
-                    int idx_m = index::index2(iAm,iAw,par->num_A,par->num_A);
-                    double pm = par->prob_partner_A_m[idx_w]; // man's prob of meeting
-
-                    if ((pw > 0.0) | (pm > 0.0)) {
-                        for (int iL=0; iL<par->num_love;iL++){
-                            int idx = index::index4(t,iL,iAw,iAm,par->T,par->num_love,par->num_A,par->num_A);
-                            sol->initial_power_idx[idx] = calc_initial_bargaining_weight(t, iL, iAw, iAm, sol, par);
-                        } // love
-                    } // if
-                } // iAm
-            } // iAw
-
-            // b. Loop over states
+        {// a. Loop over states
             #pragma omp for
             for (int iA=0; iA<par->num_A;iA++){
-                // b.1 Value conditional on meeting partner
+                // a.1 Value conditional on meeting partner
                 double EVw_cond = expected_value_cond_meet_partner(t,iA,woman,sol,par);
                 double EVm_cond = expected_value_cond_meet_partner(t,iA,man,sol,par);
 
-                // b.2. expected value of starting single
+                // a.2. expected value of starting single
                 double p_meet = par->prob_repartner[t];
                 int idx_single = index::single(t,iA,par);
                 sol->EVw_start_as_single[idx_single] = p_meet*EVw_cond + (1.0-p_meet)*sol->Vw_single_to_single[idx_single];
@@ -561,3 +498,45 @@ namespace single {
     }
 
 }
+
+ int calc_initial_bargaining_weight_old(int t, int iL, int iAw, int iAm, sol_struct *sol, par_struct *par){
+        // a. value of being single
+        int idx_single_w = index::single(t,iAw,par);
+        int idx_single_m = index::single(t,iAm,par);
+
+        double Vw_single = sol->Vw_single_to_single[idx_single_w];
+        double Vm_single = sol->Vm_single_to_single[idx_single_m];
+
+        // b. Setup values for being in couple
+        double Vw_single_to_couple = 0.0;
+        double Vm_single_to_couple = 0.0;
+        double nash_surplus = 0.0;
+
+        int max_idx = -1;
+        double max_nash_surplus = 0.0; 
+        double A_tot = par->grid_Aw[iAw] + par->grid_Am[iAm];
+
+        double Sw = 0;
+        double Sm = 0;
+
+        int iA = tools::binary_search(0, par->num_A, par->grid_A, A_tot);
+
+        // c. loop over bargaining weights
+        for (int iP=0; iP < par->num_power; iP++){
+            int idx_interp = index::couple(t, iP, iL, 0, par);;
+            Vw_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vw_single_to_couple[idx_interp], A_tot, iA);
+            Vm_single_to_couple = tools::interp_1d_index(par->grid_A, par->num_A, &sol->Vm_single_to_couple[idx_interp], A_tot, iA);
+            Sw = Vw_single_to_couple - Vw_single;
+            Sm = Vm_single_to_couple - Vm_single;
+
+            // c.1. find power idx that maxes Nash surplus
+            if ((Sw>0) & (Sm>0)){
+                nash_surplus = Sw*Sm;
+                if (nash_surplus > max_nash_surplus){
+                    max_nash_surplus = nash_surplus;
+                    max_idx = iP;
+                }
+            }
+        }
+        return max_idx;
+    }
