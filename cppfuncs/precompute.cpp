@@ -44,7 +44,7 @@ namespace precompute{
         return - val + penalty;
     }
 
-    void solve_intraperiod_couple(double* Cw_priv,double* Cm_priv,double* C_pub , double C_tot,double power,par_struct *par, double start_Cw_priv, double start_Cm_priv){
+    void solve_intraperiod_couple(double* Cw_priv,double* Cm_priv,double* C_pub , double C_tot,double power,par_struct *par, double start_Cw_priv, double start_Cm_priv, double ftol = 1.0e-6, double xtol = 1.0e-5){
         // setup numerical solver
         solver_precompute_struct* solver_data = new solver_precompute_struct;  
                 
@@ -61,8 +61,8 @@ namespace precompute{
         solver_data->par = par;
         nlopt_set_min_objective(opt, objfunc_precompute, solver_data);   
         nlopt_set_maxeval(opt, 2000);
-        nlopt_set_ftol_rel(opt, 1.0e-6);
-        nlopt_set_xtol_rel(opt, 1.0e-5);
+        nlopt_set_ftol_rel(opt, ftol);
+        nlopt_set_xtol_rel(opt, xtol);
 
         // bounds
         lb[0] = 1.0e-6;                
@@ -224,12 +224,16 @@ namespace precompute{
 
                         double start_Cm_priv = C_tot/3.0;
                         double start_Cw_priv = C_tot/3.0;
-                        if (iP>0){
+                        double ftol = 1.0e-10;
+                        double xtol = 1.0e-9;
+                        if (iP>1){ //Note: using previous starting values does not work super well for iP=1
                             int idx_minus = index::index2(iP-1,i,par->num_power,par->num_Ctot);
                             start_Cm_priv = sol->pre_Ctot_Cm_priv[idx_minus];
                             start_Cw_priv = sol->pre_Ctot_Cw_priv[idx_minus];
+                            ftol = 1.0e-6;
+                            xtol = 1.0e-5;
                         }
-                        solve_intraperiod_couple(&sol->pre_Ctot_Cw_priv[idx], &sol->pre_Ctot_Cm_priv[idx], &sol->pre_Ctot_C_pub[idx] , C_tot,par->grid_power[iP],par, start_Cw_priv, start_Cm_priv);
+                        solve_intraperiod_couple(&sol->pre_Ctot_Cw_priv[idx], &sol->pre_Ctot_Cm_priv[idx], &sol->pre_Ctot_C_pub[idx] , C_tot,par->grid_power[iP],par, start_Cw_priv, start_Cm_priv, ftol, xtol);
                     } // power
                 } // Ctot
             }
