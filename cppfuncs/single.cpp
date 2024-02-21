@@ -340,7 +340,7 @@ namespace single {
         }
     }
 
-    double repartner_surplus(double power, index::state_couple_struct* state_couple, index::state_single_struct* state_single, int gender, par_struct* par, sol_struct* sol){ //TODO: add index
+     double repartner_surplus(double power, index::state_couple_struct* state_couple, index::state_single_struct* state_single, int gender, par_struct* par, sol_struct* sol){ //TODO: add index
         // unpack
         int t = state_single->t;
         double A = state_single->A;
@@ -360,12 +360,14 @@ namespace single {
         }
 
         //interpolate V_single_to_single
-        double Vsts = tools::interp_1d(grid_A_single, par->num_A, &V_single_to_single[t], A); 
+        int idx_single = index::single(t,0,par);
+        double Vsts = tools::interp_1d(grid_A_single, par->num_A, &V_single_to_single[idx_single], A); 
 
         // interpolate couple V_single_to_couple  
+        int idx_couple = index::couple(t,0,0,0,par);
         double Vstc = tools::interp_3d(par->grid_power, par->grid_love, par->grid_A, 
                                        par->num_power, par->num_love, par->num_A, 
-                                       &V_single_to_couple[t], power, love, A_tot);
+                                       &V_single_to_couple[idx_couple], power, love, A_tot);
 
         // surplus
         return Vstc - Vsts;
@@ -414,11 +416,13 @@ namespace single {
         // unpack
         double* V_single_to_single = sol->Vw_single_to_single;
         double* V_single_to_couple = sol->Vw_single_to_couple;
-        double* prob_partner_A = par->prob_partner_A_w;;
+        double* prob_partner_A = par->prob_partner_A_w;
+        double* grid_A = par->grid_Aw;
         if (gender == man){
             V_single_to_single = sol->Vm_single_to_single;
             V_single_to_couple = sol->Vm_single_to_couple;
-            prob_partner_A = par->prob_partner_A_m;;
+            prob_partner_A = par->prob_partner_A_m;
+            grid_A = par->grid_Am;
         }
         // // value of remaining single
         int idx_single = index::single(t,iA,par);
@@ -447,16 +451,17 @@ namespace single {
 
                     // // b.1.2. bargain over consumption
                     double love = par->grid_love[iL];
-                    double Aw = par->grid_Aw[iAw];
-                    double Am = par->grid_Am[iAm];
-                    int power = calc_initial_bargaining_weight(t, love, Aw, Am, sol, par);
+                    double Aw = grid_A[iAw];
+                    double Am = grid_A[iAm];
+                    double power = calc_initial_bargaining_weight(t, love, Aw, Am, sol, par);
                     
                     // b.1.3 Value conditional on meeting partner
-                    if (power>0.0){
+                    if (power>=0.0){
                         double A_tot = par->grid_Aw[iAw] + par->grid_Am[iAm]; 
+                        int idx_interp = index::couple(t, 0, 0, 0, par);
                         val = tools::interp_3d(par->grid_power, par->grid_love, par->grid_A, 
                                        par->num_power, par->num_love, par->num_A, 
-                                       &V_single_to_couple[t], power, love, A_tot); //TODO: reuse index
+                                       &V_single_to_couple[idx_interp], power, love, A_tot); //TODO: reuse index
                     } else {
                         val = V_single_to_single[idx_single];
                     }

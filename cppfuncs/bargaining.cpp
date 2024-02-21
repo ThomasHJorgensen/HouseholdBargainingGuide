@@ -427,7 +427,7 @@ namespace bargaining {
         double Sw_x = S(x[0],solver_data->state_couple, solver_data->state_single_w, woman, par, sol);
         double Sm_x = S(x[0],solver_data->state_couple, solver_data->state_single_m, man, par, sol);
 
-        //logs::write("barg_log.txt",1,"\nobjfunc_nash_bargain: power = %f, Sw_x = %f, Sm_x = %f",x[0],Sw_x,Sm_x);
+        // logs::write("barg_log.txt",1,"\nobjfunc_nash_bargain: power = %f, Sw_x = %f, Sm_x = %f",x[0],Sw_x,Sm_x);
 
         return -(Sw_x*Sm_x);
         
