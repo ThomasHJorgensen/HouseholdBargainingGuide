@@ -49,3 +49,11 @@ EXPORT void compute_margEV(sol_struct* sol, par_struct* par){
         }
     }
 }
+
+
+EXPORT double calc_init_mu(int t, double love, double Aw, double Am, sol_struct* sol, par_struct* par){
+    logs::write("barg_log.txt", 0, "calc_init_mu\n");
+    double power =  single::calc_initial_bargaining_weight(t, love, Aw, Am, sol, par);
+    logs::write("barg_log.txt", 1, "poewr: %f\n", power);
+    return power;
+}
