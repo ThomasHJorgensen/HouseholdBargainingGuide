@@ -95,8 +95,9 @@ class HouseholdModelClass(EconModelClass):
 
         # simulation
         par.seed = 9210
-        par.simT = par.T
         par.simN = 50_000
+        par.init_A = 0.01
+        par.init_love = 0.0
 
         # cpp
         par.threads = 8
@@ -222,6 +223,7 @@ class HouseholdModelClass(EconModelClass):
 
         # f. simulation
         # NB: all arrays not containing "init" or "draw" in name are wiped before each simulation
+        par.simT = par.T
         shape_sim = (par.simN,par.simT)
         sim.Cw_priv = np.nan + np.ones(shape_sim)               
         sim.Cm_priv = np.nan + np.ones(shape_sim)
@@ -250,13 +252,13 @@ class HouseholdModelClass(EconModelClass):
         self.allocate_draws()
 
         ## f.2. initial distribution
-        sim.init_A = par.grid_A[0] + np.zeros(par.simN)
+        sim.init_A = par.init_A + np.zeros(par.simN)
         sim.init_Aw = sim.init_A * par.div_A_share
         sim.init_Am = sim.init_A * (1.0 - par.div_A_share)
         sim.init_couple = np.ones(par.simN,dtype=np.bool_)
         # sim.init_power_idx = par.num_power//2 * np.ones(par.simN,dtype=np.int_)
         sim.init_power_idx = 1 * np.ones(par.simN,dtype=np.int_)
-        sim.init_love = np.zeros(par.simN)
+        sim.init_love = np.ones(par.simN) * par.init_love
         
         # g. timing
         sol.solution_time = np.array([0.0])

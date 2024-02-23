@@ -412,7 +412,7 @@ class ModelPlot():
         
         ### Save individual subplots
         for i, ax in enumerate(axes):
-            subtitle = self.subtitles[i]
+            subtitle = list(self.variables.values())[i]
             if subtitle == '':
                 subtitle = str(i)
             subtitle = subtitle.replace('\'', '').replace(' ', '_')

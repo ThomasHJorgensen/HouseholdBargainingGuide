@@ -269,8 +269,7 @@ namespace sim {
                         }
 
                         // update state variables
-                        if (iP <0) {
-                            power = -1.0;
+                        if (power < 0.0) {
                             sim->couple[it] = false;
                         } else {
                             sim->couple[it] = true;
