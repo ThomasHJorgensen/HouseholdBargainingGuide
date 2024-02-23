@@ -29,7 +29,7 @@ class HouseholdModelClass(EconModelClass):
         self.savefolder = 'saved'
         
         # d. cpp
-        self.cpp_filename = 'cppfuncs/solve.cpp'
+        self.cpp_filename = '../cppfuncs/solve.cpp'
         self.cpp_options = {'compiler':'vs'}
         
     def setup(self):
@@ -250,11 +250,12 @@ class HouseholdModelClass(EconModelClass):
         self.allocate_draws()
 
         ## f.2. initial distribution
-        sim.init_A = par.grid_A[10] + np.zeros(par.simN)
+        sim.init_A = par.grid_A[0] + np.zeros(par.simN)
         sim.init_Aw = sim.init_A * par.div_A_share
         sim.init_Am = sim.init_A * (1.0 - par.div_A_share)
         sim.init_couple = np.ones(par.simN,dtype=np.bool_)
-        sim.init_power_idx = par.num_power//2 * np.ones(par.simN,dtype=np.int_)
+        # sim.init_power_idx = par.num_power//2 * np.ones(par.simN,dtype=np.int_)
+        sim.init_power_idx = 1 * np.ones(par.simN,dtype=np.int_)
         sim.init_love = np.zeros(par.simN)
         
         # g. timing

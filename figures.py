@@ -8,57 +8,31 @@ from matplotlib.transforms import Bbox
 
 from itertools import product
 
-import warnings
-warning_text_to_ignore = "No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument."
-warning_text_to_ignore = "No artists with labels found to put in legend."
-warnings.filterwarnings("ignore", message=warning_text_to_ignore)
-
-
-linestyles = ['-','--','-.',':',':']
-markers = ['o','s','D','*','P']
-linewidth = 1.5
-font_size = 12
-font = {'size':font_size}
-matplotlib.rc('font', **font)
-plt.rcParams.update({'figure.max_open_warning': 0,'text.usetex': False})
-path = 'output/'
-filetype = '.pdf'
-
-plt.style.use('default')  # Use default style (no grid lines)
-plt.rcParams.update({'font.size': font_size, 'font.family': 'STIXGeneral', 'mathtext.fontset': 'stix'})  # Set font size and family for all text in figure
-    
-
-
-colors = {
-    'red'         : '#FF5733',
-    'red_dark'    : '#AA0000',
-    'green'       : '#33FF57',
-    'green_dark'  : '#008800',
-    'blue'        : '#3366FF',
-    'blue_dark'   : '#0033CC',
-    'orange'      : '#FFA533',
-    'orange_dark' : '#FF6600',
-    'purple'      : '#A733FF',
-    'purple_dark' : '#6600CC',
-    'pink'        : '#FF33B8',
-    'pink_dark'   : '#FF0066',
-    'brown'       : '#A36633',
-    'brown_dark'  : '#663300',
-    'gray'        : '#A6A6A6',
-    'gray_dark'   : '#333333',
-    'cyan'        : '#33FFFF',
-    'cyan_dark'   : '#00CCCC',
-    'magenta'     : '#FF33FF',
-    'magenta_dark': '#FF00CC',
-    'black'       : '#000000',
+color_palettes = {
+            'IBM': { # Color blind friendly
+                'red'       : '#dc267f',
+                'blue'      : '#648fff',
+                'purple'    : '#785ef0',
+                'orange'    : '#fe6100',
+                'yellow'    : '#ffbe0b',
+                'black'     : '#000000',
+            },
+            'standard': { # matplotlib standard
+                'red'      : '#d62728',
+                'blue'     : '#1f77b4',
+                'orange'   : '#ff7f0e',
+                'green'    : '#2ca02c',
+                'purple'   : '#9467bd',
+                'brown'    : '#8c564b',
+                'pink'     : '#e377c2',
+                'gray'     : '#7f7f7f',
+                'olive'    : '#bcbd22',
+                'cyan'     : '#17becf',
+            }
 }
 
-formats = {
-    -2: {'font_size': 24},
-    1: {'font_size': 16},
-    2: {'font_size': 12},
-    3: {'font_size': 8},
-}
+
+
 
 class ModelPlot():
     
@@ -79,12 +53,79 @@ class ModelPlot():
         
         # Other
         self.filetype = '.pdf'
-        self.path = 'output/'
+        self.output_path = '../figures/'
         self.font_size = 12
+        self.subplot_legends = 'all' # all, shared, 1, 2, ..., 16
         self.shared_legend = False
-        self.save = False
+        self.save_as = ''
+        self.size = 'A4'
+        
+        self.color_palettes = {
+            'IBM': { # Color blind friendly
+                'red'       : '#dc267f',
+                'blue'      : '#648fff',
+                'purple'    : '#785ef0',
+                'orange'    : '#fe6100',
+                'yellow'    : '#ffbe0b',
+                'black'     : '#000000',
+            },
+            'standard': { # matplotlib standard
+                'red'       : '#d62728',
+                'blue'      : '#1f77b4',
+                'orange'    : '#ff7f0e',
+                'green'     : '#2ca02c',
+                'purple'    : '#9467bd',
+                'brown'     : '#8c564b',
+                'pink'      : '#e377c2',
+                'gray'      : '#7f7f7f',
+                'olive'     : '#bcbd22',
+                'cyan'      : '#17becf',
+            },
+            'CEBI': { # CEBI standard
+                'red'       : '#A7002A',
+                'blue'      : '#278094',
+                'yellow'    : '#FBBA1D',
+                'green'     : '#56882D',
+                'dark_blue' : '#0C2C4D',
+            },
+        }
+        self.color_palette = self.color_palettes['CEBI']
+        # KU red a31d20, 901a1e
+        
+        
+        
+        # self.color_palette = {
+        #     'red'           : '#ae2012',
+        #     'turquoise'     :'#0a9396',
+        #     'light_orange'  : '#ee9b00',
+        #     'light_turquoise': '#94d2bd',
+        #     'dark_turquise'  : '#005f73',
+        #     'orange'        : '#ca6702',
+        #     'dark_blue'     : '#001219',
+        #     'dark_red'      : '#9b2226',
+        #     'dark_orange'   : '#bb3e03',
+        #     'baish'         : '#e9d8a6',
+        # }
+        
+        self.linestyle_palette = {'solid'   : '-',
+                                  'dashed'  : '--',
+                                  'dotted'  : ':',
+                                  'dashdot' : '-.',
+                                  'longdash': (0, (10,3)),
+                                  }
+        
+        self.marker_palette = {'circle'     : 'o',
+                               'square'     : 's',
+                               'diamond'    : 'D',
+                               'star'       : '*',
+                               'pentagon'   : 'P',
+                               }
         
         # Apply plot settings
+        self.labels = self.infer_labels()
+        self.set_curve_settings(colors = self.color_palette, 
+                                linestyles= '-', 
+                                markers= '')
         self.set_plot_settings(**kwargs)
         
             
@@ -108,14 +149,64 @@ class ModelPlot():
                 print(f'Warning: {key} is not a valid attribute')
         
         self.infer_plot()
+        self.set_x_grid()
+        self.set_y_grid()
         if 'subtitles' in kwargs.keys(): 
             self.set_subtitles(kwargs['subtitles'])
         if 'labels' in kwargs.keys():
             self.set_labels(kwargs['labels'])
+        if 'x_grid' in kwargs.keys():
+            self.set_x_grid(kwargs['x_grid'])
+        if 'y_grid' in kwargs.keys():
+            self.set_y_grid(kwargs['y_grid'])
+            
+        self.set_curve_settings(**kwargs)
             
         plt.style.use('default')  # Use default style (no grid lines)
-        plt.rcParams.update({'font.size': self.font_size, 'font.family': 'STIXGeneral', 'mathtext.fontset': 'stix'})  # Set font size and family for all text in figure
+        plt.rcParams.update({'font.size': self.font_size, 'font.family': 'STIXGeneral', 'mathtext.fontset': 'stix', 'legend.frameon': False, 'lines.linewidth':2.0})  # Set font size and family for all text in figure
+    
+    def circle_through(self, iterable, length):
+        return [iterable[i % len(iterable)] for i in range(length)]
+    
+    def set_x_grid(self, x_grid=None):
+        if x_grid is None:
+            self.x_grid = [None] * self.num_subplots
+        elif type(x_grid) == list:
+            self.x_grid = x_grid
+        else:
+            self.x_grid = [x_grid] * self.num_subplots
+            
+    def set_y_grid(self, y_grid=None):
+        if y_grid is None:
+            self.y_grid = [None] * self.num_subplots
+        elif type(y_grid) == list:
+            self.y_grid = y_grid
+        else:
+            self.y_grid = [y_grid] * self.num_subplots
+      
+    def set_curve_settings(self, **kwargs):
+        num_curves = len(self.labels)
         
+        for attr in ['colors', 'linestyles', 'markers']:
+            if attr in kwargs.keys():
+                if type(kwargs[attr]) == str:
+                    kwargs[attr] = [kwargs[attr]]
+                if type(kwargs[attr]) == dict:
+                    kwargs[attr] = list(kwargs[attr].values())
+                values = self.circle_through(kwargs[attr], num_curves)
+                setattr(self,attr,values)
+    
+    def plot_color_palette(self):
+        # make pie chart of colors
+        fig, ax = plt.subplots()
+        ax.pie([1]*len(self.color_palette), labels=self.color_palette.keys(), colors=self.color_palette.values())
+        
+        # close 
+        plt.close()
+        
+        return fig
+    
+    
     def set_plot_type(self, plot_type):
         if plot_type in self.plot_types:
             self.plot_type = plot_type
@@ -206,7 +297,7 @@ class ModelPlot():
             return [None] * num_subplots
         else:
             return subtitles
-        
+            
     def infer_labels(self):
         label_types = []
         names = [name for name in self.plot_types if name != self.plot_type]
@@ -236,10 +327,12 @@ class ModelPlot():
             return labels
     
     
-    def set_size(self, fig):
+    def set_size(self, fig, size='A4'):
         rows, columns = self.dimensions
-
-        subplot_width = (8.27-2*0.75) / columns
+        if size == 'A4':
+            subplot_width = (8.27-2*0.75) / columns
+        elif size == 'A3':
+            subplot_width = (11.69-2*0.75) / columns
         subplot_height = subplot_width / 1.414
         fig_width = subplot_width * columns
         fig_height = subplot_height * rows
@@ -260,6 +353,14 @@ class ModelPlot():
         # Change the font size of y-axis tick labels (including scientific notation)
         ax.yaxis.get_offset_text().set_fontsize(self.font_size - 2)
         
+        # ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+        # ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+        # ax.yaxis.set_minor_formatter(FormatStrFormatter('%.0f'))
+        # ax.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+        # ax.yaxis.set_minor_formatter(StrMethodFormatter('{x:,.0f}'))
+        # ax.tick_params(axis='both', which='major', labelsize=self.font_size)
+        # ax.tick_params(axis='both', which='minor', labelsize=self.font_size)
+        
     def create_fig_and_axes(self):
     
         # 1. Setup
@@ -279,7 +380,7 @@ class ModelPlot():
             ax = self.format_ax(ax)
             
         # set size
-        self.set_size(fig)
+        self.set_size(fig, size=self.size)
 
         return fig, axes
     
@@ -302,7 +403,7 @@ class ModelPlot():
             return model_iter + var_iter
         
     def save_plot(self, fig, figname=None):
-        fig.savefig(self.path + figname + self.filetype, dpi=300)
+        fig.savefig(self.output_path + figname + self.filetype, dpi=300)
         self.save_subplots(fig, figname)
         
     def save_subplots(self, fig, figname):
@@ -314,15 +415,16 @@ class ModelPlot():
             subtitle = self.subtitles[i]
             if subtitle == '':
                 subtitle = str(i)
-            fig.savefig(self.path + figname + '_' + subtitle + self.filetype, dpi=300, bbox_inches=full_extent(ax, 0.04).transform)
+            subtitle = subtitle.replace('\'', '').replace(' ', '_')
+            fig.savefig(self.output_path + figname + '_' + subtitle + self.filetype, dpi=300, bbox_inches=self.full_extent(ax, 0.04).transformed(fig.dpi_scale_trans.inverted()))
     
     def add_shared_legend(self, fig, axes):
         lines, labels = axes[0].get_legend_handles_labels()
         fig.legend(lines, labels, loc='upper center', bbox_to_anchor=(0.5, 0.05), bbox_transform=fig.transFigure, ncol=3)
     
     def remove_subplot_legends(self, axes):
-        for i in range(self.num_subplots):
-            axes[i].get_legend().remove()
+        for ax in axes:
+            ax.get_legend().remove()
 
         
     def plot_using(self, plot_function, **kwargs):
@@ -343,17 +445,24 @@ class ModelPlot():
                     subtitle = self.subtitles[i_plot]
                     label = self.labels[i_label]
                     ax = axes[i_plot]
+                    x_grid = self.x_grid[i_plot]
+                    y_grid = self.y_grid[i_plot]
                     
-                    ax = plot_function(model, var, index, ax = ax, title = subtitle, label = label, **subplot_settings)
+                    ax = plot_function(model, var, index, ax = ax, title = subtitle, label = label, x_grid = x_grid, y_grid=y_grid, color=self.colors[i_label], linestyle=self.linestyles[i_label], marker=self.markers[i], **subplot_settings)
                     
-        if self.shared_legend:
+        if self.subplot_legends == 'shared':
             self.add_shared_legend(fig, axes)
-            self.remove_subplot_legends(axes)
+            ax_mask = [ax for i, ax in enumerate(axes.flatten()) if i < self.num_subplots]
+            self.remove_subplot_legends(ax_mask)
+        elif type(self.subplot_legends) == int:
+            ax_mask = [ax for i, ax in enumerate(axes.flatten()) if (i != self.subplot_legends) and i < self.num_subplots]
+            self.remove_subplot_legends(ax_mask)
+            
                     
         plt.tight_layout()
         
-        if self.save:
-            self.save_plot(fig, self.figname)
+        if self.save_as != '':
+            self.save_plot(fig, self.save_as)
         
         plt.close()
         
@@ -379,8 +488,9 @@ class ModelPlot():
         # return bbox.padded(4)
         return bbox.expanded(1.0 + pad, 1.0 + pad)
 
-    
-def plot_surplus(model, vars, idx, label='', add_lines=True, title=None, ax=None):
+
+
+def plot_surplus(model, vars, idx, label='', add_lines=True, title=None, ax=None, **kwargs):
     par = model.par
     sol = model.sol
     power = sol.power
@@ -403,19 +513,19 @@ def plot_surplus(model, vars, idx, label='', add_lines=True, title=None, ax=None
         fig, ax = plt.subplots()
     
     
-    ax.plot(par.grid_power,Sw, label='Woman', color=colors['red'])
-    ax.plot(par.grid_power,Sm, label='Man', color=colors['blue'])
+    ax.plot(par.grid_power,Sw, label='Woman', color=color_palettes['IBM']['red'])
+    ax.plot(par.grid_power,Sm, label='Man', color=color_palettes['IBM']['blue'])
     ax.plot(par.grid_power,np.zeros(par.num_power), color='black',linestyle='--') # add zero line
     
     #add vertical line at start_power
     if add_lines:
         start_power = par.grid_power[iP]
-        ax.axvline(x=start_power, color=colors['gray'],linestyle='--', label='$\mu_{t-1}$')
+        ax.axvline(x=start_power, color=color_palettes['standard']['gray'],linestyle='--', label='$\mu_{t-1}$')
 
         #add vertical line at end_power if it exists
         end_power = power[idx_couple(iP)]
         if end_power >= 0:
-            ax.axvline(x=end_power, color=colors['gray_dark'],linestyle=':', label='$\mu_{t}$')
+            ax.axvline(x=end_power, color=color_palettes['standard']['gray'],linestyle=':', label='$\mu_{t}$')
 
             # make a one directional arrow from start_power to end_power lower than the x axis
             ax.annotate("", xy=(end_power, -0.1), xytext=(start_power, -0.1), arrowprops=dict(arrowstyle="->"))
@@ -431,7 +541,7 @@ def plot_surplus(model, vars, idx, label='', add_lines=True, title=None, ax=None
 
 
     
-def infer_index(model, variable, index, x):
+def infer_index(model, variable, index, z):
     
     index_dimension = {
         't': model.par.T,
@@ -445,7 +555,7 @@ def infer_index(model, variable, index, x):
     var = getattr
     index_names = [inv_index[i] for i in variable.shape]
     
-    x_to_index = {'time': 't', 
+    z_to_index = {'time': 't', 
                   'power': 'iP', 
                   'love': 'iL', 
                   'assets': 'iA',
@@ -455,7 +565,7 @@ def infer_index(model, variable, index, x):
     
     idx_slice = [np.nan for i in index_names]
     for i, i_name in enumerate(index_names):
-        if i_name == x_to_index[x]:
+        if i_name == z_to_index[z]:
             idx_slice[i] = slice(None, None, None)
         elif i_name in index_names:
             idx_slice[i] = index[i]
@@ -464,72 +574,80 @@ def infer_index(model, variable, index, x):
     
     return tuple(idx_slice)
 
-def get_x_grid(model, x):
-    if x == 'time':
+def get_z_grid(model, z):
+    if z == 'time':
         return np.arange(model.par.T)
-    if x == 'power':
+    if z == 'power':
         return model.par.grid_power
-    if x == 'love':
+    if z == 'love':
         return model.par.grid_love
-    if x == 'assets':
+    if z == 'assets':
         return model.par.grid_A
-    if x == 'assets_woman':
+    if z == 'assets_woman':
         return model.par.grid_Aw
-    if x == 'assets_man':
+    if z == 'assets_man':
         return model.par.grid_Am
     
         
-def plot_var_over_x(model, variable, index, x, namespace='sol', label='', title=None, ax=None):
+def plot_var_over_z(model, variable, index, z, namespace='sol', x_grid=None, y_grid=None, label='', title=None, ax=None, **kwargs):
 
     nmspc = getattr(model, namespace)
     
-    x_grid = get_x_grid(model, x)
+    z_grid = get_z_grid(model, z)
     
     if ax is None:
         fig, ax = plt.subplots()
         
     var = getattr(nmspc, variable)
-    idx_slice = infer_index(model, var, index, x)
+    idx_slice = infer_index(model, var, index, z)
     y = var[idx_slice]
     
-    ax.plot(x_grid, y, label=label, alpha=0.5)
+    ax.plot(z_grid, y, label=label, **kwargs)
     
     # Layout
-    ax.set_xlabel(x.capitalize())
+    ax.set_xlabel(z.capitalize())
     ax.set_ylabel('')
     if title is not None:
         ax.set_title(title)
+    if x_grid is not None:
+        ax.set_xlim([x_grid[0], x_grid[-1]])
+    if y_grid is not None:
+        ax.set_ylim([y_grid[0], y_grid[-1]])
     ax.legend()
     
     return ax
 
 def plot_var_over_assets(*args, **kwargs):
-    return plot_var_over_x(*args, x='assets', **kwargs)
+    return plot_var_over_z(*args, z='assets', **kwargs)
 
 def plot_var_over_time(*args, **kwargs):
-    return plot_var_over_x(*args, x='time', **kwargs)
+    return plot_var_over_z(*args, z='time', **kwargs)
 
 def plot_var_over_power(*args, **kwargs):
-    return plot_var_over_x(*args, x='power', **kwargs)
+    return plot_var_over_z(*args, z='power', **kwargs)
 
 def plot_var_over_love(*args, **kwargs):
-    return plot_var_over_x(*args, x='love', **kwargs)
+    return plot_var_over_z(*args, z='love', **kwargs)
 
 
-def plot_simulated(model, variable, function, label='', title=None, ax=None,):
+def plot_simulated(model, variable, function, label='', title=None, x_grid=None, y_grid=None, ax=None, **kwargs):
     
     # it is possible to add a where condition, but I don't know how to apply the where condition specifically to the each model
     if ax is None:
         fig, ax = plt.subplots()
         
     y = function(getattr(model.sim, variable))
-    ax.plot(y, label=label)
+    ax.plot(y, label=label, **kwargs)
     
     # Layout
     ax.set_xlabel('Time')
     ax.set_ylabel('')
     if title is not None:
         ax.set_title(title)
+    if x_grid is not None:
+        ax.set_xlim([x_grid[0], x_grid[-1]])
+    if y_grid is not None:
+        ax.set_ylim([y_grid[0], y_grid[-1]])
     ax.legend()
     
     return ax
