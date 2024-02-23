@@ -457,7 +457,7 @@ namespace single {
                     
                     // b.1.3 Value conditional on meeting partner
                     if (power>=0.0){
-                        double A_tot = par->grid_Aw[iAw] + par->grid_Am[iAm]; 
+                        double A_tot = Aw + Am;
                         int idx_interp = index::couple(t, 0, 0, 0, par);
                         val = tools::interp_3d(par->grid_power, par->grid_love, par->grid_A, 
                                        par->num_power, par->num_love, par->num_A, 
