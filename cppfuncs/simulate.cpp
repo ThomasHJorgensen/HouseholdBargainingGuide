@@ -263,7 +263,9 @@ namespace sim {
                             sim->A_own[it] = Aw_lag;
                             sim->A_partner[it] = Ap;
                             iL = sim->draw_repartner_iL[it]; // note: love draws on grid.
-                            iP = calc_initial_bargaining_weight(t, iL, Aw_lag, woman, Ap, sol, par);
+                            // iP = calc_initial_bargaining_weight(t, iL, Aw_lag, woman, Ap, sol, par);
+
+                            power = single::calc_initial_bargaining_weight(t, par->grid_love[iL], Aw_lag, Ap, sol, par);
                         }
 
                         // update state variables
