@@ -427,56 +427,48 @@ namespace bargaining {
         double Sw_x = surplus_func(x[0],solver_data->state_couple, solver_data->state_single_w, woman, par, sol);
         double Sm_x = surplus_func(x[0],solver_data->state_couple, solver_data->state_single_m, man, par, sol);
 
-        // logs::write("barg_log.txt",1,"\nobjfunc_nash_bargain: power = %f, Sw_x = %f, Sm_x = %f",x[0],Sw_x,Sm_x);
-
-        return -(Sw_x*Sm_x);
-        
+        return -(Sw_x*Sm_x); 
     }
 
     
     double nash_bargain(nash_solver_struct* nash_struct){
         // for a given couple idx, find the initial bargaining weight
 
+        // unpack
         par_struct* par = nash_struct->par;
         sol_struct* sol = nash_struct->sol;
 
+        // set up solver
         int const dim = 1;
-        double lb[dim], ub[dim], x[dim];
-
         auto opt = nlopt_create(NLOPT_LN_BOBYQA, dim);
-        double minf = 0.0;
-
         nlopt_set_min_objective(opt, objfunc_nash_bargain, nash_struct);
 
         // set bounds
+        double lb[dim], ub[dim];
         lb[0] = par->grid_power[0];
         ub[0] = par->grid_power[par->num_power-1];
         nlopt_set_lower_bounds(opt, lb);
         nlopt_set_upper_bounds(opt, ub);
 
         //optimize
-        x[0] = 0.5;
-        nlopt_optimize(opt, x, &minf);
+        double minf = 0.0;
+        double mu[dim];
+        mu[0] = 0.5;
+        nlopt_optimize(opt, mu, &minf);
         nlopt_destroy(opt);
 
-
         // check surplus is positive
-        double init_mu = x[0];
-
         double (*surplus_func)(double,index::state_couple_struct*, index::state_single_struct*,int,par_struct*,sol_struct*) = nash_struct->surplus_func; //TODO: take continuous states as input as generically as possible
         index::state_couple_struct* state_couple = nash_struct->state_couple;
         index::state_single_struct* state_single_w = nash_struct->state_single_w;
         index::state_single_struct* state_single_m = nash_struct->state_single_m;
-        
-        double Sw = surplus_func(init_mu, state_couple, state_single_w, woman, par, sol);
-        double Sm = surplus_func(init_mu, state_couple, state_single_m, man, par, sol);
+        double Sw = surplus_func(mu[0], state_couple, state_single_w, woman, par, sol);
+        double Sm = surplus_func(mu[0], state_couple, state_single_m, man, par, sol);
         if ((Sw<0.0) |(Sm<0.0)){
-            init_mu = -1.0;
+            mu[0] = -1.0;
         }
 
-
-
-        return init_mu;
+        return mu[0];
     }
 
 } // namespace bargaining

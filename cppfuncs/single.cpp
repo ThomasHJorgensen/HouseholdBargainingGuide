@@ -344,12 +344,10 @@ namespace single {
         // unpack
         int t = state_single->t;
         double A = state_single->A;
-
         double love = state_couple->love;
         double A_tot = state_couple->A; 
 
-        // unpack integers here
-
+        // gender specific
         double* V_single_to_single = sol->Vw_single_to_single;
         double* V_single_to_couple = sol->Vw_single_to_couple;
         double* grid_A_single = par->grid_Aw;
@@ -358,36 +356,66 @@ namespace single {
             V_single_to_couple = sol->Vm_single_to_couple;
             grid_A_single = par->grid_Am;
         }
+        
+        // Get indices
+        int iA_single = state_single->iA;
+        int iL_couple = state_couple->iL;
+        int iA_couple = state_couple->iA;
+        int iP = tools::binary_search(0, par->num_power, par->grid_power, power);
+
+        // Get indices if not provided
+        if (iL_couple == -1){
+            iL_couple = tools::binary_search(0, par->num_love, par->grid_love, love);
+        }
+        if (iA_couple == -1){
+            iA_couple = tools::binary_search(0, par->num_A, par->grid_A, A_tot);
+        }
+        if (iA_single == -1){
+            iA_single = tools::binary_search(0, par->num_A, grid_A_single, A);
+        }
 
         //interpolate V_single_to_single
         int idx_single = index::single(t,0,par);
-        double Vsts = tools::interp_1d(grid_A_single, par->num_A, &V_single_to_single[idx_single], A); 
+        double Vsts = tools::interp_1d_index(grid_A_single, par->num_A, &V_single_to_single[idx_single], A, iA_single); 
 
         // interpolate couple V_single_to_couple  
         int idx_couple = index::couple(t,0,0,0,par);
-        double Vstc = tools::interp_3d(par->grid_power, par->grid_love, par->grid_A, 
+        double Vstc = tools::_interp_3d(par->grid_power, par->grid_love, par->grid_A, 
                                        par->num_power, par->num_love, par->num_A, 
-                                       &V_single_to_couple[idx_couple], power, love, A_tot);
+                                       &V_single_to_couple[idx_couple], power, love, A_tot,
+                                       iP, iL_couple, iA_couple);
 
         // surplus
         return Vstc - Vsts;
     }
 
-    double calc_initial_bargaining_weight(int t, double love, double Aw, double Am, sol_struct* sol, par_struct* par){ //TODO: add index
+    double calc_initial_bargaining_weight(int t, double love, double Aw, double Am, sol_struct* sol, par_struct* par, int iL_couple=-1){ //TODO: add index
         // state structs
         index::state_couple_struct* state_couple = new index::state_couple_struct;
         index::state_single_struct* state_single_w = new index::state_single_struct;
         index::state_single_struct* state_single_m = new index::state_single_struct;
 
+        // couple
         state_couple->t = t;
         state_couple->love = love;
         state_couple->A = Aw+Am;
+        state_couple->iA = tools::binary_search(0, par->num_A, par->grid_A, Aw+Am);
+        if (iL_couple == -1){
+            iL_couple = tools::binary_search(0, par->num_love, par->grid_love, love);
+        }
+        state_couple->iL = iL_couple;
 
+        // single woman
         state_single_w->t = t;
         state_single_w->A = Aw;
+        state_single_w->iA = tools::binary_search(0, par->num_A, par->grid_Aw, Aw);
 
+        // single man
         state_single_m->t = t;
         state_single_m->A = Am;
+        state_single_m->iA = tools::binary_search(0, par->num_A, par->grid_Am, Am);
+        // Note: We don't know whether we are on the woman or man asset grid, so we need to search both.
+        // We could pass gender to calc_initial_bargaining_weight to infer which grid we are on, and avoid binary search for that gender
 
         //solver input
         bargaining::nash_solver_struct* nash_struct = new bargaining::nash_solver_struct;
@@ -444,7 +472,7 @@ namespace single {
                     double love = par->grid_love[iL];
                     double Aw = grid_A[iAw];
                     double Am = grid_A[iAm];
-                    double power = calc_initial_bargaining_weight(t, love, Aw, Am, sol, par);
+                    double power = calc_initial_bargaining_weight(t, love, Aw, Am, sol, par, iL);
                     
                     // b.1.3 Value conditional on meeting partner
                     if (power>=0.0){

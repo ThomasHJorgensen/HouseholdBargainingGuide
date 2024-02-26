@@ -39,18 +39,31 @@ namespace index {
         
     } index_couple_struct;
 
-    typedef struct{ //TODO: include indices for interpolater
+    typedef struct{
+            // state levels
             int t;
             double love;
             double A;
             double power;
+
+            // indices
+            int iL;
+            int iA;
+
+            // model content
             par_struct *par;
             sol_struct *sol;
     } state_couple_struct;
 
     typedef struct{
+            // state levels
             int t;
             double A;
+
+            // indices
+            int iA;
+
+            // model content
             par_struct *par;
             sol_struct *sol;
     } state_single_struct;
