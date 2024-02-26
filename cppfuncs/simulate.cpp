@@ -254,7 +254,6 @@ namespace sim {
                     else { // if start as single - follow woman only
                         // meet partner?
                         bool meet = (sim->draw_meet[it] < par->prob_repartner[t]);
-                        int iP = -1;
                         double Ap = 0.0;
                         int iL = 0;
                         // draw partner type
@@ -263,7 +262,6 @@ namespace sim {
                             sim->A_own[it] = Aw_lag;
                             sim->A_partner[it] = Ap;
                             iL = sim->draw_repartner_iL[it]; // note: love draws on grid.
-                            // iP = calc_initial_bargaining_weight(t, iL, Aw_lag, woman, Ap, sol, par);
 
                             power = single::calc_initial_bargaining_weight(t, par->grid_love[iL], Aw_lag, Ap, sol, par);
                         }
@@ -273,7 +271,6 @@ namespace sim {
                             sim->couple[it] = false;
                         } else {
                             sim->couple[it] = true;
-                            power = par->grid_power[iP];
                             sim->A_own[it_1] = Aw_lag;
                             sim->A_partner[it_1] = Ap;
                             A_lag = Aw_lag + Ap;
