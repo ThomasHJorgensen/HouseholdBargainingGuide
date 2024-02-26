@@ -98,6 +98,7 @@ class HouseholdModelClass(EconModelClass):
         par.simN = 50_000
         par.init_A = 0.01
         par.init_love = 0.0
+        par.init_power = 10
 
         # cpp
         par.threads = 8
@@ -257,7 +258,7 @@ class HouseholdModelClass(EconModelClass):
         sim.init_Am = sim.init_A * (1.0 - par.div_A_share)
         sim.init_couple = np.ones(par.simN,dtype=np.bool_)
         # sim.init_power_idx = par.num_power//2 * np.ones(par.simN,dtype=np.int_)
-        sim.init_power_idx = 1 * np.ones(par.simN,dtype=np.int_)
+        sim.init_power_idx = par.init_power * np.ones(par.simN,dtype=np.int_)
         sim.init_love = np.ones(par.simN) * par.init_love
         
         # g. timing
