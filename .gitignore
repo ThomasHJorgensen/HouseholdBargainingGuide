@@ -153,5 +153,8 @@ output/**
 # Ignore all in saved folder
 saved/**
 
+# Ignore all in figures folder
+figures/**
+
 # Ignore all _struct.cpp files
 *_struct.cpp
