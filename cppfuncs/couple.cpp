@@ -350,7 +350,12 @@ namespace couple {
                     margV[iA_plus] = margV[iA];
                 }
             }
-            margV[0] = margV[1];
+
+            // Extrapolate gradient in end points
+            int i=0;
+            margV[i] = (margV[i+2] - margV[i+1]) / (par->grid_A[i+2] - par->grid_A[i+1]) * (par->grid_A[i] - par->grid_A[i+1]) + margV[i+1];
+            i = par->num_A-1;
+            margV[i] = (margV[i-2] - margV[i-1]) / (par->grid_A[i-2] - par->grid_A[i-1]) * (par->grid_A[i] - par->grid_A[i-1]) + margV[i-1];
         }
         else {
             for (int iA=0; iA<=par->num_A-2;iA++){
