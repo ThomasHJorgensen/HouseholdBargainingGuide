@@ -630,13 +630,22 @@ def plot_var_over_love(*args, **kwargs):
     return plot_var_over_z(*args, z='love', **kwargs)
 
 
-def plot_simulated(model, variable, function, label='', title=None, x_grid=None, y_grid=None, ax=None, **kwargs):
+def plot_simulated(model, variable, function, label='', title=None, x_grid=None, y_grid=None, subsample='couple', ax=None, **kwargs):
     
     # it is possible to add a where condition, but I don't know how to apply the where condition specifically to the each model
     if ax is None:
         fig, ax = plt.subplots()
+    
+    if subsample == 'couple':
+        nans = np.nan + np.ones(model.sim.couple.shape)
+        nans[model.sim.couple==1] = 0.0
+    elif subsample == 'single':
+        nans = np.nan + np.ones(model.sim.couple.shape)
+        nans[model.sim.couple==0] = 0.0
+    else:
+        nans = np.zeros(model.sim.couple.shape)
         
-    y = function(getattr(model.sim, variable))
+    y = function(getattr(model.sim, variable) + nans)
     ax.plot(y, label=label, **kwargs)
     
     # Layout
