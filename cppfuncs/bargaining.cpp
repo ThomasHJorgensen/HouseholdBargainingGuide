@@ -409,7 +409,7 @@ namespace bargaining {
     typedef struct {        
         par_struct *par;   
         sol_struct *sol;                                    
-        double (*S)(double,index::state_couple_struct*,index::state_single_struct*,int,par_struct*,sol_struct*); //surplus func as function of power and state
+        double (*surplus_func)(double,index::state_couple_struct*,index::state_single_struct*,int,par_struct*,sol_struct*); //surplus func as function of power and state
         index::state_couple_struct *state_couple;                                       // state - tbc 
         index::state_single_struct *state_single_w;                                       // state - tbc   
         index::state_single_struct *state_single_m;                                       // state - tbc                              
@@ -421,11 +421,11 @@ namespace bargaining {
         nash_solver_struct* solver_data = (nash_solver_struct*) solver_data_in; 
         par_struct* par = solver_data->par;
         sol_struct* sol = solver_data->sol;
-        double (*S)(double,index::state_couple_struct*, index::state_single_struct*,int,par_struct*,sol_struct*) = solver_data->S; //TODO: take continuous states as input as generically as possible
+        double (*surplus_func)(double,index::state_couple_struct*, index::state_single_struct*,int,par_struct*,sol_struct*) = solver_data->surplus_func; //TODO: take continuous states as input as generically as possible
 
         // calculate individual supluses
-        double Sw_x = S(x[0],solver_data->state_couple, solver_data->state_single_w, woman, par, sol);
-        double Sm_x = S(x[0],solver_data->state_couple, solver_data->state_single_m, man, par, sol);
+        double Sw_x = surplus_func(x[0],solver_data->state_couple, solver_data->state_single_w, woman, par, sol);
+        double Sm_x = surplus_func(x[0],solver_data->state_couple, solver_data->state_single_m, man, par, sol);
 
         // logs::write("barg_log.txt",1,"\nobjfunc_nash_bargain: power = %f, Sw_x = %f, Sm_x = %f",x[0],Sw_x,Sm_x);
 
@@ -434,8 +434,11 @@ namespace bargaining {
     }
 
     
-    double nash_bargain(nash_solver_struct* nash_struct, par_struct* par){
+    double nash_bargain(nash_solver_struct* nash_struct){
         // for a given couple idx, find the initial bargaining weight
+
+        par_struct* par = nash_struct->par;
+        sol_struct* sol = nash_struct->sol;
 
         int const dim = 1;
         double lb[dim], ub[dim], x[dim];
@@ -456,7 +459,24 @@ namespace bargaining {
         nlopt_optimize(opt, x, &minf);
         nlopt_destroy(opt);
 
-        return x[0];
+
+        // check surplus is positive
+        double init_mu = x[0];
+
+        double (*surplus_func)(double,index::state_couple_struct*, index::state_single_struct*,int,par_struct*,sol_struct*) = nash_struct->surplus_func; //TODO: take continuous states as input as generically as possible
+        index::state_couple_struct* state_couple = nash_struct->state_couple;
+        index::state_single_struct* state_single_w = nash_struct->state_single_w;
+        index::state_single_struct* state_single_m = nash_struct->state_single_m;
+        
+        double Sw = surplus_func(init_mu, state_couple, state_single_w, woman, par, sol);
+        double Sm = surplus_func(init_mu, state_couple, state_single_m, man, par, sol);
+        if ((Sw<0.0) |(Sm<0.0)){
+            init_mu = -1.0;
+        }
+
+
+
+        return init_mu;
     }
 
 } // namespace bargaining

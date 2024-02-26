@@ -391,7 +391,7 @@ namespace single {
 
         //solver input
         bargaining::nash_solver_struct* nash_struct = new bargaining::nash_solver_struct;
-        nash_struct->S = repartner_surplus;
+        nash_struct->surplus_func = repartner_surplus;
         nash_struct->state_couple = state_couple;
         nash_struct->state_single_w = state_single_w;
         nash_struct->state_single_m = state_single_m;
@@ -399,16 +399,7 @@ namespace single {
         nash_struct->par = par;
 
         // solve
-        double init_mu = bargaining::nash_bargain(nash_struct, par);
-
-        // check surplus is positive
-        double Sw = repartner_surplus(init_mu, state_couple, state_single_w, woman, par, sol);
-        double Sm = repartner_surplus(init_mu, state_couple, state_single_m, man, par, sol);
-        if ((Sw<0.0) |(Sm<0.0)){
-            init_mu = -1.0;
-        }
-
-        return init_mu;
+        return bargaining::nash_bargain(nash_struct);
     }
     
     
