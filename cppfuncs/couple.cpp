@@ -124,13 +124,13 @@ namespace couple {
     void solve_couple_to_couple_Agrid_vfi(int t, int iP, int iL, double* EVw_next, double* EVm_next,sol_struct* sol, par_struct* par){
         for (int iA=0; iA<par->num_A;iA++){
             int idx = index::couple(t,iP,iL,iA,par);
-            int idx_last = index::couple(t,iP,iL,iA-1,par); 
-
+             
             double M_resources = resources(par->grid_A[iA],par); 
 
             // starting values
             double starting_val = M_resources * 0.8;
             if (iA>0){ 
+                int idx_last = index::couple(t,iP,iL,iA-1,par);
                 starting_val = sol->Cw_priv_couple_to_couple[idx_last] + sol->Cm_priv_couple_to_couple[idx_last] + sol->C_pub_couple_to_couple[idx_last];
             }
 
