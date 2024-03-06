@@ -150,6 +150,9 @@ namespace single {
         delete[] EmargU_pd;
         delete[] C_tot_pd;
         delete[] M_pd;
+        EmargU_pd = nullptr;
+        C_tot_pd = nullptr;
+        M_pd = nullptr;
     }
 
 
@@ -313,6 +316,7 @@ namespace single {
 
                     // 4. destroy optimizer
                     nlopt_destroy(opt);
+                    delete solver_data;
 
                 } // pragma
             }
@@ -427,7 +431,14 @@ namespace single {
         nash_struct->par = par;
 
         // solve
-        return bargaining::nash_bargain(nash_struct);
+        double init_mu =  bargaining::nash_bargain(nash_struct);
+
+        delete state_couple;
+        delete state_single_w;
+        delete state_single_m;
+        delete nash_struct;
+
+        return init_mu;
     }
     
     
