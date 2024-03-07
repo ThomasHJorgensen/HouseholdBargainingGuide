@@ -1,4 +1,5 @@
 import numpy as np
+from PIL import Image
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -52,7 +53,7 @@ class ModelPlot():
         self.set_indexes(indexes)
         
         # Other
-        self.filetype = '.pdf'
+        self.filetype = '.png'
         self.output_path = '../figures/'
         self.font_size = 12
         self.subplot_legends = 'all' # all, shared, 1, 2, ..., 16
@@ -196,10 +197,12 @@ class ModelPlot():
                 values = self.circle_through(kwargs[attr], num_curves)
                 setattr(self,attr,values)
     
-    def plot_color_palette(self):
+    def plot_color_palette(self, color_palette=None):
+        if color_palette is None:
+            color_palette = self.color_palette
         # make pie chart of colors
         fig, ax = plt.subplots()
-        ax.pie([1]*len(self.color_palette), labels=self.color_palette.keys(), colors=self.color_palette.values())
+        ax.pie([1]*len(color_palette), labels=color_palette.keys(), colors=color_palette.values())
         
         # close 
         plt.close()
@@ -411,12 +414,75 @@ class ModelPlot():
         axes = fig.get_axes()
         
         ### Save individual subplots
+        image_paths = []
         for i, ax in enumerate(axes):
             subtitle = list(self.variables.values())[i]
             if subtitle == '':
                 subtitle = str(i)
             subtitle = subtitle.replace('\'', '').replace(' ', '_')
-            fig.savefig(self.output_path + figname + '_' + subtitle + self.filetype, dpi=300, bbox_inches=self.full_extent(ax, 0.04).transformed(fig.dpi_scale_trans.inverted()))
+            image_paths.append(self.output_path + figname + '_' + subtitle + self.filetype)
+            fig.savefig(image_paths[i], dpi=300, bbox_inches=self.full_extent(ax, 0.04).transformed(fig.dpi_scale_trans.inverted()))
+            
+        ### Standardize size of subplots
+        max_width, max_height = self.find_max_fig_size(image_paths)
+        for figpath in image_paths:
+            self.resize_and_fill(figpath, max_width, max_height)
+            
+            
+    def full_extent(self, ax, pad=0.0):
+        """Get the full extent of an axes, including axes labels, tick labels, and
+        titles."""
+        # For text objects, we need to draw the figure first, otherwise the extents
+        # are undefined.
+        ax.figure.canvas.draw()
+        items = []
+        #items += ax.get_xticklabels() + ax.get_yticklabels() 
+        items += [ax, ax.xaxis.label, ax.yaxis.label]
+        # items += [ax, ax.title]
+        
+        # items += [ax.get_xaxis().get_label(), ax.get_yaxis().get_label()]
+        bbox = Bbox.union([item.get_window_extent() for item in items])
+
+        # return bbox.padded(4)
+        return bbox.expanded(1.0 + pad, 1.0 + pad)
+    
+    def resize_and_fill(self, image_path, target_width, target_height):
+        # Open the original image
+        original_image = Image.open(image_path)
+
+        # Get the dimensions of the original image
+        original_width, original_height = original_image.size
+
+        # Calculate the amount of extra space needed
+        width_diff = max(target_width - original_width, 0)
+        height_diff = max(target_height - original_height, 0)
+
+        # Create a new image with the target dimensions and a white background
+        new_image = Image.new("RGB", (target_width, target_height), "white")
+
+        # Paste the original image onto the new image, filling the extra space to the left and below
+        new_image.paste(original_image, (width_diff, 0))
+
+        # Save or display the result
+        new_image.save(image_path)
+        
+    def get_fig_size(self, image_path):
+        # get width and height of image
+        original_image = Image.open(image_path)
+        return original_image.size
+        
+    def find_max_fig_size(self, fignames):
+        max_width = 0
+        max_height = 0
+        for figname in fignames:
+            width, height = self.get_fig_size(figname)
+            if width > max_width:
+                max_width = width
+            if height > max_height:
+                max_height = height
+        return max_width, max_height
+        
+    
     
     def add_shared_legend(self, fig, axes):
         lines, labels = axes[0].get_legend_handles_labels()
@@ -470,23 +536,7 @@ class ModelPlot():
 
 
     
-    
-    def full_extent(self, ax, pad=0.0):
-        """Get the full extent of an axes, including axes labels, tick labels, and
-        titles."""
-        # For text objects, we need to draw the figure first, otherwise the extents
-        # are undefined.
-        ax.figure.canvas.draw()
-        items = []
-        # items += ax.get_xticklabels() + ax.get_yticklabels() 
-        items += [ax, ax.xaxis.label, ax.yaxis.label]
-        # items += [ax, ax.title]
-        
-        # items += [ax.get_xaxis().get_label(), ax.get_yaxis().get_label()]
-        bbox = Bbox.union([item.get_window_extent() for item in items])
 
-        # return bbox.padded(4)
-        return bbox.expanded(1.0 + pad, 1.0 + pad)
 
 
 
@@ -589,7 +639,7 @@ def get_z_grid(model, z):
         return model.par.grid_Am
     
         
-def plot_var_over_z(model, variable, index, z, namespace='sol', x_grid=None, y_grid=None, label='', title=None, ax=None, **kwargs):
+def plot_var_over_z(model, variable, index, z, namespace='sol', x_grid=None, y_grid=None, label='', title=None, ax=None, power_to_nan=True, **kwargs):
 
     nmspc = getattr(model, namespace)
     
@@ -601,6 +651,10 @@ def plot_var_over_z(model, variable, index, z, namespace='sol', x_grid=None, y_g
     var = getattr(nmspc, variable)
     idx_slice = infer_index(model, var, index, z)
     y = var[idx_slice]
+    
+    if power_to_nan and variable == 'power':
+        ax.plot(z_grid, y, label=label, color='white')
+        y = np.where(y == -1, np.nan, y)
     
     ax.plot(z_grid, y, label=label, **kwargs)
     
@@ -630,20 +684,27 @@ def plot_var_over_love(*args, **kwargs):
     return plot_var_over_z(*args, z='love', **kwargs)
 
 
-def plot_simulated(model, variable, function, label='', title=None, x_grid=None, y_grid=None, subsample='couple', ax=None, **kwargs):
+def plot_simulated(model, variable, function, label='', title=None, x_grid=None, y_grid=None, subsample='all', ax=None, **kwargs):
     
     # it is possible to add a where condition, but I don't know how to apply the where condition specifically to the each model
     if ax is None:
         fig, ax = plt.subplots()
     
-    if subsample == 'couple':
+    if subsample == 'all': 
+        nans = np.zeros(model.sim.couple.shape)
+    elif subsample == 'couple':
         nans = np.nan + np.ones(model.sim.couple.shape)
         nans[model.sim.couple==1] = 0.0
     elif subsample == 'single':
         nans = np.nan + np.ones(model.sim.couple.shape)
         nans[model.sim.couple==0] = 0.0
+    elif subsample == 'always couple':
+        nans = np.nan + np.zeros(model.sim.couple.shape)
+        nans[model.sim.couple[:,0]==1, 0] = 0.0 
+        for t in range(1, model.par.T):
+            nans[np.all((model.sim.couple[:,t]==1, nans[:,t-1]==0), axis=0),t] = 0.0
     else:
-        nans = np.zeros(model.sim.couple.shape)
+        print('Warning: subsample not recognized')
         
     y = function(getattr(model.sim, variable) + nans)
     ax.plot(y, label=label, **kwargs)
