@@ -183,13 +183,13 @@ namespace single {
 
                 // Calculate finite difference
                 margV[iA] = V[iA_plus]*denom - V[iA_minus]* denom; 
-
-                // Extrapolate gradient in last point
-                if (iA == num_A-2){
-                    margV[iA_plus] = margV[iA];
-                }
             }
-            margV[0] = margV[1]; // extrapolate gradient in first point
+             // Extrapolate gradient in end points
+            int i=0;
+            margV[i] = (margV[i+2] - margV[i+1]) / (grid_A[i+2] - grid_A[i+1]) * (grid_A[i] - grid_A[i+1]) + margV[i+1];
+            i = par->num_A-1;
+            margV[i] = (margV[i-2] - margV[i-1]) / (grid_A[i-2] - grid_A[i-1]) * (grid_A[i] - grid_A[i-1]) + margV[i-1];
+            
         } 
         else {
             for (int iA=0; iA<num_A-1; iA++){
