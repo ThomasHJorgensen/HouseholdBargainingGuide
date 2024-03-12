@@ -84,7 +84,7 @@ class HouseholdModelClass(EconModelClass):
         par.interp_inverse = False # True: interpolate inverse consumption
         par.interp_method = 'linear'
         par.precompute_intratemporal = True # if True, precompute intratemporal allocation, else re-solve every time
-        
+
         par.num_Ctot = 100
         par.max_Ctot = par.max_A*2
         
@@ -95,10 +95,11 @@ class HouseholdModelClass(EconModelClass):
 
         # simulation
         par.seed = 9210
+        par.simT = par.T
         par.simN = 50_000
         par.init_A = 0.01
         par.init_love = 0.0
-        par.init_power = 10
+        par.init_power_idx = 10
 
         # cpp
         par.threads = 8
@@ -117,8 +118,8 @@ class HouseholdModelClass(EconModelClass):
         shape_single = (par.T,par.num_A)                        # single states: T and assets
 
         # a.1. single to single
-        sol.Vw_single_to_single = np.nan + np.ones(shape_single)
-        sol.Vm_single_to_single = np.nan + np.ones(shape_single) 
+        sol.Vw_single_to_single = np.ones(shape_single) - np.inf  # Value
+        sol.Vm_single_to_single = np.ones(shape_single) - np.inf
 
         sol.Cw_priv_single_to_single = np.nan + np.ones(shape_single)     # private consumption, single
         sol.Cm_priv_single_to_single = np.nan + np.ones(shape_single)
@@ -131,10 +132,12 @@ class HouseholdModelClass(EconModelClass):
         sol.EmargUw_single_to_single_pd = np.zeros(shape_single)           # Expected marginal utility post-decision, woman single
         sol.C_totw_single_to_single_pd = np.zeros(par.num_A_pd)            # C for EGM, woman single 
         sol.Mw_single_to_single_pd = np.zeros(par.num_A_pd)                # Endogenous grid, woman single
+        sol.Vw_single_to_single_pd = np.zeros(par.num_A_pd)                # Value of being single, post-decision
 
         sol.EmargUm_single_to_single_pd = np.zeros(shape_single)          # Expected marginal utility post-decision, man single
         sol.C_totm_single_to_single_pd = np.zeros(par.num_A_pd)           # C for EGM, man single
         sol.Mm_single_to_single_pd = np.zeros(par.num_A_pd)               # Endogenous grid, man single
+        sol.Vm_single_to_single_pd = np.zeros(par.num_A_pd)               # Value of being single, post-decision
 
         ## a.2. couple to single
         sol.Vw_couple_to_single = np.nan + np.ones(shape_single)        # Value marriage -> single
@@ -193,6 +196,10 @@ class HouseholdModelClass(EconModelClass):
         sol.C_pub_single_to_couple = np.nan + np.ones(shape_couple)        
         sol.Cw_tot_single_to_couple = np.nan + np.ones(shape_couple)   
         sol.Cm_tot_single_to_couple = np.nan + np.ones(shape_couple) 
+  
+        shape_power =(par.T,par.num_love,par.num_A,par.num_A)          
+        sol.initial_power = np.nan + np.zeros(shape_power)
+        sol.initial_power_idx = np.zeros(shape_power,dtype=np.int_)
 
         ## b.3. start as couple
         sol.Vw_start_as_couple = np.nan + np.ones(shape_couple)
@@ -224,7 +231,6 @@ class HouseholdModelClass(EconModelClass):
 
         # f. simulation
         # NB: all arrays not containing "init" or "draw" in name are wiped before each simulation
-        par.simT = par.T
         shape_sim = (par.simN,par.simT)
         sim.Cw_priv = np.nan + np.ones(shape_sim)               
         sim.Cm_priv = np.nan + np.ones(shape_sim)
@@ -257,9 +263,8 @@ class HouseholdModelClass(EconModelClass):
         sim.init_Aw = sim.init_A * par.div_A_share
         sim.init_Am = sim.init_A * (1.0 - par.div_A_share)
         sim.init_couple = np.ones(par.simN,dtype=np.bool_)
-        # sim.init_power_idx = par.num_power//2 * np.ones(par.simN,dtype=np.int_)
-        sim.init_power_idx = par.init_power * np.ones(par.simN,dtype=np.int_)
-        sim.init_love = np.ones(par.simN) * par.init_love
+        sim.init_power_idx = par.init_power_idx* np.ones(par.simN,dtype=np.int_)
+        sim.init_love = par.init_love + np.zeros(par.simN)
         
         # g. timing
         sol.solution_time = np.array([0.0])
@@ -276,7 +281,7 @@ class HouseholdModelClass(EconModelClass):
         sim.draw_uniform_partner_Aw = np.random.uniform(size=shape_sim) # for inverse cdf transformation of partner wealth
         sim.draw_uniform_partner_Am = np.random.uniform(size=shape_sim) # for inverse cdf tranformation of partner wealth
 
-        sim.draw_repartner_iL = np.random.choice(par.num_love, p=par.prob_partner_love, size=shape_sim) # Love index when repartnering
+        sim.draw_repartner_love = par.sigma_love*np.random.normal(0.0,1.0,size=shape_sim) #np.random.choice(par.num_love, p=par.prob_partner_love, size=shape_sim) # Love index when repartnering
 
         
     def setup_grids(self):
@@ -361,7 +366,7 @@ class HouseholdModelClass(EconModelClass):
         par = self.par 
 
         # setup grids
-        self.setup_grids() #<--- this clears be
+        self.setup_grids()
 
         self.cpp.solve(sol,par)
 
@@ -379,46 +384,6 @@ class HouseholdModelClass(EconModelClass):
         self.cpp.simulate(sim,sol,par)
 
         sim.mean_lifetime_util[0] = np.mean(np.sum(sim.util,axis=1))
-        # couple = sim.couple == 1
-        # single = ~couple
-        # sim.mean_log10_euler[0] = np.nanmean(np.log10( abs(sim.euler[couple]/sim.C_tot[couple]) + 1.0e-16)) + np.nanmean(np.log10( abs(sim.euler[single]/sim.Cw_tot[single]) + 1.0e-16))
-
-        # total consumption
-        # sim.Cw_tot = sim.Cw_priv + sim.Cw_pub
-        # sim.Cm_tot = sim.Cm_priv + sim.Cm_pub
-        # sim.C_tot = sim.Cw_priv + sim.Cm_priv + sim.Cw_pub
-
-
-    def set_true_EmargV(self, EmargV_start_as_couple, EmargVw_start_as_single, EmargVm_start_as_single, grid_A_true, grid_power_true, grid_love_true):
-        
-        par = self.par
-        sol = self.sol
-
-        # set dimensions
-        par.num_A_true = grid_A_true.size
-        par.max_A_true = grid_A_true.max()
-        par.num_power_true = grid_power_true.size
-        par.num_love_true = grid_love_true.size
-        par.max_love_true = grid_love_true.max()
-
-        # verify that the dimensions of the true EmargV are the same
-        shape_couple = (par.T,par.num_power_true,par.num_love_true,par.num_A_true)
-        shape_single = (par.T,par.num_A_true)
-        assert EmargV_start_as_couple.shape == shape_couple, f"EmargV_start_as_couple has shape {EmargV_start_as_couple.shape}, expected {shape_couple}"
-        assert EmargVw_start_as_single.shape == shape_single, f"EmargVw_start_as_single has shape {EmargVw_start_as_single.shape}, expected {shape_single}"
-        assert EmargVm_start_as_single.shape == shape_single, f"EmargVm_start_as_single has shape {EmargVm_start_as_single.shape}, expected {shape_single}"
-
-        # setup grids
-        par.grid_A_true = grid_A_true
-        par.grid_Aw_true = grid_A_true * par.div_A_share
-        par.grid_Am_true = grid_A_true * (1.0 - par.div_A_share)
-        par.grid_power_true = grid_power_true
-        par.grid_love_true = grid_love_true
-
-        # save true EmargV
-        sol.EmargV_start_as_couple_true = EmargV_start_as_couple 
-        sol.EmargVw_start_as_single_true = EmargVw_start_as_single
-        sol.EmargVm_start_as_single_true = EmargVm_start_as_single
 
         
 

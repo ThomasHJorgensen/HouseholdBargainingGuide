@@ -83,14 +83,16 @@ namespace precompute{
             x[0] = start_Cw_priv;
             x[1] = start_Cm_priv;
 
-            nlopt_optimize(opt, x, &minf);          
-            nlopt_destroy(opt);                 
+            nlopt_optimize(opt, x, &minf);                          
             
             // unpack
             Cw_priv[0] = x[0];
             Cm_priv[0] = x[1];
             C_pub[0] = C_tot - Cw_priv[0] - Cm_priv[0];
         }
+
+        nlopt_destroy(opt); 
+        delete solver_data;
 
     }
 
@@ -335,7 +337,9 @@ namespace precompute{
         // optimize
         x[0] = guess_Ctot; 
         nlopt_optimize(opt, x, &minf);          
-        nlopt_destroy(opt);                 
+        nlopt_destroy(opt);   
+
+        delete solver_data;              
         
         // return consumption value
         return x[0];
@@ -407,6 +411,8 @@ namespace precompute{
         nlopt_optimize(opt, x, &minf);          
         nlopt_destroy(opt);                 
         
+        delete solver_data;
+
         // return consumption value
         return x[0];
         

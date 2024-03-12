@@ -60,6 +60,91 @@ namespace single {
 
     }
 
+
+    EXPORT void handle_liquidity_constraint_single_to_single(int t, int gender, double* m_vec, double* C_tot, double* C_priv, double* C_pub, double* V, double* EV_next, sol_struct* sol, par_struct* par){
+        // 1. Check if liquidity constraint binds
+        // constraint: binding if common m is smaller than smallest m in endogenous grid
+        double* grid_A = par->grid_Aw;
+        if (gender == man) {
+            grid_A = par->grid_Am;
+        }
+        for (int iA = 0; iA < par->num_A; iA++){
+            double M_now = resources(grid_A[iA],gender,par);
+
+            if (M_now < m_vec[0]){
+
+                // a. Set total consumption equal to resources (consume all)
+                C_tot[iA] = M_now;
+
+                // b. Calculate intra-period allocation
+                intraperiod_allocation(&C_priv[iA], &C_pub[iA], C_tot[iA], gender, par);
+
+                // c. Calculate value
+                V[iA] = value_of_choice_single_to_single(C_tot[iA], M_now, gender, EV_next, par);
+
+            }
+        }
+    }
+
+    void do_upper_envelope_single_to_single(int t, int gender, double* m_vec, double* c_vec, double* v_vec, double* C_tot, double* C_priv, double* C_pub, double* V, double* EV_next, sol_struct* sol, par_struct* par){
+        // Unpack
+        double* grid_A = par->grid_Aw;
+        if (gender == man){
+            grid_A = par->grid_Am;
+        }
+
+        // Loop through unsorted endogenous grid
+        for (int iA_pd = 0; iA_pd<par->num_A_pd; iA_pd++){
+
+            // 1. Unpack intervals
+            double A_low = par->grid_A_pd[iA_pd];
+            double A_high = par->grid_A_pd[iA_pd+1];
+            
+            double V_low = v_vec[iA_pd];
+            double V_high = v_vec[iA_pd+1];
+
+            double m_low = m_vec[iA_pd];
+            double m_high = m_vec[iA_pd+1];
+
+            double c_low = c_vec[iA_pd];
+            double c_high = c_vec[iA_pd+1];
+
+            // 2. Calculate slopes
+            double v_slope = (V_high - V_low)/(A_high - A_low);
+            double c_slope = (c_high - c_low)/(A_high - A_low);
+
+            // 3. Loop through common grid
+            for (int iA = 0; iA<par->num_A; iA++){
+
+                // i. Check if resources from common grid are in current interval of endogenous grid
+                double M_now = resources(grid_A[iA], gender, par);
+                bool interp = ((M_now >= m_low) & (M_now <= m_high));
+                bool extrap_above = ((iA_pd == par->num_A_pd-2) & (M_now > m_vec[par->num_A_pd-1])); // extrapolate above last point in endogenous grid
+
+                if (interp | extrap_above){
+
+                    // ii. Interpolate consumption and value
+                    double c_guess = c_low + c_slope*(M_now - m_low);
+                    double a_guess = M_now - c_guess;
+                    double V_guess = V_low + v_slope*(a_guess - A_low);
+
+                    // iii. Update sol if v is higher than previous guess (upper envelope)
+                    if (V_guess > V[iA]){
+                        // o. Update total consumption
+                        C_tot[iA] = c_guess;
+
+                        // oo. Update intra-period allocation
+                        intraperiod_allocation(&C_priv[iA], &C_pub[iA], C_tot[iA], gender, par);
+
+                        // ooo. Update value
+                        V[iA] = value_of_choice_single_to_single(C_tot[iA], M_now, gender, EV_next, par);
+                    }
+                }
+            }
+        }
+    }
+
+
     void EGM_single_to_single(int t, int gender, sol_struct* sol, par_struct* par){
         // 1. Setup
         /// a. unpack
@@ -76,6 +161,7 @@ namespace single {
         double* C_tot {sol->Cw_tot_single_to_single};
         double* C_priv {sol->Cw_priv_single_to_single};
         double* C_pub {sol->Cw_pub_single_to_single};
+        double* V_pd {sol->Vw_single_to_single_pd};
         //// oo. man
         if (gender == man){
             grid_A = par->grid_Am;
@@ -87,6 +173,7 @@ namespace single {
             C_tot = sol->Cm_tot_single_to_single;
             C_priv = sol->Cm_priv_single_to_single;
             C_pub = sol->Cm_pub_single_to_single;
+            V_pd = sol->Vm_single_to_single_pd;
         }
 
         /// c. Allocate memory
@@ -96,6 +183,7 @@ namespace single {
 
         // 2. EGM step
         /// setup
+        int idx = index::single(t,0, par);
         int idx_next = index::single(t+1,0, par);
         int min_point_A = 0;
 
@@ -113,43 +201,25 @@ namespace single {
 
             /// d. endogenous grid over resources
             M_pd[iA_pd] = C_tot_pd[iA_pd] + A_next;
+
+            /// e. value
+            V_pd[iA_pd] = value_of_choice_single_to_single(C_tot_pd[iA_pd], M_pd[iA_pd], gender, &EV[idx_next], par);
         }
 
-        // 3. interpolate to common grid
-        ///setup
-        min_point_A = 0;
+        // 3. liquidity constraint
+        handle_liquidity_constraint_single_to_single(t, gender, M_pd, &C_tot[idx], &C_priv[idx], &C_pub[idx], &V[idx], &EV[idx_next], sol, par);
 
-        for (int iA=0; iA<par->num_A; iA++){
-            int idx = index::single(t,iA, par);
+        // 4. upper envelope
+        do_upper_envelope_single_to_single(t, gender, M_pd, C_tot_pd, V_pd, &C_tot[idx], &C_priv[idx], &C_pub[idx], &V[idx], &EV[idx_next], sol, par);
 
-            /// a. calculate resources
-            double M_now = resources(grid_A[iA], gender, par);
-
-            /// b. find total consumption
-            min_point_A = tools::binary_search(min_point_A,par->num_A_pd, M_pd, M_now);
-            C_tot[idx] = tools::interp_1d_index(M_pd, par->num_A_pd, C_tot_pd, M_now, min_point_A);
-
-            /// c. handle credit constraint 
-            //// if credit constrained
-            if (M_now <= M_pd[0]) {
-                ///// o. consume all resources
-                C_tot[idx] = M_now; 
-
-                
-            }
-
-            /// d. calculate private and public consumption
-            intraperiod_allocation(&C_priv[idx], &C_pub[idx], C_tot[idx], gender, par);
-            
-            /// e. calculate values (not used in EGM step)
-            V[idx] = value_of_choice_single_to_single(C_tot[idx], M_now, gender, &EV[idx_next], par);
-
-        }
 
         // 4. clean up
         delete[] EmargU_pd;
         delete[] C_tot_pd;
         delete[] M_pd;
+        EmargU_pd = nullptr;
+        C_tot_pd = nullptr;
+        M_pd = nullptr;
     }
 
 
@@ -313,6 +383,7 @@ namespace single {
 
                     // 4. destroy optimizer
                     nlopt_destroy(opt);
+                    delete solver_data;
 
                 } // pragma
             }
@@ -427,7 +498,14 @@ namespace single {
         nash_struct->par = par;
 
         // solve
-        return bargaining::nash_bargain(nash_struct);
+        double init_mu =  bargaining::nash_bargain(nash_struct);
+
+        delete state_couple;
+        delete state_single_w;
+        delete state_single_m;
+        delete nash_struct;
+
+        return init_mu;
     }
     
     

@@ -21,7 +21,7 @@ typedef struct sim_struct
  double* draw_meet;
  double* draw_uniform_partner_Aw;
  double* draw_uniform_partner_Am;
- int* draw_repartner_iL;
+ double* draw_repartner_love;
  double* init_A;
  double* init_Aw;
  double* init_Am;
@@ -53,6 +53,7 @@ double* get_double_p_sim_struct(sim_struct* x, char* name){
  else if( strcmp(name,"draw_meet") == 0 ){ return x->draw_meet; }
  else if( strcmp(name,"draw_uniform_partner_Aw") == 0 ){ return x->draw_uniform_partner_Aw; }
  else if( strcmp(name,"draw_uniform_partner_Am") == 0 ){ return x->draw_uniform_partner_Am; }
+ else if( strcmp(name,"draw_repartner_love") == 0 ){ return x->draw_repartner_love; }
  else if( strcmp(name,"init_A") == 0 ){ return x->init_A; }
  else if( strcmp(name,"init_Aw") == 0 ){ return x->init_Aw; }
  else if( strcmp(name,"init_Am") == 0 ){ return x->init_Am; }
@@ -62,18 +63,17 @@ double* get_double_p_sim_struct(sim_struct* x, char* name){
 }
 
 
-int* get_int_p_sim_struct(sim_struct* x, char* name){
+bool* get_bool_p_sim_struct(sim_struct* x, char* name){
 
- if( strcmp(name,"draw_repartner_iL") == 0 ){ return x->draw_repartner_iL; }
- else if( strcmp(name,"init_power_idx") == 0 ){ return x->init_power_idx; }
+ if( strcmp(name,"init_couple") == 0 ){ return x->init_couple; }
  else {return NULL;}
 
 }
 
 
-bool* get_bool_p_sim_struct(sim_struct* x, char* name){
+int* get_int_p_sim_struct(sim_struct* x, char* name){
 
- if( strcmp(name,"init_couple") == 0 ){ return x->init_couple; }
+ if( strcmp(name,"init_power_idx") == 0 ){ return x->init_power_idx; }
  else {return NULL;}
 
 }

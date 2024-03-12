@@ -114,6 +114,8 @@ namespace couple {
             nlopt_destroy(opt);
 
             C_tot = x[0];
+
+            delete solver_data;
         }
 
         // implied consumption allocation (re-calculation)
@@ -124,7 +126,7 @@ namespace couple {
     void solve_couple_to_couple_Agrid_vfi(int t, int iP, int iL, double* EVw_next, double* EVm_next,sol_struct* sol, par_struct* par){
         for (int iA=0; iA<par->num_A;iA++){
             int idx = index::couple(t,iP,iL,iA,par);
-             
+
             double M_resources = resources(par->grid_A[iA],par); 
 
             // starting values
@@ -148,7 +150,7 @@ namespace couple {
 
     void handle_liquidity_constraint_couple_to_couple(int t, int iP, int iL, double* m_vec, double* EmargU_pd, double* C_tot, double* Cw_priv,double* Cm_priv,double* C_pub,double* Vw,double* Vm, double* EVw_next, double* EVm_next, double* V, sol_struct* sol, par_struct* par){
         // 1. Check if liquidity constraint binds
-        // constraint: binding if common m is smaller than smallest m in endogenous grid (check if this holds when the endo grid bends back)
+        // constraint: binding if common m is smaller than smallest m in endogenous grid 
         for (int iA=0; iA < par->num_A; iA++){
             double M_now = resources(par->grid_A[iA],par);
 
@@ -494,12 +496,23 @@ namespace couple {
             } // love
             
             // delete pointers
+            // for (int i=0; i<num;i++){
+            //     delete[] list_start_as_couple[i];
+            //     delete[] list_couple_to_couple[i];
+            // }
+
             delete[] list_start_as_couple;
             delete[] list_couple_to_couple;
-            delete list_couple_to_single;
+            delete[] list_couple_to_single;
+            delete[] Sw;
+            delete[] Sm;
+            list_start_as_couple = nullptr;
+            list_couple_to_couple = nullptr;
+            list_couple_to_single = nullptr;
+            Sw = nullptr;
+            Sm = nullptr;
 
-            delete Sw;
-            delete Sm;
+            delete idx_couple;
 
         } // pragma
     }
