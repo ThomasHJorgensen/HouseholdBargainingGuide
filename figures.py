@@ -30,6 +30,7 @@ color_palettes = {
                 'olive'    : '#bcbd22',
                 'cyan'     : '#17becf',
             }
+            
 }
 
 
@@ -89,8 +90,25 @@ class ModelPlot():
                 'green'     : '#56882D',
                 'dark_blue' : '#0C2C4D',
             },
+            'KU': { # KU standard (maybe?? copilot - generated)
+                'red'       : '#a31d20',
+                'blue'      : '#901a1e',
+                'yellow'    : '#ee9b00',
+                'green'     : '#94d2bd',
+                'dark_blue' : '#005f73',
+            },
+            'redblue': { # Red and blue
+                'dark_red'  : '#A70007', #'#D01B1B',
+                'red'       : '#E1131F', #'#FF4242',
+                'light_red' : '#FFADAD',
+                'light_blue': '#B8E4E4', #'#B8E4E4', #'#88D4EE', #e7f9ff
+                'blue'      : '#43BECE', #'#46ABD7',
+                'dark_blue' : '#217782', #'#4A5489', #'#2C679F',
+                'yellow'    : '#FFC215',
+                'black'     : '#000000',
+            },
         }
-        self.color_palette = self.color_palettes['CEBI']
+        self.color_palette = self.color_palettes['redblue']
         # KU red a31d20, 901a1e
         
         
@@ -150,8 +168,9 @@ class ModelPlot():
                 print(f'Warning: {key} is not a valid attribute')
         
         self.infer_plot()
-        self.set_x_grid()
-        self.set_y_grid()
+        self.set_x_grid() # Has to be initialized after infer_plot where number of subplots is calculated
+        self.set_y_grid() # Has to be initialized after infer_plot where number of subplots is calculated
+        self.set_x_labels() # Has to be initialized after infer_plot where number of subplots is calculated
         if 'subtitles' in kwargs.keys(): 
             self.set_subtitles(kwargs['subtitles'])
         if 'labels' in kwargs.keys():
@@ -160,6 +179,8 @@ class ModelPlot():
             self.set_x_grid(kwargs['x_grid'])
         if 'y_grid' in kwargs.keys():
             self.set_y_grid(kwargs['y_grid'])
+        if 'x_labels' in kwargs.keys():
+            self.set_x_labels(kwargs['x_labels'])
             
         self.set_curve_settings(**kwargs)
             
@@ -184,6 +205,14 @@ class ModelPlot():
             self.y_grid = y_grid
         else:
             self.y_grid = [y_grid] * self.num_subplots
+            
+    def set_x_labels(self, x_labels=None):
+        if x_labels is None:
+            self.x_labels = [None] * self.num_subplots
+        elif type(x_labels) == list:
+            self.x_labels = x_labels
+        else:
+            self.x_labels = [x_labels] * self.num_subplots
       
     def set_curve_settings(self, **kwargs):
         num_curves = len(self.labels)
@@ -514,8 +543,8 @@ class ModelPlot():
                     x_grid = self.x_grid[i_plot]
                     y_grid = self.y_grid[i_plot]
                     
-                    ax = plot_function(model, var, index, ax = ax, title = subtitle, label = label, x_grid = x_grid, y_grid=y_grid, color=self.colors[i_label], linestyle=self.linestyles[i_label], marker=self.markers[i], **subplot_settings)
-                    
+                    ax = plot_function(model, var, index, ax = ax, title = subtitle, x_label=self.x_labels[i_plot], label = label, x_grid = x_grid, y_grid=y_grid, color=self.colors[i_label], linestyle=self.linestyles[i_label], marker=self.markers[i], **subplot_settings)
+
         if self.subplot_legends == 'shared':
             self.add_shared_legend(fig, axes)
             ax_mask = [ax for i, ax in enumerate(axes.flatten()) if i < self.num_subplots]
@@ -535,10 +564,17 @@ class ModelPlot():
         return fig
 
 
+
     
 
 
-
+def empty_plot(model, variable, index, z, namespace='sol', ax=None, x_grid=None, y_grid=None, label='', title=None, x_label=None, power_to_nan=True, **kwargs):
+    if ax is None:
+        fig, ax = plt.subplots()
+        
+    ax.plot([np.array(0,1)], np.array[np.nan,np.nan])
+    
+    return ax
 
 def plot_surplus(model, vars, idx, label='', add_lines=True, title=None, ax=None, **kwargs):
     par = model.par
@@ -639,7 +675,7 @@ def get_z_grid(model, z):
         return model.par.grid_Am
     
         
-def plot_var_over_z(model, variable, index, z, namespace='sol', x_grid=None, y_grid=None, label='', title=None, ax=None, power_to_nan=True, **kwargs):
+def plot_var_over_z(model, variable, index, z, namespace='sol', ax=None, x_grid=None, y_grid=None, label='', title=None, x_label=None, power_to_nan=True, **kwargs):
 
     nmspc = getattr(model, namespace)
     
@@ -659,7 +695,10 @@ def plot_var_over_z(model, variable, index, z, namespace='sol', x_grid=None, y_g
     ax.plot(z_grid, y, label=label, **kwargs)
     
     # Layout
-    ax.set_xlabel(z.capitalize())
+    if x_label is not None:
+        ax.set_xlabel(x_label)
+    else:
+        ax.set_xlabel(z.capitalize())
     ax.set_ylabel('')
     if title is not None:
         ax.set_title(title)
@@ -684,7 +723,7 @@ def plot_var_over_love(*args, **kwargs):
     return plot_var_over_z(*args, z='love', **kwargs)
 
 
-def plot_simulated(model, variable, function, label='', title=None, x_grid=None, y_grid=None, subsample='all', ax=None, **kwargs):
+def plot_simulated(model, variable, function, label='', title=None, x_grid=None, y_grid=None, x_label=None, subsample='all', ax=None, **kwargs):
     
     # it is possible to add a where condition, but I don't know how to apply the where condition specifically to the each model
     if ax is None:
@@ -710,7 +749,10 @@ def plot_simulated(model, variable, function, label='', title=None, x_grid=None,
     ax.plot(y, label=label, **kwargs)
     
     # Layout
-    ax.set_xlabel('Time')
+    if x_label is not None:
+        ax.set_xlabel(x_label)
+    else:
+        ax.set_xlabel('Time')
     ax.set_ylabel('')
     if title is not None:
         ax.set_title(title)
